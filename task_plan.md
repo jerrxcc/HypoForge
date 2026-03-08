@@ -44,6 +44,13 @@ Phase 3
 - [x] 等待并确认最新 fresh run 完成到 `done`
 - **Status:** complete
 
+### Phase 6: SPEC Hardening
+- [ ] 实现 raw response cache / normalized paper cache / evidence extraction cache
+- [ ] 补齐超预算、单源故障、critic/planner 失败时的降级返回
+- [ ] 扩充 trace 字段与阶段级日志，覆盖 tokens、request_id、stage summary
+- [ ] 为预算/缓存/降级补齐单测与集成测试
+- **Status:** in_progress
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -75,3 +82,6 @@ Phase 3
 - 2026-03-09 00:00 +08 已确认 fresh verification 不能依赖 `ServiceContainer.repository`，后续统一使用 `coordinator` 或 `RunRepository` 查询 run/trace 状态。
 - 2026-03-09 00:03 +08 已完成 fresh verification：全量 `pytest` 28 通过，最新真实 run `run_6a638169c5c44fe28f02880d373d17ce` 状态为 `done`，trace 共 19 条且覆盖 `retrieval/review/critic/planner` 四阶段，`GET /v1/runs/{id}`、`/trace`、`/report.md` 均返回 200。
 - 2026-03-09 00:05 +08 已提交并推送真实链路修复 commit `67eb498 fix: harden live tool-calling workflow` 到 `origin/main`。
+- 基于 SPEC 当前差距，推荐下一阶段优先做 `缓存 + 降级策略 + 可观测性补齐`；预算控制按用户要求暂缓。
+- 2026-03-09 00:19 +08 Phase 6 新增测试已转绿，fresh 全量 `pytest` 为 `34 passed`；真实 live run 正在继续验证缓存/降级改动未破坏默认服务路径。
+- 2026-03-09 00:22 +08 已确认最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 当前推进到 `reviewing`，并已落 12 条 trace，trace 中可见 `request_id` / token 字段；但该 fresh live run 尚未完成到 `done`。

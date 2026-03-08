@@ -245,6 +245,9 @@ class RunRepository:
                     "result_summary": row.result_summary_json,
                     "latency_ms": row.latency_ms,
                     "model_name": row.model_name,
+                    "input_tokens": row.input_tokens,
+                    "output_tokens": row.output_tokens,
+                    "request_id": (row.result_summary_json or {}).get("request_id"),
                     "success": row.success,
                     "error_message": row.error_message,
                 }

@@ -37,6 +37,23 @@ class RunRow(Base):
     )
 
 
+class CacheEntryRow(Base):
+    __tablename__ = "cache_entries"
+    __table_args__ = (UniqueConstraint("namespace", "cache_key", name="uq_cache_namespace_key"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=default_id)
+    namespace: Mapped[str] = mapped_column(String(64), nullable=False)
+    cache_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+
 class PaperRow(Base):
     __tablename__ = "papers"
 

@@ -33,7 +33,7 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
         ]
     )
 
-    def invoke(tool_name: str, payload: dict):
+    def invoke(tool_name: str, payload: dict, trace_context: dict):
         repo.record_tool_trace(
             run_id=run.run_id,
             agent_name="retrieval",
@@ -43,6 +43,8 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
             latency_ms=1,
             model_name="gpt-5.4",
             success=True,
+            input_tokens=trace_context["input_tokens"],
+            output_tokens=trace_context["output_tokens"],
         )
         return {"papers": [{"paper_id": "p1"}]}
 
@@ -64,3 +66,5 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
     traces = repo.list_tool_traces(run.run_id)
     assert len(traces) == 1
     assert traces[0]["tool_name"] == "search_openalex_works"
+    assert traces[0]["input_tokens"] == 0
+    assert traces[0]["output_tokens"] == 0

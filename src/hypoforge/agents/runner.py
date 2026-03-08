@@ -44,7 +44,12 @@ class AgentRunner:
             for call in turn.tool_calls:
                 if call.name not in tool_names:
                     raise ValueError(f"tool not allowed for {self._agent_name}: {call.name}")
-                result = self._tool_invoker(call.name, call.arguments)
+                trace_context = {
+                    "request_id": turn.response_id,
+                    "input_tokens": turn.usage.get("input_tokens", 0),
+                    "output_tokens": turn.usage.get("output_tokens", 0),
+                }
+                result = self._tool_invoker(call.name, call.arguments, trace_context)
                 output = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
                 tool_outputs.append(
                     {

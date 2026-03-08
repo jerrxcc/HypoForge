@@ -31,6 +31,23 @@
 - 最新 trace 明确覆盖四个阶段：`retrieval`、`review`、`critic`、`planner`，说明真实路径的 trace 持久化已满足 SPEC 对完整 tool trace 的验收要求。
 - FastAPI 读取端点 fresh verification 通过：`GET /v1/runs/{run_id}`、`GET /v1/runs/{run_id}/trace`、`GET /v1/runs/{run_id}/report.md` 均返回 200，报告长度为 3354 字符。
 - 真实链路修复已提交并推送到远程：`67eb498 fix: harden live tool-calling workflow` 当前已在 `origin/main`。
+- 基于 SPEC 第 16、17、18 节与 MVP 验收标准，当前最大的剩余差距不是四阶段能力本身，而是运行控制面：
+- 1. cache 还未按 SPEC 形成明确的 raw response / normalized paper / evidence extraction 三层缓存；
+- 2. budget 还未完整覆盖 per-run tool steps、外部源调用次数与超预算行为；
+- 3. degradation 已有局部实现，但还没系统覆盖 retrieval/review/critic/planner 的全部降级分支；
+- 4. trace 已可用，但离 SPEC 建议字段还差 `request_id`、更完整的 token 统计与阶段级日志汇总。
+- 用户已确认下一阶段不做预算控制，因此当前实施范围收敛为：缓存、系统化降级、以及可观测性补齐。
+- Phase 6 首轮 red test 已确认当前缺口集中在三处：
+- 1. `hypoforge.infrastructure.db.cache_repository` 尚不存在；
+- 2. `hypoforge.infrastructure.connectors.cached` 尚不存在；
+- 3. 在补完上述模块后，还需要继续实现 coordinator 降级和 trace metadata 透传，才能使新增测试转绿。
+- Phase 6 当前已完成的新增能力：
+- 1. SQLite 持久化缓存仓储 `cache_entries`；
+- 2. OpenAlex / Semantic Scholar 查询缓存与 normalized paper cache；
+- 3. review 阶段 evidence cache 短路；
+- 4. coordinator 对 critic 失败继续、planner 失败返回 partial result；
+- 5. tool trace 现在能落 input/output tokens，并在 `/trace` 中暴露 `request_id`。
+- 2026-03-09 00:22 +08 的 fresh real-run 审计显示：最新 run `run_13693266052340eaab98cfe1ed69a82a` 已完成 retrieval 并进入 `reviewing`，当前 `trace_count=12`，最新 trace 行已能看到非空 `request_id`。
 
 ## Technical Decisions
 | Decision | Rationale |

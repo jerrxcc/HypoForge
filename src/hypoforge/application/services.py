@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
+import logging
 from time import perf_counter
+from collections import defaultdict
 
 from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.providers import OpenAIResponsesProvider
@@ -21,7 +24,9 @@ from hypoforge.domain.schemas import (
     ReviewSummary,
 )
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
+from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
+from hypoforge.infrastructure.db.cache_repository import CacheRepository
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.render_tools import RenderTools
 from hypoforge.tools.scholarly_tools import ScholarlyTools
@@ -36,14 +41,28 @@ class ServiceContainer:
 def build_default_services(settings: Settings | None = None) -> ServiceContainer:
     settings = settings or Settings()
     repository = RunRepository.from_database_url(settings.database_url)
+    cache_repository = CacheRepository(repository._session_factory)
     candidate_pools: dict[str, dict[str, PaperDetail]] = {}
     provider = OpenAIResponsesProvider(
         api_key=settings.openai_api_key or None,
         base_url=settings.openai_base_url or None,
     )
     renderer = ReportRenderer()
-    openalex = OpenAlexConnector()
-    semantic_scholar = SemanticScholarConnector()
+    logger = logging.getLogger(__name__)
+    openalex = CachedOpenAlexConnector(
+        OpenAlexConnector(),
+        cache_repository,
+        ttl_seconds=settings.raw_response_cache_ttl_seconds,
+    )
+    semantic_scholar = CachedSemanticScholarConnector(
+        SemanticScholarConnector(),
+        cache_repository,
+        ttl_seconds=settings.raw_response_cache_ttl_seconds,
+        normalized_ttl_seconds=settings.normalized_paper_cache_ttl_seconds,
+    )
+    review_prompt = prompt_for("review")
+    review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
+
     def make_tool_invoker(run_id: str, agent_name: str, model_name: str):
         candidate_pool = candidate_pools.setdefault(run_id, {})
 
@@ -80,19 +99,24 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             "render_markdown_report": lambda payload: render_tools.render_markdown_report(run_id, payload),
         }
 
-        def invoke(tool_name: str, payload: dict):
+        def invoke(tool_name: str, payload: dict, trace_context: dict):
             started_at = perf_counter()
             try:
                 result = registry[tool_name](payload)
+                summary = _summarize_tool_result(result)
+                if trace_context.get("request_id"):
+                    summary["request_id"] = trace_context["request_id"]
                 repository.record_tool_trace(
                     run_id=run_id,
                     agent_name=agent_name,
                     tool_name=tool_name,
                     args=payload,
-                    result_summary=_summarize_tool_result(result),
+                    result_summary=summary,
                     latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
                     model_name=model_name,
                     success=True,
+                    input_tokens=trace_context.get("input_tokens"),
+                    output_tokens=trace_context.get("output_tokens"),
                 )
                 return result
             except Exception as exc:
@@ -105,6 +129,8 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
                     model_name=model_name,
                     success=False,
+                    input_tokens=trace_context.get("input_tokens"),
+                    output_tokens=trace_context.get("output_tokens"),
                     error_message=str(exc),
                 )
                 raise
@@ -133,6 +159,37 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
+        cached_cards = _load_cached_evidence_cards(
+            run_id=run_id,
+            repository=repository,
+            cache_repository=cache_repository,
+            model_name=settings.openai_model_review,
+            prompt_version=review_prompt_version,
+        )
+        if cached_cards is not None:
+            repository.save_evidence_cards(run_id, cached_cards)
+            repository.record_tool_trace(
+                run_id=run_id,
+                agent_name="review",
+                tool_name="evidence_extraction_cache_hit",
+                args={"run_id": run_id},
+                result_summary={
+                    "cache_hit": True,
+                    "evidence_ids": [card.evidence_id for card in cached_cards[:5]],
+                },
+                latency_ms=1,
+                model_name=settings.openai_model_review,
+                success=True,
+            )
+            logger.info("review cache hit", extra={"run_id": run_id, "cards": len(cached_cards)})
+            return ReviewSummary(
+                papers_processed=len({card.paper_id for card in cached_cards}),
+                evidence_cards_created=len(cached_cards),
+                coverage_summary="loaded from evidence cache",
+                dominant_axes=[],
+                low_confidence_paper_ids=[],
+            )
+
         runner = AgentRunner(
             provider=provider,
             tool_invoker=make_tool_invoker(run_id, "review", settings.openai_model_review),
@@ -141,11 +198,20 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             model_name=settings.openai_model_review,
             max_tool_steps=settings.max_tool_steps_review,
         )
-        return runner.execute(
-            instructions=prompt_for("review"),
+        summary = runner.execute(
+            instructions=review_prompt,
             context={"run_id": run_id},
             tool_names=["load_selected_papers", "save_evidence_cards"],
         )
+        _save_evidence_cards_to_cache(
+            run_id=run_id,
+            repository=repository,
+            cache_repository=cache_repository,
+            model_name=settings.openai_model_review,
+            prompt_version=review_prompt_version,
+            ttl_seconds=settings.evidence_cache_ttl_seconds,
+        )
+        return summary
 
     def critic_agent(run_id: str) -> CriticSummary:
         runner = AgentRunner(
@@ -183,6 +249,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         review_agent=review_agent,
         critic_agent=critic_agent,
         planner_agent=planner_agent,
+        report_renderer=renderer,
     )
     return ServiceContainer(coordinator=coordinator)
 
@@ -205,6 +272,55 @@ def _summarize_tool_result(result: dict) -> dict:
     if not summary:
         summary = result
     return summary
+
+
+def _evidence_cache_key(paper_id: str, model_name: str, prompt_version: str) -> str:
+    return f"{paper_id}:{model_name}:{prompt_version}"
+
+
+def _load_cached_evidence_cards(
+    *,
+    run_id: str,
+    repository: RunRepository,
+    cache_repository: CacheRepository,
+    model_name: str,
+    prompt_version: str,
+) -> list[EvidenceCard] | None:
+    selected_papers = repository.load_selected_papers(run_id)
+    if not selected_papers:
+        return None
+    cards: list[EvidenceCard] = []
+    for paper in selected_papers:
+        payload = cache_repository.get(
+            "evidence_extraction",
+            _evidence_cache_key(paper.paper_id, model_name, prompt_version),
+        )
+        if payload is None:
+            return None
+        cards.extend(EvidenceCard.model_validate(card) for card in payload["evidence_cards"])
+    return cards
+
+
+def _save_evidence_cards_to_cache(
+    *,
+    run_id: str,
+    repository: RunRepository,
+    cache_repository: CacheRepository,
+    model_name: str,
+    prompt_version: str,
+    ttl_seconds: int,
+) -> None:
+    cards = repository.load_evidence_cards(run_id)
+    cards_by_paper: dict[str, list[EvidenceCard]] = defaultdict(list)
+    for card in cards:
+        cards_by_paper[card.paper_id].append(card)
+    for paper_id, paper_cards in cards_by_paper.items():
+        cache_repository.set(
+            "evidence_extraction",
+            _evidence_cache_key(paper_id, model_name, prompt_version),
+            {"evidence_cards": [card.model_dump() for card in paper_cards]},
+            ttl_seconds=ttl_seconds,
+        )
 
 
 def build_fake_services(

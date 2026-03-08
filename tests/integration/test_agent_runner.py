@@ -37,8 +37,9 @@ def test_agent_runner_executes_allowed_tool_calls() -> None:
 
     calls = []
 
-    def invoke(tool_name: str, payload: dict) -> dict:
+    def invoke(tool_name: str, payload: dict, trace_context: dict) -> dict:
         calls.append((tool_name, payload))
+        assert trace_context["request_id"] == "scripted_1"
         return {"papers": [{"paper_id": "p1"}, {"paper_id": "p2"}]}
 
     runner = AgentRunner(
@@ -110,7 +111,7 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
 
     runner = AgentRunner(
         provider=provider,
-        tool_invoker=lambda tool_name, payload: {"papers": [{"paper_id": "p1"}]},
+        tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
         output_model=RetrievalSummary,
         agent_name="retrieval",
         model_name="gpt-5.4",

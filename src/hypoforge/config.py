@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     openalex_api_key: str = ""
     semantic_scholar_api_key: str = ""
     database_url: str = "sqlite:///./hypoforge.db"
+    raw_response_cache_ttl_seconds: int = 604800
+    normalized_paper_cache_ttl_seconds: int = 2592000
+    evidence_cache_ttl_seconds: int = 2592000
 
     max_selected_papers: int = 36
     max_tool_steps_retrieval: int = 12
@@ -32,4 +35,3 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
-

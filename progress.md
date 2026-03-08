@@ -86,6 +86,13 @@
   - 使用 FastAPI `TestClient` 对 `GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace`、`GET /v1/runs/{id}/report.md` 做 fresh verification，三者均返回 200。
   - 重新执行全量测试 `./.venv/bin/pytest -v`，当前结果为 `28 passed in 0.49s`。
   - 提交真实链路修复为 `67eb498 fix: harden live tool-calling workflow`，并已推送到 `origin/main`。
+  - 基于 SPEC 第 16/17/18 节重新评估后，记录下一阶段建议为 `SPEC Hardening`：优先补缓存、预算控制、系统化降级和可观测性，而不是先扩展新功能面。
+  - 用户确认预算控制暂缓，因此当前继续实现的 Phase 6 范围调整为：缓存、系统化降级、可观测性。
+  - 为 Phase 6 新增缓存、降级、trace metadata 测试，并执行首轮 red test；当前按预期失败于 `cache_repository` 与 `cached connectors` 模块缺失。
+  - 已完成缓存仓储、缓存连接器、review evidence cache、coordinator 关键降级和 trace metadata 透传的实现；对应新增测试现已通过。
+  - fresh 全量测试结果更新为 `34 passed in 0.57s`。
+  - 真实 live run 正在执行，用于确认新缓存和降级逻辑未破坏默认真实链路。
+  - 截至 2026-03-09 00:22 +08，最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 已推进到 `reviewing`，并已记录 12 条新版 trace；其中已可见 `request_id` 字段，但 run 尚未完成到 `done`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -123,6 +130,9 @@
 | Fresh API read-path verification | `./.venv/bin/python - <<'PY' ... TestClient(create_app()) ... PY` | 读取接口全部 200 | `/v1/runs/{id}`、`/trace`、`/report.md` 均返回 200 | pass |
 | Fresh trace coverage audit | `./.venv/bin/python - <<'PY' ... repo.list_tool_traces(latest_run) ... PY` | trace 覆盖四阶段 | `agents=['critic', 'planner', 'retrieval', 'review']` | pass |
 | Git push after live-run fixes | `git push origin main` | 最新提交推送成功 | `1d9ac45..67eb498  main -> main` | pass |
+| Phase 6 focused tests | `./.venv/bin/pytest tests/unit/test_cache_repository.py tests/unit/test_cached_connectors.py tests/integration/test_coordinator_degradation.py tests/integration/test_agent_runner.py tests/integration/test_tool_trace_recording.py -v` | 新增缓存/降级/trace 测试通过 | `9 passed in 0.27s` | pass |
+| Full pytest after Phase 6 changes | `./.venv/bin/pytest -v` | 全量测试通过 | `34 passed in 0.57s` | pass |
+| Fresh real-run trace audit after Phase 6 | `./.venv/bin/python - <<'PY' ... latest run + traces ... PY` | 最新真实 run 至少推进并写入新版 trace | `run_13693266052340eaab98cfe1ed69a82a`, `status=reviewing`, `trace_count=12`, `request_id` visible | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
