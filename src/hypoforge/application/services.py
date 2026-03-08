@@ -3,8 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 import logging
+from math import ceil
 from time import perf_counter
 from collections import defaultdict
+from typing import Callable
 
 from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.providers import OpenAIResponsesProvider
@@ -63,7 +65,14 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
 
-    def make_tool_invoker(run_id: str, agent_name: str, model_name: str):
+    def make_tool_invoker(
+        run_id: str,
+        agent_name: str,
+        model_name: str,
+        *,
+        selected_paper_ids: list[str] | None = None,
+        append_evidence_cards: bool = False,
+    ):
         candidate_pool = candidate_pools.setdefault(run_id, {})
 
         def update_candidate_pool(result: dict) -> dict:
@@ -82,7 +91,11 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             repository=repository,
             paper_lookup=lambda paper_ids: [candidate_pool[paper_id] for paper_id in paper_ids if paper_id in candidate_pool],
         )
-        workspace_tools = WorkspaceTools(repository=repository)
+        workspace_tools = WorkspaceTools(
+            repository=repository,
+            selected_paper_ids=selected_paper_ids,
+            append_evidence_cards=append_evidence_cards,
+        )
         render_tools = RenderTools(repository=repository, renderer=renderer)
         registry = {
             "search_openalex_works": lambda payload: update_candidate_pool(scholarly_tools.search_openalex_works(payload)),
@@ -159,59 +172,78 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
-        cached_cards = _load_cached_evidence_cards(
-            run_id=run_id,
-            repository=repository,
-            cache_repository=cache_repository,
-            model_name=settings.openai_model_review,
-            prompt_version=review_prompt_version,
-        )
-        if cached_cards is not None:
-            repository.save_evidence_cards(run_id, cached_cards)
-            repository.record_tool_trace(
-                run_id=run_id,
-                agent_name="review",
-                tool_name="evidence_extraction_cache_hit",
-                args={"run_id": run_id},
-                result_summary={
-                    "cache_hit": True,
-                    "evidence_ids": [card.evidence_id for card in cached_cards[:5]],
-                },
-                latency_ms=1,
-                model_name=settings.openai_model_review,
-                success=True,
-            )
-            logger.info("review cache hit", extra={"run_id": run_id, "cards": len(cached_cards)})
-            return ReviewSummary(
-                papers_processed=len({card.paper_id for card in cached_cards}),
-                evidence_cards_created=len(cached_cards),
-                coverage_summary="loaded from evidence cache",
-                dominant_axes=[],
-                low_confidence_paper_ids=[],
-            )
+        selected_papers = repository.load_selected_papers(run_id)
 
-        runner = AgentRunner(
-            provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "review", settings.openai_model_review),
-            output_model=ReviewSummary,
-            agent_name="review",
-            model_name=settings.openai_model_review,
-            max_tool_steps=settings.max_tool_steps_review,
+        def review_batch(batch: list[PaperDetail]) -> ReviewSummary:
+            cached_cards = _load_cached_evidence_cards_for_papers(
+                papers=batch,
+                cache_repository=cache_repository,
+                model_name=settings.openai_model_review,
+                prompt_version=review_prompt_version,
+            )
+            if cached_cards is not None:
+                repository.append_evidence_cards(run_id, cached_cards)
+                repository.record_tool_trace(
+                    run_id=run_id,
+                    agent_name="review",
+                    tool_name="evidence_extraction_cache_hit",
+                    args={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                    result_summary={
+                        "cache_hit": True,
+                        "evidence_ids": [card.evidence_id for card in cached_cards[:5]],
+                        "result_count": len(cached_cards),
+                    },
+                    latency_ms=1,
+                    model_name=settings.openai_model_review,
+                    success=True,
+                )
+                logger.info(
+                    "review cache hit",
+                    extra={"run_id": run_id, "cards": len(cached_cards), "paper_count": len(batch)},
+                )
+                return ReviewSummary(
+                    papers_processed=len(batch),
+                    evidence_cards_created=len(cached_cards),
+                    coverage_summary="loaded from evidence cache",
+                    dominant_axes=[],
+                    low_confidence_paper_ids=[],
+                )
+
+            runner = AgentRunner(
+                provider=provider,
+                tool_invoker=make_tool_invoker(
+                    run_id,
+                    "review",
+                    settings.openai_model_review,
+                    selected_paper_ids=[paper.paper_id for paper in batch],
+                    append_evidence_cards=True,
+                ),
+                output_model=ReviewSummary,
+                agent_name="review",
+                model_name=settings.openai_model_review,
+                max_tool_steps=settings.max_tool_steps_review,
+            )
+            summary = runner.execute(
+                instructions=review_prompt,
+                context={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                tool_names=["load_selected_papers", "save_evidence_cards"],
+            )
+            _save_evidence_cards_to_cache(
+                run_id=run_id,
+                papers=batch,
+                repository=repository,
+                cache_repository=cache_repository,
+                model_name=settings.openai_model_review,
+                prompt_version=review_prompt_version,
+                ttl_seconds=settings.evidence_cache_ttl_seconds,
+            )
+            return summary
+
+        return _review_papers_in_batches(
+            selected_papers=selected_papers,
+            batch_size=settings.review_batch_size,
+            review_batch=review_batch,
         )
-        summary = runner.execute(
-            instructions=review_prompt,
-            context={"run_id": run_id},
-            tool_names=["load_selected_papers", "save_evidence_cards"],
-        )
-        _save_evidence_cards_to_cache(
-            run_id=run_id,
-            repository=repository,
-            cache_repository=cache_repository,
-            model_name=settings.openai_model_review,
-            prompt_version=review_prompt_version,
-            ttl_seconds=settings.evidence_cache_ttl_seconds,
-        )
-        return summary
 
     def critic_agent(run_id: str) -> CriticSummary:
         runner = AgentRunner(
@@ -287,19 +319,17 @@ def _evidence_cache_key(paper_id: str, model_name: str, prompt_version: str) -> 
     return f"{paper_id}:{model_name}:{prompt_version}"
 
 
-def _load_cached_evidence_cards(
+def _load_cached_evidence_cards_for_papers(
     *,
-    run_id: str,
-    repository: RunRepository,
+    papers: list[PaperDetail],
     cache_repository: CacheRepository,
     model_name: str,
     prompt_version: str,
 ) -> list[EvidenceCard] | None:
-    selected_papers = repository.load_selected_papers(run_id)
-    if not selected_papers:
+    if not papers:
         return None
     cards: list[EvidenceCard] = []
-    for paper in selected_papers:
+    for paper in papers:
         payload = cache_repository.get(
             "evidence_extraction",
             _evidence_cache_key(paper.paper_id, model_name, prompt_version),
@@ -313,6 +343,7 @@ def _load_cached_evidence_cards(
 def _save_evidence_cards_to_cache(
     *,
     run_id: str,
+    papers: list[PaperDetail],
     repository: RunRepository,
     cache_repository: CacheRepository,
     model_name: str,
@@ -320,8 +351,11 @@ def _save_evidence_cards_to_cache(
     ttl_seconds: int,
 ) -> None:
     cards = repository.load_evidence_cards(run_id)
+    allowed_paper_ids = {paper.paper_id for paper in papers}
     cards_by_paper: dict[str, list[EvidenceCard]] = defaultdict(list)
     for card in cards:
+        if card.paper_id not in allowed_paper_ids:
+            continue
         cards_by_paper[card.paper_id].append(card)
     for paper_id, paper_cards in cards_by_paper.items():
         cache_repository.set(
@@ -330,6 +364,68 @@ def _save_evidence_cards_to_cache(
             {"evidence_cards": [card.model_dump() for card in paper_cards]},
             ttl_seconds=ttl_seconds,
         )
+
+
+def _review_papers_in_batches(
+    *,
+    selected_papers: list[PaperDetail],
+    batch_size: int,
+    review_batch: Callable[[list[PaperDetail]], ReviewSummary],
+) -> ReviewSummary:
+    if not selected_papers:
+        return ReviewSummary(
+            papers_processed=0,
+            evidence_cards_created=0,
+            coverage_summary="no selected papers to review",
+            dominant_axes=[],
+            low_confidence_paper_ids=[],
+            failed_paper_ids=[],
+        )
+
+    successful_summaries: list[ReviewSummary] = []
+    failed_paper_ids: list[str] = []
+    last_error: Exception | None = None
+    total_batches = ceil(len(selected_papers) / batch_size)
+
+    for index in range(0, len(selected_papers), batch_size):
+        batch = selected_papers[index : index + batch_size]
+        try:
+            successful_summaries.append(review_batch(batch))
+        except Exception as exc:
+            failed_paper_ids.extend(paper.paper_id for paper in batch)
+            last_error = exc
+
+    if not successful_summaries and last_error is not None:
+        raise last_error
+
+    papers_processed = sum(summary.papers_processed for summary in successful_summaries)
+    evidence_cards_created = sum(summary.evidence_cards_created for summary in successful_summaries)
+    dominant_axes = list(
+        dict.fromkeys(axis for summary in successful_summaries for axis in summary.dominant_axes)
+    )
+    low_confidence_paper_ids = list(
+        dict.fromkeys(
+            paper_id
+            for summary in successful_summaries
+            for paper_id in summary.low_confidence_paper_ids
+        )
+    )
+    failed_batches = ceil(len(failed_paper_ids) / batch_size) if failed_paper_ids else 0
+    coverage_summary = (
+        f"processed {papers_processed}/{len(selected_papers)} selected papers "
+        f"across {total_batches} batches"
+    )
+    if failed_paper_ids:
+        coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
+
+    return ReviewSummary(
+        papers_processed=papers_processed,
+        evidence_cards_created=evidence_cards_created,
+        coverage_summary=coverage_summary,
+        dominant_axes=dominant_axes,
+        low_confidence_paper_ids=low_confidence_paper_ids,
+        failed_paper_ids=failed_paper_ids,
+    )
 
 
 def build_fake_services(

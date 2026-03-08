@@ -52,6 +52,12 @@ Completed
 - [x] 补齐 env-gated 的真实 API 端到端测试，并完成 fresh live 验证
 - **Status:** complete
 
+### Phase 7: Remaining SPEC Hardening
+- [x] 将每阶段 summary 变成结构化持久化记录，并进入 API 结果
+- [x] 将 review 改为按批次抽取，支持 partial extraction 和批次级降级
+- [x] 为上述能力补齐 red-green tests，并重新执行 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -92,3 +98,7 @@ Completed
 - 2026-03-09 00:43 +08 真实 API live test 新暴露出跨 run 主键冲突：`evidence_cards.id` 直接使用模型输出的 `EV001`，导致第二次真实 run 失败；下一步修复 repository 的行级 ID namespacing，并重跑 live test。
 - 2026-03-09 00:55 +08 已完成 repository 行级 ID namespacing 修复，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 转绿，真实 `POST /v1/runs` 往返验证通过。
 - 2026-03-09 01:00 +08 已完成带真实 API 的全量 fresh verification：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 结果为 `41 passed in 156.79s`，当前用户要求范围内的 SPEC hardening 已闭环。
+- 2026-03-09 01:06 +08 用户同意继续按 SPEC 完善；当前进入 Phase 7，优先落结构化 `stage summary` 持久化和 review 分批抽取/partial extraction。
+- 2026-03-09 01:14 +08 已完成第一轮实现：新增 `stage_summaries` 持久化、`RunResult.stage_summaries`、review batch helper、批次级 evidence append 和 partial failure 聚合；focused tests 当前 `10 passed`。
+- 2026-03-09 01:24 +08 真实 live test 暴露 planner 在 `save_hypotheses` 处会因缺少 `counterevidence_ids` 降级失败；已在 workspace tool 边界加入基于 conflict clusters 的轻量修复。
+- 2026-03-09 01:31 +08 fresh verification 已完成：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 173.55s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `45 passed in 186.22s`。

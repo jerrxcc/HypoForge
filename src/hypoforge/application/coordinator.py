@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from hypoforge.domain.schemas import RunConstraints, RunRequest, RunResult
+from hypoforge.domain.schemas import CriticSummary, PlannerSummary, RetrievalSummary, ReviewSummary, RunConstraints, RunRequest, RunResult
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.infrastructure.db.repository import RunRepository
 
@@ -31,30 +31,70 @@ class RunCoordinator:
         run = self._repository.create_run(request)
         try:
             self._repository.update_run_status(run.run_id, "retrieving")
+            self._repository.start_stage(run.run_id, "retrieval")
             self._logger.info("retrieval stage started", extra={"run_id": run.run_id})
-            self._retrieval_agent(run.run_id, topic, request.constraints)
+            retrieval_summary = self._retrieval_agent(run.run_id, topic, request.constraints)
+            self._finish_stage(run.run_id, "retrieval", retrieval_summary)
 
             self._repository.update_run_status(run.run_id, "reviewing")
+            self._repository.start_stage(run.run_id, "review")
             self._logger.info("review stage started", extra={"run_id": run.run_id})
             try:
-                self._review_agent(run.run_id)
-            except Exception:
+                review_summary = self._review_agent(run.run_id)
+                self._finish_stage(run.run_id, "review", review_summary)
+            except Exception as exc:
                 if not self._repository.load_evidence_cards(run.run_id):
+                    self._repository.finish_stage(
+                        run.run_id,
+                        "review",
+                        summary={},
+                        status="failed",
+                        error_message=str(exc),
+                    )
                     raise
+                degraded_summary = {
+                    "evidence_cards_created": len(self._repository.load_evidence_cards(run.run_id)),
+                    "coverage_summary": "partial review results retained after stage degradation",
+                }
+                self._repository.finish_stage(
+                    run.run_id,
+                    "review",
+                    summary=degraded_summary,
+                    status="degraded",
+                    error_message=str(exc),
+                )
                 self._logger.warning("review stage degraded", extra={"run_id": run.run_id})
 
             self._repository.update_run_status(run.run_id, "criticizing")
+            self._repository.start_stage(run.run_id, "critic")
             self._logger.info("critic stage started", extra={"run_id": run.run_id})
             try:
-                self._critic_agent(run.run_id)
-            except Exception:
+                critic_summary = self._critic_agent(run.run_id)
+                self._finish_stage(run.run_id, "critic", critic_summary)
+            except Exception as exc:
+                self._repository.finish_stage(
+                    run.run_id,
+                    "critic",
+                    summary={},
+                    status="degraded",
+                    error_message=str(exc),
+                )
                 self._logger.warning("critic stage degraded", extra={"run_id": run.run_id})
 
             self._repository.update_run_status(run.run_id, "planning")
+            self._repository.start_stage(run.run_id, "planner")
             self._logger.info("planner stage started", extra={"run_id": run.run_id})
             try:
-                self._planner_agent(run.run_id)
-            except Exception:
+                planner_summary = self._planner_agent(run.run_id)
+                self._finish_stage(run.run_id, "planner", planner_summary)
+            except Exception as exc:
+                self._repository.finish_stage(
+                    run.run_id,
+                    "planner",
+                    summary={},
+                    status="degraded",
+                    error_message=str(exc),
+                )
                 self._logger.warning("planner stage degraded", extra={"run_id": run.run_id})
                 self._render_partial_report(run.run_id)
                 self._repository.update_run_status(
@@ -91,3 +131,17 @@ class RunCoordinator:
         if result.report_markdown:
             return
         self._repository.save_report_markdown(run_id, self._report_renderer.render(result))
+
+    def _finish_stage(
+        self,
+        run_id: str,
+        stage_name: str,
+        summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
+    ) -> None:
+        payload = summary.model_dump()
+        self._repository.finish_stage(run_id, stage_name, summary=payload)
+        self._logger.info(
+            "%s stage completed",
+            stage_name,
+            extra={"run_id": run_id, "summary": payload},
+        )

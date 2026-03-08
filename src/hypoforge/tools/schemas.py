@@ -45,6 +45,7 @@ class RenderReportArgs(BaseModel):
 
 class LoadSelectedPapersArgs(BaseModel):
     note: str | None = None
+    paper_ids: list[str] = Field(default_factory=list)
 
 
 class LoadEvidenceCardsArgs(BaseModel):

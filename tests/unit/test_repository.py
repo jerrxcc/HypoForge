@@ -177,6 +177,7 @@ def test_repository_builds_final_result(tmp_path) -> None:
     assert len(result.selected_papers) == 1
     assert len(result.hypotheses) == 3
     assert result.report_markdown == "# Report"
+    assert result.stage_summaries == []
 
 
 def test_repository_allows_duplicate_evidence_ids_across_runs(tmp_path) -> None:

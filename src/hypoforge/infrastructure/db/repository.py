@@ -15,6 +15,9 @@ from hypoforge.domain.schemas import (
     RunConstraints,
     RunRequest,
     RunResult,
+    StageName,
+    StageStatus,
+    StageSummary,
     RunState,
     RunStatus,
 )
@@ -25,7 +28,9 @@ from hypoforge.infrastructure.db.models import (
     PaperRow,
     RunPaperRow,
     RunRow,
+    StageSummaryRow,
     ToolTraceRow,
+    utcnow,
 )
 from hypoforge.infrastructure.db.session import create_session_factory
 
@@ -150,6 +155,28 @@ class RunRepository:
                 )
             session.commit()
 
+    def append_evidence_cards(self, run_id: str, cards: list[EvidenceCard]) -> None:
+        with self._session_factory() as session:
+            self._require_run(session, run_id)
+            for card in cards:
+                row_id = self._scoped_id(run_id, card.evidence_id)
+                row = session.get(EvidenceCardRow, row_id)
+                if row is None:
+                    session.add(
+                        EvidenceCardRow(
+                            id=row_id,
+                            run_id=run_id,
+                            paper_id=card.paper_id,
+                            payload_json=card.model_dump(),
+                            confidence=card.confidence,
+                        )
+                    )
+                    continue
+                row.paper_id = card.paper_id
+                row.payload_json = card.model_dump()
+                row.confidence = card.confidence
+            session.commit()
+
     def load_evidence_cards(self, run_id: str) -> list[EvidenceCard]:
         with self._session_factory() as session:
             rows = session.execute(
@@ -236,6 +263,87 @@ class RunRepository:
             )
             session.commit()
 
+    def start_stage(self, run_id: str, stage_name: StageName) -> None:
+        with self._session_factory() as session:
+            self._require_run(session, run_id)
+            row = session.execute(
+                select(StageSummaryRow).where(
+                    StageSummaryRow.run_id == run_id,
+                    StageSummaryRow.stage_name == stage_name,
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                row = StageSummaryRow(
+                    run_id=run_id,
+                    stage_name=stage_name,
+                    status="started",
+                    summary_json={},
+                    started_at=utcnow(),
+                )
+                session.add(row)
+            else:
+                row.status = "started"
+                row.summary_json = {}
+                row.error_message = None
+                row.started_at = utcnow()
+                row.completed_at = None
+            session.commit()
+
+    def finish_stage(
+        self,
+        run_id: str,
+        stage_name: StageName,
+        *,
+        summary: dict,
+        status: StageStatus = "completed",
+        error_message: str | None = None,
+    ) -> None:
+        with self._session_factory() as session:
+            self._require_run(session, run_id)
+            row = session.execute(
+                select(StageSummaryRow).where(
+                    StageSummaryRow.run_id == run_id,
+                    StageSummaryRow.stage_name == stage_name,
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                row = StageSummaryRow(
+                    run_id=run_id,
+                    stage_name=stage_name,
+                    status=status,
+                    summary_json=summary,
+                    error_message=error_message,
+                    started_at=utcnow(),
+                    completed_at=utcnow(),
+                )
+                session.add(row)
+            else:
+                row.status = status
+                row.summary_json = summary
+                row.error_message = error_message
+                row.started_at = row.started_at or utcnow()
+                row.completed_at = utcnow()
+            session.commit()
+
+    def list_stage_summaries(self, run_id: str) -> list[StageSummary]:
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(StageSummaryRow)
+                .where(StageSummaryRow.run_id == run_id)
+                .order_by(StageSummaryRow.created_at.asc())
+            ).scalars()
+            return [
+                StageSummary(
+                    stage_name=row.stage_name,
+                    status=row.status,
+                    summary=row.summary_json,
+                    error_message=row.error_message,
+                    started_at=row.started_at,
+                    completed_at=row.completed_at,
+                )
+                for row in rows
+            ]
+
     def list_tool_traces(self, run_id: str) -> list[dict]:
         with self._session_factory() as session:
             rows = session.execute(
@@ -272,6 +380,7 @@ class RunRepository:
             hypotheses=self.load_hypotheses(run_id),
             report_markdown=run.final_report_md,
             trace_url=f"/v1/runs/{run_id}/trace",
+            stage_summaries=self.list_stage_summaries(run_id),
         )
 
     def _require_run(self, session: Session, run_id: str) -> RunRow:

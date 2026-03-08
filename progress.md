@@ -102,6 +102,12 @@
   - 已新增 env-gated live integration test `tests/live/test_real_runs_api.py`，覆盖真实 `POST /v1/runs`、`GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace` 与 `GET /v1/runs/{id}/report.md`。
   - 单独真实 API live test 已通过，耗时 `178.48s`。
   - 带真实 API 的全量测试已通过，结果为 `41 passed in 156.79s`；当前范围内的“真实 API 接入完整跑通”已完成。
+  - 用户已同意继续按 SPEC 完善，当前开始下一轮 hardening：结构化阶段 summary 持久化，以及 review 分批抽取与 partial extraction。
+  - 已新增 `tests/unit/test_stage_summaries.py`、`tests/unit/test_review_batches.py`，并扩展 `tests/integration/test_coordinator.py`，以 TDD 固定阶段摘要持久化和 review 批次聚合行为。
+  - 当前 focused tests 已通过，结果为 `10 passed in 0.23s`。
+  - 真实 live test 发现 planner 偶发漏填 `counterevidence_ids`，导致 `save_hypotheses` 校验失败；已在 workspace tools 增加基于 conflict clusters 的 repair。
+  - fresh real API round-trip 已恢复通过，结果为 `1 passed in 173.55s`。
+  - 带真实 API 的全量 fresh verification 已通过，结果为 `45 passed in 186.22s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -120,6 +126,19 @@
   - `tests/unit/test_repository.py` (updated)
   - `tests/live/test_real_runs_api.py` (created)
   - `README.md` (updated)
+  - `.env.example` (updated)
+  - `src/hypoforge/domain/schemas.py` (updated)
+  - `src/hypoforge/infrastructure/db/models.py` (updated)
+  - `src/hypoforge/infrastructure/db/repository.py` (updated again)
+  - `src/hypoforge/application/coordinator.py` (updated)
+  - `src/hypoforge/application/services.py` (updated again)
+  - `src/hypoforge/tools/workspace_tools.py` (updated)
+  - `src/hypoforge/tools/schemas.py` (updated)
+  - `src/hypoforge/config.py` (updated)
+  - `tests/unit/test_stage_summaries.py` (created)
+  - `tests/unit/test_review_batches.py` (created)
+  - `tests/unit/test_workspace_tools.py` (created)
+  - `tests/integration/test_coordinator.py` (updated)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -151,6 +170,10 @@
 | Repository duplicate ID red-green | `./.venv/bin/pytest tests/unit/test_repository.py -v` | 允许不同 run 复用 `EV001` / `cluster_1` 这类业务 ID | 修复后 `6 passed in 0.23s` | pass |
 | Real API round-trip live test | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | 真实 `POST /v1/runs` 与 `GET` / `/trace` / `/report.md` 全链路通过 | `1 passed in 178.48s` | pass |
 | Full pytest with live API | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | 含 live test 的完整测试套件通过 | `41 passed in 156.79s` | pass |
+| Stage summary + review batch focused tests | `./.venv/bin/pytest tests/unit/test_stage_summaries.py tests/unit/test_review_batches.py tests/unit/test_repository.py tests/integration/test_coordinator.py -v` | 新增阶段摘要和批次 review 测试通过 | `10 passed in 0.23s` | pass |
+| Hypothesis repair unit test | `./.venv/bin/pytest tests/unit/test_workspace_tools.py -v` | 缺失 `counterevidence_ids` 时按 conflict clusters 自动补齐 | `1 passed in 0.23s` | pass |
+| Fresh live API after planner repair | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | 真实 planner 不再因缺失 `counterevidence_ids` 导致整 run 失败 | `1 passed in 173.55s` | pass |
+| Full pytest with live API after Phase 7 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | 阶段摘要、batched review 与真实 API 一起通过 | `45 passed in 186.22s` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -160,8 +183,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5: Verification & Delivery 已完成 |
-| Where am I going? | 当前用户要求范围已完成，后续如继续则转向剩余 SPEC 完善项 |
-| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API 接入也纳入可重复测试 |
-| What have I learned? | 真实模型会跨 run 重复生成业务 ID，因此数据库主键必须与业务 ID 解耦 |
-| What have I done? | 已完成工程搭建、测试、远程同步、真实链路 fresh 验证、trace 持久化修复、真实 API round-trip live test 和带 live 的全量测试验证 |
+| Where am I? | Phase 7: Remaining SPEC Hardening 已完成 |
+| Where am I going? | 当前可以转向剩余 SPEC 项，例如更细粒度的 planner repair/retry 或异步运行面 |
+| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review 都纳入可重复验证 |
+| What have I learned? | 真实模型输出需要在入库边界做轻量 repair，尤其是 hypotheses 的 counterevidence 约束 |
+| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair 和远程同步 |

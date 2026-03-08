@@ -108,6 +108,26 @@ class HypothesisRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class StageSummaryRow(Base):
+    __tablename__ = "stage_summaries"
+    __table_args__ = (UniqueConstraint("run_id", "stage_name", name="uq_stage_summary_run_stage"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=default_id)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), nullable=False)
+    stage_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+    )
+
+
 class ToolTraceRow(Base):
     __tablename__ = "tool_traces"
 

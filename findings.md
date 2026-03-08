@@ -57,6 +57,15 @@
 - 现已新增 env-gated live integration test [`tests/live/test_real_runs_api.py`](/Users/ccy/Documents/KEY/HypoForge/tests/live/test_real_runs_api.py)，覆盖真实 `POST /v1/runs`、`GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace`、`GET /v1/runs/{id}/report.md` 全链路。
 - `evidence_cards` 与 `conflict_clusters` 的数据库主键冲突已通过 repository 行级 ID namespacing 修复：数据库层使用 `run_id:local_id` 作为 row id，业务 payload 仍保留模型原始 `EV001` / `cluster_1` 标识。
 - fresh 全量验证已包含真实 API 路径：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 当前结果为 `41 passed in 156.79s`，说明 fake、unit、integration、e2e、live 五层测试当前可以一起通过。
+- 当前剩余的 SPEC 差距更集中在两点：
+- 1. “每阶段进入/退出、summary”的结构化记录还没有持久层落点，仍主要依赖日志和最终 artifacts；
+- 2. review 阶段仍是一次性处理全量 selected papers，不具备 paper-batch / partial extraction / batch-level degrade 的能力。
+- 当前第一轮修复设计如下：
+- 1. 新增 `stage_summaries` 持久层记录，每阶段持久化 `status/summary/error_message/started_at/completed_at`；
+- 2. `RunResult` 现在带回 `stage_summaries`，因此 API 读取结果时即可直接看到阶段级摘要；
+- 3. review 改为按 `review_batch_size` 分批执行，批次失败时保留已成功 evidence，并通过 `ReviewSummary.failed_paper_ids` 明示 partial extraction。
+- 真实 live test 进一步暴露：planner 的模型输出偶尔会遗漏 `counterevidence_ids`，这类缺口不应该让整条 run 失败；当前已在 `WorkspaceTools.save_hypotheses()` 入库边界加入 repair 逻辑，优先从相关 conflict clusters 的 `conflicting_evidence_ids` 自动补齐。
+- fresh live verification 已确认上述修复有效：真实 API round-trip 和带 live 的全量测试当前都通过。
 
 ## Technical Decisions
 | Decision | Rationale |

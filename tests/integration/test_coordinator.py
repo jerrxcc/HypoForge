@@ -173,4 +173,11 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
     assert stage_calls == ["retrieval", "review", "critic", "planner"]
     assert result.status == "done"
     assert result.hypotheses[0].rank == 1
-
+    assert [summary.stage_name for summary in result.stage_summaries] == [
+        "retrieval",
+        "review",
+        "critic",
+        "planner",
+    ]
+    assert result.stage_summaries[0].summary["selected_paper_ids"] == ["p1"]
+    assert result.stage_summaries[1].summary["evidence_cards_created"] == 1

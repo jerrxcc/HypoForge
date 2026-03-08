@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -14,6 +15,8 @@ RunStatus = Literal[
     "done",
     "failed",
 ]
+StageName = Literal["retrieval", "review", "critic", "planner"]
+StageStatus = Literal["started", "completed", "degraded", "failed"]
 
 Direction = Literal["positive", "negative", "mixed", "null", "unclear"]
 EvidenceKind = Literal[
@@ -169,6 +172,7 @@ class ReviewSummary(BaseModel):
     coverage_summary: str
     dominant_axes: list[str] = Field(default_factory=list)
     low_confidence_paper_ids: list[str] = Field(default_factory=list)
+    failed_paper_ids: list[str] = Field(default_factory=list)
 
 
 class CriticSummary(BaseModel):
@@ -190,6 +194,15 @@ class PlannerSummary(BaseModel):
         return self
 
 
+class StageSummary(BaseModel):
+    stage_name: StageName
+    status: StageStatus
+    summary: dict[str, object] = Field(default_factory=dict)
+    error_message: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
 class RunResult(BaseModel):
     run_id: str
     status: RunStatus
@@ -199,3 +212,4 @@ class RunResult(BaseModel):
     hypotheses: list[Hypothesis] = Field(default_factory=list)
     report_markdown: str | None = None
     trace_url: str | None = None
+    stage_summaries: list[StageSummary] = Field(default_factory=list)

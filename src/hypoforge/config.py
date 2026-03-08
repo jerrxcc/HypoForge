@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     evidence_cache_ttl_seconds: int = 2592000
 
     max_selected_papers: int = 36
+    review_batch_size: int = 6
     max_tool_steps_retrieval: int = 12
     max_tool_steps_review: int = 6
     max_tool_steps_critic: int = 4
