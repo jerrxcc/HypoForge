@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from hypoforge.domain.schemas import ConflictCluster, StageSummary
 from hypoforge.infrastructure.db.repository import RunRepository
-from hypoforge.domain.schemas import ConflictCluster
 from hypoforge.tools.schemas import SaveConflictClustersArgs, SaveEvidenceCardsArgs, SaveHypothesesArgs
 
 
@@ -73,23 +73,73 @@ class WorkspaceTools:
 
         clusters = self._repository.load_conflict_clusters(run_id)
         evidence_cards = self._repository.load_evidence_cards(run_id)
+        stage_summaries = {
+            summary.stage_name: summary for summary in self._repository.list_stage_summaries(run_id)
+        }
         all_conflicting_ids = self._collect_conflicting_ids(clusters)
         all_evidence_ids = [card.evidence_id for card in evidence_cards]
+        retrieval_low_evidence = self._is_retrieval_low_evidence(stage_summaries.get("retrieval"))
+        review_partial = self._is_review_partial(stage_summaries.get("review"))
+        critic_unavailable = self._is_critic_unavailable(stage_summaries.get("critic"), clusters)
 
         for hypothesis in hypotheses:
-            if hypothesis.get("counterevidence_ids"):
-                continue
             supporting_ids = hypothesis.get("supporting_evidence_ids", [])
-            candidate_ids = self._infer_counterevidence_ids(
-                supporting_ids=supporting_ids,
-                clusters=clusters,
-                all_conflicting_ids=all_conflicting_ids,
-                all_evidence_ids=all_evidence_ids,
+            if not hypothesis.get("counterevidence_ids"):
+                candidate_ids = self._infer_counterevidence_ids(
+                    supporting_ids=supporting_ids,
+                    clusters=clusters,
+                    all_conflicting_ids=all_conflicting_ids,
+                    all_evidence_ids=all_evidence_ids,
+                )
+                if candidate_ids:
+                    hypothesis["counterevidence_ids"] = candidate_ids[:3]
+            self._apply_credibility_annotations(
+                hypothesis,
+                retrieval_low_evidence=retrieval_low_evidence,
+                review_partial=review_partial,
+                critic_unavailable=critic_unavailable,
             )
-            if candidate_ids:
-                hypothesis["counterevidence_ids"] = candidate_ids[:3]
         repaired["hypotheses"] = hypotheses
         return repaired
+
+    def _apply_credibility_annotations(
+        self,
+        hypothesis: dict,
+        *,
+        retrieval_low_evidence: bool,
+        review_partial: bool,
+        critic_unavailable: bool,
+    ) -> None:
+        limitations = list(hypothesis.get("limitations") or [])
+        uncertainty_notes = list(hypothesis.get("uncertainty_notes") or [])
+        risks = list(hypothesis.get("risks") or [])
+
+        if retrieval_low_evidence:
+            limitations.append(
+                "Built from a low-evidence retrieval set, so literature coverage may be incomplete."
+            )
+            uncertainty_notes.append(
+                "Confidence is provisional because retrieval entered low-evidence mode."
+            )
+        if review_partial:
+            limitations.append(
+                "Evidence extraction was partial, so some selected papers may not be represented in the evidence cards."
+            )
+        if critic_unavailable:
+            limitations.append(
+                "Conflict analysis was unavailable or empty, so counterevidence coverage may be incomplete."
+            )
+            uncertainty_notes.append(
+                "The critic stage did not produce a usable conflict map, so this hypothesis should be treated as provisional."
+            )
+        if not risks:
+            risks.append(
+                "Grounding is limited to the retrieved abstracts and evidence cards rather than full-text review."
+            )
+
+        hypothesis["limitations"] = list(dict.fromkeys(limitations))
+        hypothesis["uncertainty_notes"] = list(dict.fromkeys(uncertainty_notes))
+        hypothesis["risks"] = list(dict.fromkeys(risks))
 
     def _infer_counterevidence_ids(
         self,
@@ -120,3 +170,29 @@ class WorkspaceTools:
         for cluster in clusters:
             conflicting_ids.extend(cluster.conflicting_evidence_ids)
         return list(dict.fromkeys(conflicting_ids))
+
+    def _is_retrieval_low_evidence(self, summary: StageSummary | None) -> bool:
+        if summary is None:
+            return False
+        if summary.status == "degraded":
+            return True
+        coverage = summary.summary.get("coverage_assessment")
+        return coverage == "low" or bool(summary.summary.get("needs_broader_search"))
+
+    def _is_review_partial(self, summary: StageSummary | None) -> bool:
+        if summary is None:
+            return False
+        if summary.status == "degraded":
+            return True
+        return bool(summary.summary.get("failed_paper_ids"))
+
+    def _is_critic_unavailable(
+        self,
+        summary: StageSummary | None,
+        clusters: list[ConflictCluster],
+    ) -> bool:
+        if not clusters:
+            return True
+        if summary is None:
+            return False
+        return summary.status == "degraded"

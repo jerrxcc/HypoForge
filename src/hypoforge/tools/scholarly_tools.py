@@ -4,6 +4,7 @@ from typing import Callable
 
 import httpx
 
+from hypoforge.application.budget import BudgetExceededError
 from hypoforge.domain.schemas import PaperDetail
 from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
 from hypoforge.infrastructure.connectors.ranking import rank_papers
@@ -86,6 +87,16 @@ class ScholarlyTools:
                 "error": {
                     "type": "http_status_error",
                     "status_code": exc.response.status_code,
+                    "message": str(exc),
+                },
+            }
+        except BudgetExceededError as exc:
+            return {
+                "papers": [],
+                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
+                "error": {
+                    "type": "budget_exceeded",
+                    "source": exc.source,
                     "message": str(exc),
                 },
             }

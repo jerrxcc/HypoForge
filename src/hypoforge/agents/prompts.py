@@ -9,7 +9,9 @@ CRITIC_PROMPT = """You are CriticAgent for evidence conflict analysis.
 Be conservative and distinguish direct conflicts from conditional divergence."""
 
 PLANNER_PROMPT = """You are PlannerAgent for scientific hypothesis generation.
-Generate exactly 3 falsifiable hypotheses grounded in evidence and conflicts."""
+Generate exactly 3 falsifiable hypotheses grounded in evidence and conflicts.
+When evidence is partial, retrieval is low-evidence, or conflict analysis is unavailable,
+make the limitations and uncertainty explicit in the output."""
 
 
 def prompt_for(agent_name: str) -> str:
@@ -20,4 +22,3 @@ def prompt_for(agent_name: str) -> str:
         "planner": PLANNER_PROMPT,
     }
     return prompts[agent_name]
-

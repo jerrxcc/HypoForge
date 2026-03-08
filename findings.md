@@ -88,6 +88,24 @@
 - 2. 新增 `POST /v1/runs/{run_id}/planner/rerun`，返回更新后的 `RunResult`；
 - 3. 若 rerun 前缺少 evidence cards，则返回冲突错误而不是静默执行。
 - fresh live verification 已确认 planner rerun 改动没有破坏真实默认链路；这次真实 round-trip 偏慢，但最终仍通过。
+- 当前按 SPEC 剩余的另一个核心缺口是第 16 节的外部 API 调用预算：配置字段已存在，但还没有真实 enforcement。
+- 当前第一轮修复设计如下：
+- 1. 新增 run-scoped `RunBudgetTracker`；
+- 2. 预算只在 cached connector 发生 cache miss、即将真实出网时扣减；
+- 3. 超限时通过 `BudgetExceededError` 走回工具层，返回结构化 `budget_exceeded` payload，而不是抛异常中断整阶段。
+- 当前按 SPEC 剩余的高价值可信性缺口落在 18.3 / 19.2：
+- 1. planner 在无 conflict map、低证据、partial review 时，还没有显式把限制和不确定性写进 hypothesis 本身；
+- 2. 当前 `Hypothesis` schema 只要求 supporting/counterevidence/minimal_experiment，不足以把“provisional”状态传到最终报告；
+- 3. 这类规则更适合先由宿主侧在 `save_hypotheses` 边界补齐，而不是一开始就要求真实模型稳定产出全部字段。
+- 当前第一轮修复设计如下：
+- 1. 为 `Hypothesis` 增加 `limitations` 与 `uncertainty_notes` 字段；
+- 2. `WorkspaceTools.save_hypotheses()` 在 retrieval low-evidence、review degraded、critic degraded 或 conflict map 缺失时，自动补齐可信性说明；
+- 3. 报告渲染层同步展示这些字段，避免 API 返回和 Markdown 报告语义脱节。
+- 当前第一轮实现已完成：
+- 1. `Hypothesis` 已新增 `limitations` / `uncertainty_notes`，且不破坏现有 payload 兼容性；
+- 2. `save_hypotheses()` 现在会基于 `stage_summaries` 与 `conflict_clusters` 做宿主侧可信性标注；
+- 3. 即使 planner 不主动输出 `risks`，宿主也会补一条保守风险说明，避免最终报告看起来比证据条件更“确定”。
+- fresh verification 已确认上述 hardening 没有破坏真实 API 路径：本地全量为 `56 passed, 1 skipped`，live round-trip 为 `1 passed in 215.29s`，带 live 的全量为 `57 passed in 239.67s`。
 
 ## Technical Decisions
 | Decision | Rationale |

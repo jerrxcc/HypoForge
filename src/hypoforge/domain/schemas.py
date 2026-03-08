@@ -140,6 +140,8 @@ class Hypothesis(BaseModel):
     counterevidence_ids: list[str] = Field(default_factory=list)
     prediction: str
     minimal_experiment: MinimalExperiment
+    limitations: list[str] = Field(default_factory=list)
+    uncertainty_notes: list[str] = Field(default_factory=list)
     risks: list[str] = Field(default_factory=list)
     novelty_score: float = Field(ge=0.0, le=1.0)
     feasibility_score: float = Field(ge=0.0, le=1.0)

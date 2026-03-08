@@ -28,6 +28,9 @@ class ReportRenderer:
                     f"- Supporting evidence: {', '.join(hypothesis.supporting_evidence_ids)}",
                     f"- Counterevidence: {', '.join(hypothesis.counterevidence_ids)}",
                     f"- Minimal experiment: {hypothesis.minimal_experiment.design}",
+                    f"- Limitations: {', '.join(hypothesis.limitations) or 'None recorded'}",
+                    f"- Uncertainty: {', '.join(hypothesis.uncertainty_notes) or 'None recorded'}",
+                    f"- Risks: {', '.join(hypothesis.risks) or 'None recorded'}",
                     "",
                 ]
             )

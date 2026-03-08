@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 10 in progress
+Phase 12 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -76,6 +76,18 @@ Phase 10 in progress
 - [x] 为 rerun 路径补齐 TDD 和 fresh verification
 - **Status:** complete
 
+### Phase 11: External API Budget Enforcement
+- [x] 实现 OpenAlex / Semantic Scholar 外部 API 调用次数上限
+- [x] 仅在 cache miss 时扣减预算，并在超限时走降级而非中断
+- [x] 为预算 enforcement 补齐 TDD 和 fresh verification
+- **Status:** complete
+
+### Phase 12: Hypothesis Credibility Hardening
+- [x] 为 hypothesis 增加显式 limitations / uncertainty 承载字段
+- [x] 在低证据 / critic 缺失 / review partial 时，由宿主侧自动补齐可信性说明
+- [x] 为上述 hardening 补齐 TDD、报告渲染验证和 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -129,3 +141,8 @@ Phase 10 in progress
 - 2026-03-09 02:27 +08 当前进入 Phase 10，按 SPEC 18.4 优先补 planner-only rerun。
 - 2026-03-09 02:31 +08 planner rerun 第一轮实现已完成：新增 `RunCoordinator.rerun_planner()` 与 `POST /v1/runs/{run_id}/planner/rerun`。focused tests 当前 `6 passed`。
 - 2026-03-09 02:44 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `51 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 452.52s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `52 passed in 296.65s`。
+- 2026-03-09 02:53 +08 当前进入 Phase 11，按 SPEC 第 16 节优先补外部 API 调用预算 enforcement。
+- 2026-03-09 02:57 +08 外部 API budget 第一轮实现已完成：新增 `RunBudgetTracker` 和 `BudgetExceededError`，Cached connectors 只在 cache miss 时扣预算；超限时 scholarly tools 返回 `budget_exceeded`。focused tests 当前 `10 passed`。
+- 2026-03-09 03:07 +08 在等待 Phase 11 的 fresh live verification 完成期间，继续对照 SPEC 第 18.3/19.2 节，进入 Phase 12：补 hypothesis 的 limitations / uncertainty 显式承载与宿主侧可信性修复。
+- 2026-03-09 03:12 +08 Phase 12 第一轮实现已完成：`Hypothesis` 新增 `limitations` / `uncertainty_notes`，`save_hypotheses` 会按 retrieval/review/critic 的 degrade 状态自动补齐可信性说明，report renderer 也已同步展示。focused tests 当前 `3 passed`。
+- 2026-03-09 03:21 +08 Phase 11/12 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `56 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 215.29s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `57 passed in 239.67s`。

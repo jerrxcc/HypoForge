@@ -81,3 +81,41 @@ def test_cached_semantic_scholar_connector_reuses_normalized_paper_cache(tmp_pat
     assert [paper.paper_id for paper in papers] == ["S2:p1"]
     assert base.search_calls == 1
     assert base.detail_calls == 0
+
+
+def test_cached_connectors_only_charge_budget_on_cache_miss(tmp_path) -> None:
+    cache = CacheRepository(create_session_factory(f"sqlite:///{tmp_path / 'app.db'}"))
+    openalex_base = CountingOpenAlexConnector()
+    semantic_base = CountingSemanticScholarConnector()
+    openalex_budget_calls = 0
+    semantic_budget_calls = 0
+
+    def on_openalex_call() -> None:
+        nonlocal openalex_budget_calls
+        openalex_budget_calls += 1
+
+    def on_semantic_call() -> None:
+        nonlocal semantic_budget_calls
+        semantic_budget_calls += 1
+
+    openalex = CachedOpenAlexConnector(
+        openalex_base,
+        cache,
+        ttl_seconds=3600,
+        on_external_call=on_openalex_call,
+    )
+    semantic = CachedSemanticScholarConnector(
+        semantic_base,
+        cache,
+        ttl_seconds=3600,
+        normalized_ttl_seconds=3600,
+        on_external_call=on_semantic_call,
+    )
+
+    openalex.search_works("battery", 2018, 2026, 5)
+    openalex.search_works("battery", 2018, 2026, 5)
+    semantic.search_papers("battery", 2018, 2026, 5)
+    semantic.get_paper_details(["S2:p1"])
+
+    assert openalex_budget_calls == 1
+    assert semantic_budget_calls == 1

@@ -126,6 +126,9 @@
   - fresh 全量本地测试已通过，结果为 `51 passed, 1 skipped in 0.66s`。
   - fresh 真实 API round-trip 已通过，结果为 `1 passed in 452.52s`。
   - 带真实 API 的全量 fresh verification 已通过，结果为 `52 passed in 296.65s`。
+  - 当前开始 Phase 11，目标是把 OpenAlex / Semantic Scholar 的外部 API 调用预算从配置项做成真实 enforcement。
+  - 已新增 `tests/unit/test_budget.py`，并扩展 `tests/unit/test_cached_connectors.py`、`tests/unit/test_scholarly_tools.py`，覆盖 budget tracker、cache miss 扣费和 `budget_exceeded` 返回。
+  - 当前 focused tests 已通过，结果为 `10 passed in 0.19s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -218,3 +221,17 @@
 | What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery、structured output recovery、planner rerun 都纳入可重复验证 |
 | What have I learned? | planner 失败恢复最好作为显式能力暴露，而不是只停留在 partial result |
 | What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery、structured output recovery、planner rerun 和远程同步 |
+
+## Session Note: 2026-03-09 03:07 +08
+- 已进入 Phase 12 设计：准备把 SPEC 18.3 / 19.2 的可信性规则显式落到 hypothesis payload，而不是只放在 planner prompt。
+- 当前计划先写 red tests，覆盖 degraded retrieval / review / critic 时 `save_hypotheses()` 的宿主侧补齐，以及 Markdown report 对 limitations / uncertainty 的渲染。
+
+## Session Note: 2026-03-09 03:12 +08
+- Phase 12 第一轮 red-green 已完成：`Hypothesis` 新增 `limitations` / `uncertainty_notes`，`WorkspaceTools.save_hypotheses()` 会按 retrieval low-evidence、review partial、critic 缺失自动补齐可信性说明，Markdown report 同步渲染这些字段。
+- Focused verification：`./.venv/bin/pytest tests/unit/test_workspace_tools.py tests/unit/test_report_renderer.py -v` -> `3 passed in 0.15s`。
+
+## Session Note: 2026-03-09 03:21 +08
+- Phase 11 和 Phase 12 的 fresh verification 已完成。
+- 本地全量：`./.venv/bin/pytest -v` -> `56 passed, 1 skipped in 0.59s`。
+- 单独 live round-trip：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 215.29s`。
+- 带 live 的全量：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` -> `57 passed in 239.67s`。

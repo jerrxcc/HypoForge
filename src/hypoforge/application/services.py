@@ -11,6 +11,7 @@ from typing import Callable
 from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
+from hypoforge.application.budget import RunBudgetTracker
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.config import Settings
@@ -45,23 +46,15 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     repository = RunRepository.from_database_url(settings.database_url)
     cache_repository = CacheRepository(repository._session_factory)
     candidate_pools: dict[str, dict[str, PaperDetail]] = {}
+    budget_trackers: dict[str, RunBudgetTracker] = {}
     provider = OpenAIResponsesProvider(
         api_key=settings.openai_api_key or None,
         base_url=settings.openai_base_url or None,
     )
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)
-    openalex = CachedOpenAlexConnector(
-        OpenAlexConnector(),
-        cache_repository,
-        ttl_seconds=settings.raw_response_cache_ttl_seconds,
-    )
-    semantic_scholar = CachedSemanticScholarConnector(
-        SemanticScholarConnector(),
-        cache_repository,
-        ttl_seconds=settings.raw_response_cache_ttl_seconds,
-        normalized_ttl_seconds=settings.normalized_paper_cache_ttl_seconds,
-    )
+    openalex_base = OpenAlexConnector()
+    semantic_scholar_base = SemanticScholarConnector()
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
 
@@ -74,6 +67,26 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         append_evidence_cards: bool = False,
     ):
         candidate_pool = candidate_pools.setdefault(run_id, {})
+        budget_tracker = budget_trackers.setdefault(
+            run_id,
+            RunBudgetTracker(
+                max_openalex_calls=settings.max_openalex_calls_per_run,
+                max_semantic_scholar_calls=settings.max_s2_calls_per_run,
+            ),
+        )
+        openalex = CachedOpenAlexConnector(
+            openalex_base,
+            cache_repository,
+            ttl_seconds=settings.raw_response_cache_ttl_seconds,
+            on_external_call=budget_tracker.register_openalex_call,
+        )
+        semantic_scholar = CachedSemanticScholarConnector(
+            semantic_scholar_base,
+            cache_repository,
+            ttl_seconds=settings.raw_response_cache_ttl_seconds,
+            normalized_ttl_seconds=settings.normalized_paper_cache_ttl_seconds,
+            on_external_call=budget_tracker.register_semantic_scholar_call,
+        )
 
         def update_candidate_pool(result: dict) -> dict:
             for paper_payload in result.get("papers", []):

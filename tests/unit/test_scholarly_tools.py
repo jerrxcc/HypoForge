@@ -1,4 +1,5 @@
 from hypoforge.domain.schemas import RunRequest
+from hypoforge.application.budget import BudgetExceededError
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.scholarly_tools import ScholarlyTools
 import httpx
@@ -41,6 +42,15 @@ class CachedLikeOpenAlexConnector:
         del query, year_from, year_to, limit
         self.last_cache_hit = True
         return []
+
+
+class BudgetFailingOpenAlexConnector:
+    def __init__(self) -> None:
+        self.last_cache_hit = False
+
+    def search_works(self, query: str, year_from: int, year_to: int, limit: int):
+        del query, year_from, year_to, limit
+        raise BudgetExceededError(source="openalex", message="budget exceeded")
 
 
 def test_save_selected_papers_tool_persists_records(tmp_path) -> None:
@@ -147,3 +157,25 @@ def test_search_openalex_surfaces_cache_hit_metadata(tmp_path) -> None:
 
     assert result["papers"] == []
     assert result["cache_hit"] is True
+
+
+def test_search_openalex_returns_budget_exceeded_payload(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    tools = ScholarlyTools(
+        openalex=BudgetFailingOpenAlexConnector(),
+        semantic_scholar=FakeSemanticScholarConnector(),
+        repository=repo,
+    )
+
+    result = tools.search_openalex_works(
+        {
+            "query": "solid-state battery electrolyte",
+            "year_from": 2018,
+            "year_to": 2026,
+            "limit": 10,
+        }
+    )
+
+    assert result["papers"] == []
+    assert result["error"]["type"] == "budget_exceeded"
+    assert result["error"]["source"] == "openalex"
