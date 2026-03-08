@@ -162,6 +162,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 agent_name="retrieval",
                 model_name=settings.openai_model_retrieval,
                 max_tool_steps=settings.max_tool_steps_retrieval,
+                repair_output=_repair_retrieval_output,
             )
             summary = runner.execute(
                 instructions=prompt_for("retrieval"),
@@ -237,6 +238,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 agent_name="review",
                 model_name=settings.openai_model_review,
                 max_tool_steps=settings.max_tool_steps_review,
+                repair_output=_repair_review_output,
             )
             summary = runner.execute(
                 instructions=review_prompt,
@@ -268,6 +270,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             agent_name="critic",
             model_name=settings.openai_model_critic,
             max_tool_steps=settings.max_tool_steps_critic,
+            repair_output=_repair_critic_output,
         )
         return runner.execute(
             instructions=prompt_for("critic"),
@@ -283,6 +286,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             agent_name="planner",
             model_name=settings.openai_model_planner,
             max_tool_steps=settings.max_tool_steps_planner,
+            repair_output=_repair_planner_output,
         )
         return runner.execute(
             instructions=prompt_for("planner"),
@@ -468,6 +472,61 @@ def _run_retrieval_with_recovery(
         f"low evidence mode activated for '{topic}' after broadened retrieval ({second_count}/{minimum_threshold} papers)"
     )
     return second_summary
+
+
+def _repair_retrieval_output(output: dict, context: dict) -> dict:
+    selected_paper_ids = list(output.get("selected_paper_ids") or [])
+    coverage = output.get("coverage_assessment")
+    if coverage not in {"good", "medium", "low"}:
+        if len(selected_paper_ids) >= 12:
+            coverage = "good"
+        elif len(selected_paper_ids) >= 6:
+            coverage = "medium"
+        else:
+            coverage = "low"
+    return {
+        "canonical_topic": output.get("canonical_topic") or context.get("topic") or "",
+        "query_variants_used": list(output.get("query_variants_used") or [context.get("topic") or ""]),
+        "search_notes": list(output.get("search_notes") or []),
+        "selected_paper_ids": selected_paper_ids,
+        "excluded_paper_ids": list(output.get("excluded_paper_ids") or []),
+        "coverage_assessment": coverage,
+        "needs_broader_search": bool(output.get("needs_broader_search", coverage == "low")),
+    }
+
+
+def _repair_review_output(output: dict, context: dict) -> dict:
+    del context
+    return {
+        "papers_processed": int(output.get("papers_processed") or 0),
+        "evidence_cards_created": int(output.get("evidence_cards_created") or 0),
+        "coverage_summary": output.get("coverage_summary") or "repair parse fallback",
+        "dominant_axes": list(output.get("dominant_axes") or []),
+        "low_confidence_paper_ids": list(output.get("low_confidence_paper_ids") or []),
+        "failed_paper_ids": list(output.get("failed_paper_ids") or []),
+    }
+
+
+def _repair_critic_output(output: dict, context: dict) -> dict:
+    del context
+    return {
+        "clusters_created": int(output.get("clusters_created") or 0),
+        "top_axes": list(output.get("top_axes") or []),
+        "critic_notes": list(output.get("critic_notes") or []),
+    }
+
+
+def _repair_planner_output(output: dict, context: dict) -> dict:
+    del context
+    repaired = {
+        "hypotheses_created": output.get("hypotheses_created"),
+        "report_rendered": bool(output.get("report_rendered", False)),
+        "top_axes": list(output.get("top_axes") or []),
+        "planner_notes": list(output.get("planner_notes") or []),
+    }
+    if repaired["hypotheses_created"] is None and repaired["report_rendered"]:
+        repaired["hypotheses_created"] = 3
+    return repaired
 
 
 def build_fake_services(

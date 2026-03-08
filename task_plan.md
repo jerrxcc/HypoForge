@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 8 in progress
+Phase 9 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -64,6 +64,12 @@ Phase 8 in progress
 - [x] 为 retrieval recovery 与降级状态补齐 TDD 和 fresh verification
 - **Status:** complete
 
+### Phase 9: Structured Output Recovery
+- [x] 为 structured output schema failure 增加一次自动重试
+- [x] 为 retrieval/review/critic/planner 增加宿主侧 repair parse
+- [x] 为上述恢复路径补齐 TDD 和 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -111,3 +117,6 @@ Phase 8 in progress
 - 2026-03-09 01:39 +08 当前进入 Phase 8，按 SPEC 18.1 优先补 retrieval low-evidence recovery：结果过少时自动放宽一次检索窗口，仍不足则明确 low-evidence mode。
 - 2026-03-09 01:44 +08 retrieval recovery 第一轮实现已完成：新增 `_run_retrieval_with_recovery()`，低召回时自动放宽 `year_from` 一次；`RetrievalSummary.coverage_assessment=low` 与 `ReviewSummary.failed_paper_ids` 现在会把对应 stage summary 标记为 `degraded`。focused tests 当前 `6 passed`。
 - 2026-03-09 01:56 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `47 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 206.52s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `48 passed in 236.87s`。
+- 2026-03-09 02:03 +08 当前进入 Phase 9，按 SPEC 18.5 优先补 structured output recovery：先做一次自动重试，再做宿主侧 repair parse。
+- 2026-03-09 02:08 +08 structured output recovery 第一轮实现已完成：`AgentRunner` 在 output model 校验失败时会先发一次 schema retry prompt，再走 repair callback；retrieval/review/critic/planner 已挂各自 repairer。focused tests 当前 `4 passed`。
+- 2026-03-09 02:20 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `49 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 235.53s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `50 passed in 228.74s`。

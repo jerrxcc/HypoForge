@@ -74,6 +74,14 @@
 - 2. second pass 仍低于阈值时，返回明确的 low-evidence mode，避免把低召回伪装成正常完成；
 - 3. coordinator 现在会把 retrieval low-evidence 和 review partial extraction 映射成 `stage_summaries[*].status = degraded`。
 - fresh live verification 已确认 retrieval recovery 没有破坏真实 API 路径：真实 round-trip 和带 live 的全量测试都已转绿。
+- 当前按 SPEC 剩余的另一个高价值缺口是 `18.5 Structured Output 失败`：
+- 1. `AgentRunner` 在输出 model 校验失败时还没有自动重试；
+- 2. retrieval/review/critic/planner 还没有宿主侧 repair parse，只能依赖模型一次性命中严格 schema。
+- 当前第一轮修复设计如下：
+- 1. `AgentRunner` 在 final output 校验失败时，会自动追加一次“只返回修正后 JSON”的 retry turn；
+- 2. retry 后仍然不合法时，进入宿主侧 `repair_output` 回调；
+- 3. retrieval/review/critic/planner 分别挂轻量 repairer，优先补齐缺失字段和保守默认值，而不是强行篡改核心结论。
+- fresh live verification 已确认 structured output recovery 没有破坏真实 API 路径：真实 round-trip 和带 live 的全量测试当前均通过。
 
 ## Technical Decisions
 | Decision | Rationale |

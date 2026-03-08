@@ -114,6 +114,12 @@
   - fresh 全量本地测试已通过，结果为 `47 passed, 1 skipped in 0.63s`。
   - fresh 真实 API round-trip 已通过，结果为 `1 passed in 206.52s`。
   - 带真实 API 的全量 fresh verification 已通过，结果为 `48 passed in 236.87s`。
+  - 当前开始 Phase 9，目标是按 SPEC 18.5 补 structured output retry 和 repair parse。
+  - 已扩展 `tests/integration/test_agent_runner.py`，覆盖 structured output 自动重试和 retry 后 repair parse 两条恢复路径。
+  - 当前 focused tests 已通过，结果为 `4 passed in 0.05s`。
+  - fresh 全量本地测试已通过，结果为 `49 passed, 1 skipped in 0.63s`。
+  - fresh 真实 API round-trip 已通过，结果为 `1 passed in 235.53s`。
+  - 带真实 API 的全量 fresh verification 已通过，结果为 `50 passed in 228.74s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -184,6 +190,10 @@
 | Full pytest after Phase 8 | `./.venv/bin/pytest -v` | retrieval recovery 改动未破坏默认路径 | `47 passed, 1 skipped in 0.63s` | pass |
 | Fresh live API after retrieval recovery | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | retrieval broaden retry 改动未破坏真实路径 | `1 passed in 206.52s` | pass |
 | Full pytest with live API after Phase 8 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | retrieval recovery 与真实 API 一起通过 | `48 passed in 236.87s` | pass |
+| Structured output recovery focused tests | `./.venv/bin/pytest tests/integration/test_agent_runner.py -v` | 自动重试和 retry 后 repair parse 生效 | `4 passed in 0.05s` | pass |
+| Full pytest after Phase 9 | `./.venv/bin/pytest -v` | structured output recovery 未破坏默认路径 | `49 passed, 1 skipped in 0.63s` | pass |
+| Fresh live API after Phase 9 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | runner 级 retry/repair 未破坏真实路径 | `1 passed in 235.53s` | pass |
+| Full pytest with live API after Phase 9 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | structured output recovery 与真实 API 一起通过 | `50 passed in 228.74s` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -193,8 +203,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 8: Retrieval Recovery Hardening 已完成 |
-| Where am I going? | 当前可以转向剩余 SPEC 项，例如 structured output retry/repair 或 planner-only rerun |
-| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery 都纳入可重复验证 |
-| What have I learned? | retrieval 的低召回恢复和显式 low-evidence mode 能明显缩小“看似完成但证据不足”的灰区 |
-| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery 和远程同步 |
+| Where am I? | Phase 9: Structured Output Recovery 已完成 |
+| Where am I going? | 当前可以转向剩余 SPEC 项，例如 planner-only rerun 或更系统的 budget 面 |
+| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery、structured output recovery 都纳入可重复验证 |
+| What have I learned? | 把 structured output 的 retry 和 repair 放在 runner 边界，比在各 stage 零散打补丁更稳 |
+| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery、structured output recovery 和远程同步 |
