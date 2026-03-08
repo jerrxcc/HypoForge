@@ -51,6 +51,12 @@
 - 2026-03-09 00:27 +08 再次审计后，`run_13693266052340eaab98cfe1ed69a82a` 已完成到 `done`，总 trace 为 19 条，包含 review/critic/planner 后续阶段，确认 Phase 6 改动后的真实链路仍可闭环。
 - 真实 trace 中 token usage 为 0 的根因已定位：`OpenAIResponsesProvider._parse_response()` 在 `function_call` 分支提前返回，导致 tool-call turn 的 `usage` 没有带进 `ProviderTurn`，后续 `AgentRunner` 传给 tool invoker 的 trace context 始终为空。
 - 修复后，fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 在 retrieval 阶段的 trace 已出现非零 `input_tokens=772`、`output_tokens=244`，说明 SPEC 第 17 节要求的 token 级 trace 现在在真实路径上生效。
+- 当前测试缺口集中在“真实 API 端到端”这一层：现有 [`tests/integration/test_runs_api.py`](/Users/ccy/Documents/KEY/HypoForge/tests/integration/test_runs_api.py) 仅覆盖 fake coordinator，尚未有 env-gated 的真实 `POST /v1/runs` + `GET /v1/runs/{id}` + `/trace` + `/report.md` live integration test。
+- 真实 API live test 暴露了新的数据层缺陷：`evidence_cards.id` 目前在数据库中是全局唯一，而真实模型会跨 run 重复生成 `EV001`、`EV002` 之类的 evidence id，导致第二次真实 run 在 review 阶段 `save_evidence_cards` 触发 `sqlite3.IntegrityError`。
+- 同类风险也存在于 `conflict_clusters.id`，因为真实模型也常使用 `cluster_1` 这类跨 run 重复的标识；数据库行主键需要按 `run_id` 做 namespacing，而不是直接复用模型产出的业务 id。
+- 现已新增 env-gated live integration test [`tests/live/test_real_runs_api.py`](/Users/ccy/Documents/KEY/HypoForge/tests/live/test_real_runs_api.py)，覆盖真实 `POST /v1/runs`、`GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace`、`GET /v1/runs/{id}/report.md` 全链路。
+- `evidence_cards` 与 `conflict_clusters` 的数据库主键冲突已通过 repository 行级 ID namespacing 修复：数据库层使用 `run_id:local_id` 作为 row id，业务 payload 仍保留模型原始 `EV001` / `cluster_1` 标识。
+- fresh 全量验证已包含真实 API 路径：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 当前结果为 `41 passed in 156.79s`，说明 fake、unit、integration、e2e、live 五层测试当前可以一起通过。
 
 ## Technical Decisions
 | Decision | Rationale |

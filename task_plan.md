@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 3
+Completed
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -47,10 +47,10 @@ Phase 3
 ### Phase 6: SPEC Hardening
 - [x] 实现 raw response cache / normalized paper cache / evidence extraction cache
 - [x] 补齐单源故障、critic/planner 失败时的降级返回
-- [ ] 扩充 trace 字段与阶段级日志，覆盖 tokens、request_id、stage summary
 - [x] 扩充 trace 字段与阶段级日志，覆盖 tokens、request_id、stage summary
 - [x] 为缓存/降级补齐单测与集成测试
-- **Status:** in_progress
+- [x] 补齐 env-gated 的真实 API 端到端测试，并完成 fresh live 验证
+- **Status:** complete
 
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
@@ -88,3 +88,7 @@ Phase 3
 - 2026-03-09 00:22 +08 已确认最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 当前推进到 `reviewing`，并已落 12 条 trace，trace 中可见 `request_id` / token 字段；但该 fresh live run 尚未完成到 `done`。
 - 2026-03-09 00:27 +08 已确认同一 fresh run `run_13693266052340eaab98cfe1ed69a82a` 最终完成到 `done`，trace 共 19 条，说明 Phase 6 的缓存/降级改动未破坏真实默认链路。
 - 2026-03-09 00:34 +08 已定位并修复真实 trace `input_tokens/output_tokens` 恒为 0 的根因：provider 在 tool-call turn 提前返回时丢失 `usage`；fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 已出现非零 token traces。
+- 2026-03-09 00:39 +08 当前继续目标切换为“真实 API 测试完整跑通”：补一个 env-gated live integration test，覆盖 `POST /v1/runs` 与后续 `GET`/`/trace`/`/report.md` 读取路径，并在真实服务上执行。
+- 2026-03-09 00:43 +08 真实 API live test 新暴露出跨 run 主键冲突：`evidence_cards.id` 直接使用模型输出的 `EV001`，导致第二次真实 run 失败；下一步修复 repository 的行级 ID namespacing，并重跑 live test。
+- 2026-03-09 00:55 +08 已完成 repository 行级 ID namespacing 修复，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 转绿，真实 `POST /v1/runs` 往返验证通过。
+- 2026-03-09 01:00 +08 已完成带真实 API 的全量 fresh verification：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 结果为 `41 passed in 156.79s`，当前用户要求范围内的 SPEC hardening 已闭环。

@@ -15,6 +15,12 @@ python3.12 -m venv .venv
 ./.venv/bin/pytest -v
 ```
 
+## Live API Test
+
+```bash
+RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v
+```
+
 ## Local Fake Run
 
 ```bash

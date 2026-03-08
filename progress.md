@@ -95,6 +95,13 @@
   - 截至 2026-03-09 00:22 +08，最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 已推进到 `reviewing`，并已记录 12 条新版 trace；其中已可见 `request_id` 字段，但 run 尚未完成到 `done`。
   - 最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 随后已完成到 `done`，总 trace 数为 19，确认缓存/降级增强没有破坏真实默认服务路径。
   - 已定位并修复 provider 在 tool-call turn 丢失 usage 的问题；fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 的 retrieval traces 现已出现非零 token usage。
+  - 下一步转向补齐真实 API 端到端 live integration test，目标是让真实 `POST /v1/runs` 与后续读取接口形成可重复的自动化验证，而不是只靠临时脚本。
+  - 真实 API live test 已启动，但 fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 在 review 阶段失败；数据库错误确认根因是 `evidence_cards.id` 全局唯一导致跨 run 的 `EV001` 冲突。
+  - 为 repository 新增重复 evidence/cluster id 的 red tests，并定位需要在持久层而不是模型层做 ID namespacing。
+  - 已将 `evidence_cards`、`conflict_clusters` 的数据库 row id 改为 `run_id:local_id` 形式，保留 payload 中的原始业务 ID 不变。
+  - 已新增 env-gated live integration test `tests/live/test_real_runs_api.py`，覆盖真实 `POST /v1/runs`、`GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace` 与 `GET /v1/runs/{id}/report.md`。
+  - 单独真实 API live test 已通过，耗时 `178.48s`。
+  - 带真实 API 的全量测试已通过，结果为 `41 passed in 156.79s`；当前范围内的“真实 API 接入完整跑通”已完成。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -109,6 +116,10 @@
   - `task_plan.md` (updated again)
   - `findings.md` (updated again)
   - `progress.md` (updated again)
+  - `src/hypoforge/infrastructure/db/repository.py` (updated)
+  - `tests/unit/test_repository.py` (updated)
+  - `tests/live/test_real_runs_api.py` (created)
+  - `README.md` (updated)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -137,6 +148,9 @@
 | Fresh real-run trace audit after Phase 6 | `./.venv/bin/python - <<'PY' ... latest run + traces ... PY` | 最新真实 run 至少推进并写入新版 trace | `run_13693266052340eaab98cfe1ed69a82a`, `status=reviewing`, `trace_count=12`, `request_id` visible | pass |
 | Fresh real-run completion after Phase 6 | `./.venv/bin/python - <<'PY' ... latest run + traces ... PY` | 最新真实 run 完成到 `done` | `run_13693266052340eaab98cfe1ed69a82a`, `status=done`, `trace_count=19` | pass |
 | Fresh token-usage real-run audit | `./.venv/bin/python - <<'PY' ... latest run + nonzero token traces ... PY` | 真实 trace 出现非零 token usage | `run_07bb6d6f867a42db99fcec9c5e3b83bb`, retrieval traces show `input_tokens=772`, `output_tokens=244` | pass |
+| Repository duplicate ID red-green | `./.venv/bin/pytest tests/unit/test_repository.py -v` | 允许不同 run 复用 `EV001` / `cluster_1` 这类业务 ID | 修复后 `6 passed in 0.23s` | pass |
+| Real API round-trip live test | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | 真实 `POST /v1/runs` 与 `GET` / `/trace` / `/report.md` 全链路通过 | `1 passed in 178.48s` | pass |
+| Full pytest with live API | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | 含 live test 的完整测试套件通过 | `41 passed in 156.79s` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -147,7 +161,7 @@
 | Question | Answer |
 |----------|--------|
 | Where am I? | Phase 5: Verification & Delivery 已完成 |
-| Where am I going? | 当前实现已同步，后续仅按新需求继续扩展 |
-| What's the goal? | 从 SPEC 构建 HypoForge MVP，并完成 Git 与远程同步 |
-| What have I learned? | fake 路径已稳定，真实路径已首次成功跑通，trace 也已确认落库 |
-| What have I done? | 已完成工程搭建、测试、远程同步、真实链路 fresh 验证、trace 持久化修复和 API 读取端点验证 |
+| Where am I going? | 当前用户要求范围已完成，后续如继续则转向剩余 SPEC 完善项 |
+| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API 接入也纳入可重复测试 |
+| What have I learned? | 真实模型会跨 run 重复生成业务 ID，因此数据库主键必须与业务 ID 解耦 |
+| What have I done? | 已完成工程搭建、测试、远程同步、真实链路 fresh 验证、trace 持久化修复、真实 API round-trip live test 和带 live 的全量测试验证 |

@@ -141,7 +141,7 @@ class RunRepository:
             for card in cards:
                 session.add(
                     EvidenceCardRow(
-                        id=card.evidence_id,
+                        id=self._scoped_id(run_id, card.evidence_id),
                         run_id=run_id,
                         paper_id=card.paper_id,
                         payload_json=card.model_dump(),
@@ -164,7 +164,7 @@ class RunRepository:
             for cluster in clusters:
                 session.add(
                     ConflictClusterRow(
-                        id=cluster.cluster_id,
+                        id=self._scoped_id(run_id, cluster.cluster_id),
                         run_id=run_id,
                         payload_json=cluster.model_dump(),
                     )
@@ -279,6 +279,9 @@ class RunRepository:
         if row is None:
             raise KeyError(f"run not found: {run_id}")
         return row
+
+    def _scoped_id(self, run_id: str, local_id: str) -> str:
+        return f"{run_id}:{local_id}"
 
     def _to_run_state(self, session: Session, row: RunRow) -> RunState:
         selected_paper_ids = list(

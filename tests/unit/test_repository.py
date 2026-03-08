@@ -177,3 +177,49 @@ def test_repository_builds_final_result(tmp_path) -> None:
     assert len(result.selected_papers) == 1
     assert len(result.hypotheses) == 3
     assert result.report_markdown == "# Report"
+
+
+def test_repository_allows_duplicate_evidence_ids_across_runs(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run_one = repo.create_run(RunRequest(topic="topic one"))
+    run_two = repo.create_run(RunRequest(topic="topic two"))
+
+    card = EvidenceCard(
+        evidence_id="EV001",
+        paper_id="p1",
+        title="Paper",
+        claim_text="Claim",
+        system_or_material="System",
+        intervention="Intervention",
+        outcome="Outcome",
+        direction="positive",
+        confidence=0.8,
+    )
+
+    repo.save_evidence_cards(run_one.run_id, [card])
+    repo.save_evidence_cards(run_two.run_id, [card])
+
+    assert repo.load_evidence_cards(run_one.run_id)[0].evidence_id == "EV001"
+    assert repo.load_evidence_cards(run_two.run_id)[0].evidence_id == "EV001"
+
+
+def test_repository_allows_duplicate_conflict_cluster_ids_across_runs(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run_one = repo.create_run(RunRequest(topic="topic one"))
+    run_two = repo.create_run(RunRequest(topic="topic two"))
+
+    cluster = ConflictCluster(
+        cluster_id="cluster_1",
+        topic_axis="axis",
+        supporting_evidence_ids=["e1"],
+        conflicting_evidence_ids=["e2"],
+        conflict_type="conditional_divergence",
+        critic_summary="summary",
+        confidence=0.5,
+    )
+
+    repo.save_conflict_clusters(run_one.run_id, [cluster])
+    repo.save_conflict_clusters(run_two.run_id, [cluster])
+
+    assert repo.load_conflict_clusters(run_one.run_id)[0].cluster_id == "cluster_1"
+    assert repo.load_conflict_clusters(run_two.run_id)[0].cluster_id == "cluster_1"
