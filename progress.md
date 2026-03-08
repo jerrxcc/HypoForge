@@ -85,6 +85,7 @@
   - 使用 `RunRow.created_at` 底层查询确认 fresh run `run_6a638169c5c44fe28f02880d373d17ce` 已完成到 `done`，并具有 19 条 trace、20 篇 selected papers、12 张 evidence cards、5 个 conflict clusters、3 个 hypotheses。
   - 使用 FastAPI `TestClient` 对 `GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace`、`GET /v1/runs/{id}/report.md` 做 fresh verification，三者均返回 200。
   - 重新执行全量测试 `./.venv/bin/pytest -v`，当前结果为 `28 passed in 0.49s`。
+  - 提交真实链路修复为 `67eb498 fix: harden live tool-calling workflow`，并已推送到 `origin/main`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -121,6 +122,7 @@
 | Fresh latest-run audit | `./.venv/bin/python - <<'PY' ... select(RunRow).order_by(created_at desc) ... PY` | 最新真实 run 为 `done` 且含非空 trace/report | `run_6a638169c5c44fe28f02880d373d17ce`, `status=done`, `trace_count=19`, `has_report=True` | pass |
 | Fresh API read-path verification | `./.venv/bin/python - <<'PY' ... TestClient(create_app()) ... PY` | 读取接口全部 200 | `/v1/runs/{id}`、`/trace`、`/report.md` 均返回 200 | pass |
 | Fresh trace coverage audit | `./.venv/bin/python - <<'PY' ... repo.list_tool_traces(latest_run) ... PY` | trace 覆盖四阶段 | `agents=['critic', 'planner', 'retrieval', 'review']` | pass |
+| Git push after live-run fixes | `git push origin main` | 最新提交推送成功 | `1d9ac45..67eb498  main -> main` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -131,7 +133,7 @@
 | Question | Answer |
 |----------|--------|
 | Where am I? | Phase 5: Verification & Delivery 已完成 |
-| Where am I going? | 提交并同步最新修复到远程 |
+| Where am I going? | 当前实现已同步，后续仅按新需求继续扩展 |
 | What's the goal? | 从 SPEC 构建 HypoForge MVP，并完成 Git 与远程同步 |
 | What have I learned? | fake 路径已稳定，真实路径已首次成功跑通，trace 也已确认落库 |
 | What have I done? | 已完成工程搭建、测试、远程同步、真实链路 fresh 验证、trace 持久化修复和 API 读取端点验证 |

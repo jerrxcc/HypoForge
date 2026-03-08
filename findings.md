@@ -30,6 +30,7 @@
 - 2026-03-09 00:03 +08 再次核验后，fresh run `run_6a638169c5c44fe28f02880d373d17ce` 已完成到 `done`，包含 20 篇 selected papers、12 张 evidence cards、5 个 conflict clusters、3 个 hypotheses，且 `tool_traces` 达到 19 条。
 - 最新 trace 明确覆盖四个阶段：`retrieval`、`review`、`critic`、`planner`，说明真实路径的 trace 持久化已满足 SPEC 对完整 tool trace 的验收要求。
 - FastAPI 读取端点 fresh verification 通过：`GET /v1/runs/{run_id}`、`GET /v1/runs/{run_id}/trace`、`GET /v1/runs/{run_id}/report.md` 均返回 200，报告长度为 3354 字符。
+- 真实链路修复已提交并推送到远程：`67eb498 fix: harden live tool-calling workflow` 当前已在 `origin/main`。
 
 ## Technical Decisions
 | Decision | Rationale |
