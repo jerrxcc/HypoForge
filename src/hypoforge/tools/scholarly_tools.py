@@ -21,7 +21,8 @@ class ScholarlyTools:
     def search_openalex_works(self, payload: dict) -> dict:
         args = SearchPapersArgs.model_validate(payload)
         return self._run_source_call(
-            lambda: self._openalex.search_works(args.query, args.year_from, args.year_to, args.limit)
+            lambda: self._openalex.search_works(args.query, args.year_from, args.year_to, args.limit),
+            source=self._openalex,
         )
 
     def search_semantic_scholar_papers(self, payload: dict) -> dict:
@@ -32,20 +33,23 @@ class ScholarlyTools:
                 args.year_from,
                 args.year_to,
                 args.limit,
-            )
+            ),
+            source=self._semantic_scholar,
         )
 
     def recommend_semantic_scholar_papers(self, payload: dict) -> dict:
         args = RecommendPapersArgs.model_validate(payload)
         return self._run_source_call(
-            lambda: self._semantic_scholar.recommend_papers(args.positive_paper_ids, args.limit)
+            lambda: self._semantic_scholar.recommend_papers(args.positive_paper_ids, args.limit),
+            source=self._semantic_scholar,
         )
 
     def get_paper_details(self, payload: dict) -> dict:
         args = GetPaperDetailsArgs.model_validate(payload)
         semantic_ids = [paper_id for paper_id in args.paper_ids if paper_id.startswith("S2:")]
         return self._run_source_call(
-            lambda: self._semantic_scholar.get_paper_details(semantic_ids) if semantic_ids else []
+            lambda: self._semantic_scholar.get_paper_details(semantic_ids) if semantic_ids else [],
+            source=self._semantic_scholar,
         )
 
     def merge_candidates(self, papers: list[PaperDetail]) -> list[PaperDetail]:
@@ -68,13 +72,17 @@ class ScholarlyTools:
         self._repository.save_selected_papers(run_id, papers, args.selection_reason)
         return {"paper_ids": [paper.paper_id for paper in papers], "selection_reason": args.selection_reason}
 
-    def _run_source_call(self, fn: Callable[[], list[PaperDetail]]) -> dict:
+    def _run_source_call(self, fn: Callable[[], list[PaperDetail]], *, source=None) -> dict:
         try:
             papers = fn()
-            return {"papers": [paper.model_dump() for paper in papers]}
+            return {
+                "papers": [paper.model_dump() for paper in papers],
+                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
+            }
         except httpx.HTTPStatusError as exc:
             return {
                 "papers": [],
+                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
                 "error": {
                     "type": "http_status_error",
                     "status_code": exc.response.status_code,
@@ -84,6 +92,7 @@ class ScholarlyTools:
         except httpx.HTTPError as exc:
             return {
                 "papers": [],
+                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
                 "error": {
                     "type": "http_error",
                     "message": str(exc),

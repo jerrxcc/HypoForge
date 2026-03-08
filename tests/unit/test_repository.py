@@ -41,6 +41,18 @@ def test_repository_stores_tool_trace(tmp_path) -> None:
     assert traces[0]["tool_name"] == "search_openalex_works"
 
 
+def test_repository_persists_error_message_on_status_update(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="CRISPR delivery lipid nanoparticles"))
+
+    repo.update_run_status(run.run_id, "failed", error_message="planner unavailable")
+
+    loaded = repo.get_run(run.run_id)
+
+    assert loaded.status == "failed"
+    assert loaded.error_message == "planner unavailable"
+
+
 def test_repository_builds_final_result(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     run = repo.create_run(RunRequest(topic="solid-state battery electrolyte"))

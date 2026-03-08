@@ -27,6 +27,7 @@ class CachedOpenAlexConnector:
         self._connector = connector
         self._cache = cache
         self._ttl_seconds = ttl_seconds
+        self.last_cache_hit = False
 
     def search_works(self, query: str, year_from: int, year_to: int, limit: int) -> list[PaperDetail]:
         cache_key = _args_key(
@@ -35,7 +36,9 @@ class CachedOpenAlexConnector:
         )
         cached = self._cache.get("raw_response", cache_key)
         if cached is not None:
+            self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
+        self.last_cache_hit = False
         papers = self._connector.search_works(query, year_from, year_to, limit)
         payload = {"papers": [paper.model_dump() for paper in papers]}
         self._cache.set("raw_response", cache_key, payload, ttl_seconds=self._ttl_seconds)
@@ -55,6 +58,7 @@ class CachedSemanticScholarConnector:
         self._cache = cache
         self._ttl_seconds = ttl_seconds
         self._normalized_ttl_seconds = normalized_ttl_seconds
+        self.last_cache_hit = False
 
     def search_papers(self, query: str, year_from: int, year_to: int, limit: int) -> list[PaperDetail]:
         cache_key = _args_key(
@@ -63,7 +67,9 @@ class CachedSemanticScholarConnector:
         )
         cached = self._cache.get("raw_response", cache_key)
         if cached is not None:
+            self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
+        self.last_cache_hit = False
         papers = self._connector.search_papers(query, year_from, year_to, limit)
         self._cache.set(
             "raw_response",
@@ -81,7 +87,9 @@ class CachedSemanticScholarConnector:
         )
         cached = self._cache.get("raw_response", cache_key)
         if cached is not None:
+            self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
+        self.last_cache_hit = False
         papers = self._connector.recommend_papers(positive_paper_ids, limit)
         self._cache.set(
             "raw_response",
@@ -103,8 +111,11 @@ class CachedSemanticScholarConnector:
             cached_papers.append(PaperDetail.model_validate(payload["paper"]))
         fetched: list[PaperDetail] = []
         if missing_ids:
+            self.last_cache_hit = False
             fetched = self._connector.get_paper_details(missing_ids)
             self._cache_papers(fetched)
+        else:
+            self.last_cache_hit = True
         papers_by_id = {paper.paper_id: paper for paper in [*cached_papers, *fetched]}
         return [papers_by_id[paper_id] for paper_id in paper_ids if paper_id in papers_by_id]
 

@@ -34,3 +34,28 @@ def test_openai_provider_sanitizes_response_format_name() -> None:
     response_format = provider._response_format("gpt-5.4_output", {"type": "object", "properties": {"x": {"type": "string"}}})
 
     assert response_format["format"]["name"] == "gpt-5_4_output"
+
+
+def test_openai_provider_keeps_usage_on_tool_call_turns() -> None:
+    class Usage:
+        input_tokens = 61
+        output_tokens = 431
+
+    class FunctionCall:
+        type = "function_call"
+        call_id = "call_1"
+        name = "search_openalex_works"
+        arguments = '{"query":"battery"}'
+
+    class Response:
+        id = "resp_123"
+        output = [FunctionCall()]
+        usage = Usage()
+
+    provider = OpenAIResponsesProvider()
+
+    turn = provider._parse_response(Response())
+
+    assert turn.response_id == "resp_123"
+    assert turn.tool_calls[0].name == "search_openalex_works"
+    assert turn.usage == {"input_tokens": 61, "output_tokens": 431}

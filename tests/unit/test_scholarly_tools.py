@@ -33,6 +33,16 @@ class FailingSemanticScholarConnector:
         return []
 
 
+class CachedLikeOpenAlexConnector:
+    def __init__(self) -> None:
+        self.last_cache_hit = False
+
+    def search_works(self, query: str, year_from: int, year_to: int, limit: int):
+        del query, year_from, year_to, limit
+        self.last_cache_hit = True
+        return []
+
+
 def test_save_selected_papers_tool_persists_records(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     run = repo.create_run(RunRequest(topic="protein binder design"))
@@ -115,3 +125,25 @@ def test_search_semantic_scholar_returns_empty_payload_on_http_error(tmp_path) -
 
     assert result["papers"] == []
     assert result["error"]["status_code"] == 429
+
+
+def test_search_openalex_surfaces_cache_hit_metadata(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    connector = CachedLikeOpenAlexConnector()
+    tools = ScholarlyTools(
+        openalex=connector,
+        semantic_scholar=FakeSemanticScholarConnector(),
+        repository=repo,
+    )
+
+    result = tools.search_openalex_works(
+        {
+            "query": "solid-state battery electrolyte",
+            "year_from": 2018,
+            "year_to": 2026,
+            "limit": 10,
+        }
+    )
+
+    assert result["papers"] == []
+    assert result["cache_hit"] is True

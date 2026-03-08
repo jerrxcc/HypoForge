@@ -57,12 +57,20 @@ class RunCoordinator:
             except Exception:
                 self._logger.warning("planner stage degraded", extra={"run_id": run.run_id})
                 self._render_partial_report(run.run_id)
-                self._repository.update_run_status(run.run_id, "failed")
+                self._repository.update_run_status(
+                    run.run_id,
+                    "failed",
+                    error_message="planner unavailable",
+                )
                 return self._repository.build_final_result(run.run_id)
 
-            self._repository.update_run_status(run.run_id, "done")
+            self._repository.update_run_status(run.run_id, "done", error_message=None)
         except Exception as exc:
-            self._repository.update_run_status(run.run_id, "failed")
+            self._repository.update_run_status(
+                run.run_id,
+                "failed",
+                error_message=str(exc),
+            )
             self._render_partial_report(run.run_id)
             self._logger.exception("run failed", extra={"run_id": run.run_id})
             raise RuntimeError(f"run failed: {run.run_id}") from exc

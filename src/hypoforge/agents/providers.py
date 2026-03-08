@@ -201,6 +201,10 @@ class OpenAIResponsesProvider:
 
     def _parse_response(self, response) -> ProviderTurn:
         tool_calls: list[ProviderToolCall] = []
+        usage = {
+            "input_tokens": getattr(getattr(response, "usage", None), "input_tokens", 0),
+            "output_tokens": getattr(getattr(response, "usage", None), "output_tokens", 0),
+        }
         output = getattr(response, "output", []) or []
         for item in output:
             if getattr(item, "type", None) == "function_call":
@@ -213,7 +217,11 @@ class OpenAIResponsesProvider:
                     )
                 )
         if tool_calls:
-            return ProviderTurn(response_id=getattr(response, "id", None), tool_calls=tool_calls)
+            return ProviderTurn(
+                response_id=getattr(response, "id", None),
+                tool_calls=tool_calls,
+                usage=usage,
+            )
 
         final_output = None
         parsed = getattr(response, "output_parsed", None)
@@ -224,8 +232,5 @@ class OpenAIResponsesProvider:
         return ProviderTurn(
             response_id=getattr(response, "id", None),
             final_output=final_output,
-            usage={
-                "input_tokens": getattr(getattr(response, "usage", None), "input_tokens", 0),
-                "output_tokens": getattr(getattr(response, "usage", None), "output_tokens", 0),
-            },
+            usage=usage,
         )

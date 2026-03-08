@@ -93,6 +93,8 @@
   - fresh 全量测试结果更新为 `34 passed in 0.57s`。
   - 真实 live run 正在执行，用于确认新缓存和降级逻辑未破坏默认真实链路。
   - 截至 2026-03-09 00:22 +08，最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 已推进到 `reviewing`，并已记录 12 条新版 trace；其中已可见 `request_id` 字段，但 run 尚未完成到 `done`。
+  - 最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 随后已完成到 `done`，总 trace 数为 19，确认缓存/降级增强没有破坏真实默认服务路径。
+  - 已定位并修复 provider 在 tool-call turn 丢失 usage 的问题；fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 的 retrieval traces 现已出现非零 token usage。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -133,6 +135,8 @@
 | Phase 6 focused tests | `./.venv/bin/pytest tests/unit/test_cache_repository.py tests/unit/test_cached_connectors.py tests/integration/test_coordinator_degradation.py tests/integration/test_agent_runner.py tests/integration/test_tool_trace_recording.py -v` | 新增缓存/降级/trace 测试通过 | `9 passed in 0.27s` | pass |
 | Full pytest after Phase 6 changes | `./.venv/bin/pytest -v` | 全量测试通过 | `34 passed in 0.57s` | pass |
 | Fresh real-run trace audit after Phase 6 | `./.venv/bin/python - <<'PY' ... latest run + traces ... PY` | 最新真实 run 至少推进并写入新版 trace | `run_13693266052340eaab98cfe1ed69a82a`, `status=reviewing`, `trace_count=12`, `request_id` visible | pass |
+| Fresh real-run completion after Phase 6 | `./.venv/bin/python - <<'PY' ... latest run + traces ... PY` | 最新真实 run 完成到 `done` | `run_13693266052340eaab98cfe1ed69a82a`, `status=done`, `trace_count=19` | pass |
+| Fresh token-usage real-run audit | `./.venv/bin/python - <<'PY' ... latest run + nonzero token traces ... PY` | 真实 trace 出现非零 token usage | `run_07bb6d6f867a42db99fcec9c5e3b83bb`, retrieval traces show `input_tokens=772`, `output_tokens=244` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

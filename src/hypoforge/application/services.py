@@ -258,15 +258,24 @@ def _summarize_tool_result(result: dict) -> dict:
     summary: dict[str, object] = {}
     if "papers" in result:
         summary["paper_count"] = len(result["papers"])
+        summary["result_count"] = len(result["papers"])
         summary["paper_ids"] = [paper.get("paper_id") for paper in result["papers"][:5]]
+    if "evidence_cards" in result:
+        summary["result_count"] = len(result["evidence_cards"])
     if "evidence_ids" in result:
+        summary["result_count"] = len(result["evidence_ids"])
         summary["evidence_ids"] = result["evidence_ids"][:5]
     if "cluster_ids" in result:
+        summary["result_count"] = len(result["cluster_ids"])
         summary["cluster_ids"] = result["cluster_ids"][:5]
     if "hypothesis_ranks" in result:
+        summary["result_count"] = len(result["hypothesis_ranks"])
         summary["hypothesis_ranks"] = result["hypothesis_ranks"]
     if "report_markdown" in result:
         summary["report_length"] = len(result["report_markdown"])
+        summary["result_count"] = 1
+    if "cache_hit" in result:
+        summary["cache_hit"] = result["cache_hit"]
     if "error" in result:
         summary["error"] = result["error"]
     if not summary:

@@ -45,10 +45,11 @@ Phase 3
 - **Status:** complete
 
 ### Phase 6: SPEC Hardening
-- [ ] 实现 raw response cache / normalized paper cache / evidence extraction cache
-- [ ] 补齐超预算、单源故障、critic/planner 失败时的降级返回
+- [x] 实现 raw response cache / normalized paper cache / evidence extraction cache
+- [x] 补齐单源故障、critic/planner 失败时的降级返回
 - [ ] 扩充 trace 字段与阶段级日志，覆盖 tokens、request_id、stage summary
-- [ ] 为预算/缓存/降级补齐单测与集成测试
+- [x] 扩充 trace 字段与阶段级日志，覆盖 tokens、request_id、stage summary
+- [x] 为缓存/降级补齐单测与集成测试
 - **Status:** in_progress
 
 ## Key Questions
@@ -85,3 +86,5 @@ Phase 3
 - 基于 SPEC 当前差距，推荐下一阶段优先做 `缓存 + 降级策略 + 可观测性补齐`；预算控制按用户要求暂缓。
 - 2026-03-09 00:19 +08 Phase 6 新增测试已转绿，fresh 全量 `pytest` 为 `34 passed`；真实 live run 正在继续验证缓存/降级改动未破坏默认服务路径。
 - 2026-03-09 00:22 +08 已确认最新真实 run `run_13693266052340eaab98cfe1ed69a82a` 当前推进到 `reviewing`，并已落 12 条 trace，trace 中可见 `request_id` / token 字段；但该 fresh live run 尚未完成到 `done`。
+- 2026-03-09 00:27 +08 已确认同一 fresh run `run_13693266052340eaab98cfe1ed69a82a` 最终完成到 `done`，trace 共 19 条，说明 Phase 6 的缓存/降级改动未破坏真实默认链路。
+- 2026-03-09 00:34 +08 已定位并修复真实 trace `input_tokens/output_tokens` 恒为 0 的根因：provider 在 tool-call turn 提前返回时丢失 `usage`；fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 已出现非零 token traces。

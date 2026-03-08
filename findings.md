@@ -48,6 +48,9 @@
 - 4. coordinator 对 critic 失败继续、planner 失败返回 partial result；
 - 5. tool trace 现在能落 input/output tokens，并在 `/trace` 中暴露 `request_id`。
 - 2026-03-09 00:22 +08 的 fresh real-run 审计显示：最新 run `run_13693266052340eaab98cfe1ed69a82a` 已完成 retrieval 并进入 `reviewing`，当前 `trace_count=12`，最新 trace 行已能看到非空 `request_id`。
+- 2026-03-09 00:27 +08 再次审计后，`run_13693266052340eaab98cfe1ed69a82a` 已完成到 `done`，总 trace 为 19 条，包含 review/critic/planner 后续阶段，确认 Phase 6 改动后的真实链路仍可闭环。
+- 真实 trace 中 token usage 为 0 的根因已定位：`OpenAIResponsesProvider._parse_response()` 在 `function_call` 分支提前返回，导致 tool-call turn 的 `usage` 没有带进 `ProviderTurn`，后续 `AgentRunner` 传给 tool invoker 的 trace context 始终为空。
+- 修复后，fresh run `run_07bb6d6f867a42db99fcec9c5e3b83bb` 在 retrieval 阶段的 trace 已出现非零 `input_tokens=772`、`output_tokens=244`，说明 SPEC 第 17 节要求的 token 级 trace 现在在真实路径上生效。
 
 ## Technical Decisions
 | Decision | Rationale |

@@ -66,10 +66,17 @@ class RunRepository:
                 raise KeyError(f"run not found: {run_id}")
             return self._to_run_state(session, row)
 
-    def update_run_status(self, run_id: str, status: RunStatus) -> None:
+    def update_run_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        error_message: str | None = None,
+    ) -> None:
         with self._session_factory() as session:
             row = self._require_run(session, run_id)
             row.status = status
+            row.error_message = error_message
             session.commit()
 
     def save_report_markdown(self, run_id: str, report_markdown: str) -> None:

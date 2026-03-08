@@ -157,6 +157,7 @@ def test_coordinator_returns_partial_result_when_planner_fails(tmp_path) -> None
     assert len(result.selected_papers) == 1
     assert len(result.evidence_cards) == 1
     assert result.report_markdown is not None
+    assert repo.get_run(result.run_id).error_message == "planner unavailable"
 
 
 def _hypothesis(rank: int) -> Hypothesis:
