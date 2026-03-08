@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -33,6 +34,7 @@ class AgentRunner:
             context=context,
             tool_names=tool_names,
             model_name=self._model_name,
+            output_schema=self._output_model.model_json_schema(),
         )
         step_count = 0
         while turn.final_output is None:
@@ -43,11 +45,12 @@ class AgentRunner:
                 if call.name not in tool_names:
                     raise ValueError(f"tool not allowed for {self._agent_name}: {call.name}")
                 result = self._tool_invoker(call.name, call.arguments)
+                output = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
                 tool_outputs.append(
                     {
                         "type": "function_call_output",
                         "call_id": call.call_id,
-                        "output": result,
+                        "output": output,
                     }
                 )
             turn = self._provider.continue_with_tool_outputs(
@@ -55,7 +58,7 @@ class AgentRunner:
                 tool_outputs=tool_outputs,
                 tool_names=tool_names,
                 model_name=self._model_name,
+                output_schema=self._output_model.model_json_schema(),
             )
             step_count += 1
         return self._output_model.model_validate(turn.final_output)
-

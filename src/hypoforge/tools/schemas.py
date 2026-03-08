@@ -42,3 +42,30 @@ class SaveHypothesesArgs(BaseModel):
 class RenderReportArgs(BaseModel):
     include_appendix: bool = True
 
+
+class LoadSelectedPapersArgs(BaseModel):
+    note: str | None = None
+
+
+class LoadEvidenceCardsArgs(BaseModel):
+    note: str | None = None
+
+
+class LoadConflictClustersArgs(BaseModel):
+    note: str | None = None
+
+
+TOOL_ARG_MODELS = {
+    "search_openalex_works": SearchPapersArgs,
+    "search_semantic_scholar_papers": SearchPapersArgs,
+    "recommend_semantic_scholar_papers": RecommendPapersArgs,
+    "get_paper_details": GetPaperDetailsArgs,
+    "save_selected_papers": SaveSelectedPapersArgs,
+    "load_selected_papers": LoadSelectedPapersArgs,
+    "save_evidence_cards": SaveEvidenceCardsArgs,
+    "load_evidence_cards": LoadEvidenceCardsArgs,
+    "save_conflict_clusters": SaveConflictClustersArgs,
+    "load_conflict_clusters": LoadConflictClustersArgs,
+    "save_hypotheses": SaveHypothesesArgs,
+    "render_markdown_report": RenderReportArgs,
+}

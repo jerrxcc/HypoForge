@@ -75,11 +75,30 @@
 - **Status:** complete
 - Actions taken:
   - 全量测试、CLI smoke、`uvicorn` 启动验证均已完成。
-  - 准备向用户交付仓库地址、验证证据与剩余说明。
+  - 进入真实 OpenAI/OpenAlex/S2 live run 调试，按 `systematic-debugging` 方式逐个定位阻塞点。
+  - 新增 provider 单测与 tool schema 单测，修复 `OPENAI_API_KEY` 透传、tool JSON schema、tool output 编码、strict response schema 合法化、候选池 `paper_ids` 解析、Semantic Scholar 429 降级。
+  - 用户要求“每次改动都及时用 plan with file 进行记录”，已将其纳入当前工作方式。
+  - 真实 OpenAI/OpenAlex/S2 live run 首次成功跑通，`topic=solid-state battery electrolyte` 返回完整 `RunResult`，状态为 `done`，并产出 16 篇 selected papers、16 张 evidence cards、4 个 conflict clusters 和 3 个 hypotheses。
+  - 已补齐默认真实路径的 tool trace 记录逻辑，并通过数据库验证 fresh run `run_6a638169c5c44fe28f02880d373d17ce` 已持久化 12 条 trace。
+  - 下一步继续等待这次 fresh run 完成，并再做 API 层 fresh 验证。
+  - 复查服务装配层后确认 `ServiceContainer` 仅暴露 `coordinator`；fresh verification 需要改走 `coordinator` 或单独构造 `RunRepository` 查询数据库状态。
+  - 使用 `RunRow.created_at` 底层查询确认 fresh run `run_6a638169c5c44fe28f02880d373d17ce` 已完成到 `done`，并具有 19 条 trace、20 篇 selected papers、12 张 evidence cards、5 个 conflict clusters、3 个 hypotheses。
+  - 使用 FastAPI `TestClient` 对 `GET /v1/runs/{id}`、`GET /v1/runs/{id}/trace`、`GET /v1/runs/{id}/report.md` 做 fresh verification，三者均返回 200。
+  - 重新执行全量测试 `./.venv/bin/pytest -v`，当前结果为 `28 passed in 0.49s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
   - `progress.md` (updated)
+  - `tests/unit/test_openai_provider.py` (created)
+  - `tests/unit/test_tool_schemas.py` (created)
+  - `src/hypoforge/agents/providers.py` (updated)
+  - `src/hypoforge/agents/runner.py` (updated)
+  - `src/hypoforge/application/services.py` (updated)
+  - `src/hypoforge/tools/schemas.py` (updated)
+  - `src/hypoforge/tools/scholarly_tools.py` (updated)
+  - `task_plan.md` (updated again)
+  - `findings.md` (updated again)
+  - `progress.md` (updated again)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -92,6 +111,16 @@
 | Uvicorn boot | `./.venv/bin/uvicorn hypoforge.api.app:create_app --factory --host 127.0.0.1 --port 8000` | 应用成功启动 | 日志显示 `Application startup complete`，随后正常 Ctrl-C 退出 | pass |
 | GitHub auth | `gh auth status` | 当前账号已登录且具备 repo scope | 已登录 `jerrxcc`，scope 含 `repo` | pass |
 | Remote push | `gh repo create HypoForge --private --source=. --remote=origin --push` | 远程仓库创建并推送成功 | `HEAD -> main` 且已设置跟踪分支 | pass |
+| OpenAI provider config red-green | `./.venv/bin/pytest tests/unit/test_openai_provider.py -v` | provider 正确透传 key/base_url 并生成合法 response format | 单测通过 | pass |
+| Tool schema red-green | `./.venv/bin/pytest tests/unit/test_tool_schemas.py -v` | function schema 包含真实 properties | 单测通过 | pass |
+| Scholarly tools red-green | `./.venv/bin/pytest tests/unit/test_scholarly_tools.py -v` | 429 降级和 `paper_ids` 候选池解析均通过 | 单测通过 | pass |
+| Agent runner red-green | `./.venv/bin/pytest tests/integration/test_agent_runner.py -v` | tool outputs 以字符串形式回传 provider | 集成测试通过 | pass |
+| Real live run | `./.venv/bin/python - <<'PY' ... build_default_services().coordinator.run_topic('solid-state battery electrolyte') ... PY` | 返回完整真实 `RunResult` | `status='done'`，并返回 papers/evidence/conflicts/hypotheses/report | pass |
+| Trace persistence fresh check | `./.venv/bin/python - <<'PY' ... sqlite query latest run + tool_traces ... PY` | 最新 run 至少已有非空 trace | 最新 run `run_6a638169c5c44fe28f02880d373d17ce` 处于 `reviewing`，trace_count=12 | pass |
+| Full pytest after live-run fixes | `./.venv/bin/pytest -v` | 全量测试通过 | `28 passed in 0.49s` | pass |
+| Fresh latest-run audit | `./.venv/bin/python - <<'PY' ... select(RunRow).order_by(created_at desc) ... PY` | 最新真实 run 为 `done` 且含非空 trace/report | `run_6a638169c5c44fe28f02880d373d17ce`, `status=done`, `trace_count=19`, `has_report=True` | pass |
+| Fresh API read-path verification | `./.venv/bin/python - <<'PY' ... TestClient(create_app()) ... PY` | 读取接口全部 200 | `/v1/runs/{id}`、`/trace`、`/report.md` 均返回 200 | pass |
+| Fresh trace coverage audit | `./.venv/bin/python - <<'PY' ... repo.list_tool_traces(latest_run) ... PY` | trace 覆盖四阶段 | `agents=['critic', 'planner', 'retrieval', 'review']` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -101,8 +130,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 5: Verification & Delivery |
-| Where am I going? | 最终交付 |
+| Where am I? | Phase 5: Verification & Delivery 已完成 |
+| Where am I going? | 提交并同步最新修复到远程 |
 | What's the goal? | 从 SPEC 构建 HypoForge MVP，并完成 Git 与远程同步 |
-| What have I learned? | 项目已具备可测试的真实集成边界和稳定 fake e2e 路径，GitHub CLI 已登录 |
-| What have I done? | 已完成工程搭建、验证、首次提交、GitHub 私有仓库创建与推送 |
+| What have I learned? | fake 路径已稳定，真实路径已首次成功跑通，trace 也已确认落库 |
+| What have I done? | 已完成工程搭建、测试、远程同步、真实链路 fresh 验证、trace 持久化修复和 API 读取端点验证 |

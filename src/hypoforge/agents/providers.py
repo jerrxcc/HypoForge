@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from hypoforge.tools.schemas import TOOL_ARG_MODELS
 
 @dataclass
 class ProviderToolCall:
@@ -28,6 +30,7 @@ class ModelProvider(Protocol):
         context: dict[str, Any],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn: ...
 
     def continue_with_tool_outputs(
@@ -37,6 +40,7 @@ class ModelProvider(Protocol):
         tool_outputs: list[dict[str, Any]],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn: ...
 
 
@@ -58,8 +62,9 @@ class ScriptedProvider:
         context: dict[str, Any],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn:
-        del instructions, context, tool_names, model_name
+        del instructions, context, tool_names, model_name, output_schema
         return self._next_turn()
 
     def continue_with_tool_outputs(
@@ -69,8 +74,9 @@ class ScriptedProvider:
         tool_outputs: list[dict[str, Any]],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn:
-        del response_id, tool_outputs, tool_names, model_name
+        del response_id, tool_outputs, tool_names, model_name, output_schema
         return self._next_turn()
 
     def _next_turn(self) -> ProviderTurn:
@@ -86,15 +92,22 @@ class ScriptedProvider:
 
 
 class OpenAIResponsesProvider:
-    def __init__(self, client=None) -> None:
+    def __init__(self, client=None, api_key: str | None = None, base_url: str | None = None) -> None:
         self._client = client
+        self._api_key = api_key
+        self._base_url = base_url
 
     def _client_or_default(self):
         if self._client is not None:
             return self._client
         from openai import OpenAI
 
-        self._client = OpenAI()
+        kwargs: dict[str, Any] = {}
+        if self._api_key:
+            kwargs["api_key"] = self._api_key
+        if self._base_url:
+            kwargs["base_url"] = self._base_url
+        self._client = OpenAI(**kwargs)
         return self._client
 
     def start(
@@ -104,14 +117,18 @@ class OpenAIResponsesProvider:
         context: dict[str, Any],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn:
         client = self._client_or_default()
-        response = client.responses.create(
-            model=model_name,
-            instructions=instructions,
-            input=json.dumps(context),
-            tools=[self._tool_schema(name) for name in tool_names],
-        )
+        request: dict[str, Any] = {
+            "model": model_name,
+            "instructions": instructions,
+            "input": json.dumps(context),
+            "tools": [self._tool_schema(name) for name in tool_names],
+        }
+        if output_schema is not None:
+            request["text"] = self._response_format(f"{model_name}_output", output_schema)
+        response = client.responses.create(**request)
         return self._parse_response(response)
 
     def continue_with_tool_outputs(
@@ -121,26 +138,66 @@ class OpenAIResponsesProvider:
         tool_outputs: list[dict[str, Any]],
         tool_names: list[str],
         model_name: str,
+        output_schema: dict[str, Any] | None = None,
     ) -> ProviderTurn:
         client = self._client_or_default()
-        response = client.responses.create(
-            model=model_name,
-            previous_response_id=response_id,
-            tools=[self._tool_schema(name) for name in tool_names],
-            input=tool_outputs,
-        )
+        request: dict[str, Any] = {
+            "model": model_name,
+            "previous_response_id": response_id,
+            "tools": [self._tool_schema(name) for name in tool_names],
+            "input": tool_outputs,
+        }
+        if output_schema is not None:
+            request["text"] = self._response_format(f"{model_name}_output", output_schema)
+        response = client.responses.create(**request)
         return self._parse_response(response)
 
     def _tool_schema(self, name: str) -> dict[str, Any]:
+        args_model = TOOL_ARG_MODELS[name]
+        parameters = args_model.model_json_schema()
+        if "title" in parameters:
+            parameters.pop("title")
         return {
             "type": "function",
             "name": name,
             "description": f"HypoForge tool: {name}",
-            "parameters": {
-                "type": "object",
-                "additionalProperties": True,
-            },
+            "parameters": parameters,
         }
+
+    def _response_format(self, name: str, output_schema: dict[str, Any]) -> dict[str, Any]:
+        schema = self._normalize_response_schema(dict(output_schema))
+        schema.pop("title", None)
+        normalized_name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)[:64]
+        return {
+            "format": {
+                "type": "json_schema",
+                "name": normalized_name,
+                "schema": schema,
+                "strict": True,
+            }
+        }
+
+    def _normalize_response_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
+        schema_type = schema.get("type")
+        if schema_type == "object":
+            schema.setdefault("additionalProperties", False)
+            properties = schema.get("properties") or {}
+            schema["required"] = list(properties.keys())
+            for prop_schema in properties.values():
+                if isinstance(prop_schema, dict):
+                    self._normalize_response_schema(prop_schema)
+        if schema_type == "array":
+            items = schema.get("items")
+            if isinstance(items, dict):
+                self._normalize_response_schema(items)
+        for def_schema in (schema.get("$defs") or {}).values():
+            if isinstance(def_schema, dict):
+                self._normalize_response_schema(def_schema)
+        any_of = schema.get("anyOf") or []
+        for item in any_of:
+            if isinstance(item, dict):
+                self._normalize_response_schema(item)
+        return schema
 
     def _parse_response(self, response) -> ProviderTurn:
         tool_calls: list[ProviderToolCall] = []
@@ -172,4 +229,3 @@ class OpenAIResponsesProvider:
                 "output_tokens": getattr(getattr(response, "usage", None), "output_tokens", 0),
             },
         )
-

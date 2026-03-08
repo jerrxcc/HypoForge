@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
 
 from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.providers import OpenAIResponsesProvider
@@ -35,20 +36,40 @@ class ServiceContainer:
 def build_default_services(settings: Settings | None = None) -> ServiceContainer:
     settings = settings or Settings()
     repository = RunRepository.from_database_url(settings.database_url)
-    provider = OpenAIResponsesProvider()
+    candidate_pools: dict[str, dict[str, PaperDetail]] = {}
+    provider = OpenAIResponsesProvider(
+        api_key=settings.openai_api_key or None,
+        base_url=settings.openai_base_url or None,
+    )
     renderer = ReportRenderer()
     openalex = OpenAlexConnector()
     semantic_scholar = SemanticScholarConnector()
-    scholarly_tools = ScholarlyTools(openalex=openalex, semantic_scholar=semantic_scholar, repository=repository)
-    workspace_tools = WorkspaceTools(repository=repository)
-    render_tools = RenderTools(repository=repository, renderer=renderer)
+    def make_tool_invoker(run_id: str, agent_name: str, model_name: str):
+        candidate_pool = candidate_pools.setdefault(run_id, {})
 
-    def make_tool_invoker(run_id: str):
+        def update_candidate_pool(result: dict) -> dict:
+            for paper_payload in result.get("papers", []):
+                paper = (
+                    paper_payload
+                    if isinstance(paper_payload, PaperDetail)
+                    else PaperDetail.model_validate(paper_payload)
+                )
+                candidate_pool[paper.paper_id] = paper
+            return result
+
+        scholarly_tools = ScholarlyTools(
+            openalex=openalex,
+            semantic_scholar=semantic_scholar,
+            repository=repository,
+            paper_lookup=lambda paper_ids: [candidate_pool[paper_id] for paper_id in paper_ids if paper_id in candidate_pool],
+        )
+        workspace_tools = WorkspaceTools(repository=repository)
+        render_tools = RenderTools(repository=repository, renderer=renderer)
         registry = {
-            "search_openalex_works": lambda payload: scholarly_tools.search_openalex_works(payload),
-            "search_semantic_scholar_papers": lambda payload: scholarly_tools.search_semantic_scholar_papers(payload),
-            "recommend_semantic_scholar_papers": lambda payload: scholarly_tools.recommend_semantic_scholar_papers(payload),
-            "get_paper_details": lambda payload: scholarly_tools.get_paper_details(payload),
+            "search_openalex_works": lambda payload: update_candidate_pool(scholarly_tools.search_openalex_works(payload)),
+            "search_semantic_scholar_papers": lambda payload: update_candidate_pool(scholarly_tools.search_semantic_scholar_papers(payload)),
+            "recommend_semantic_scholar_papers": lambda payload: update_candidate_pool(scholarly_tools.recommend_semantic_scholar_papers(payload)),
+            "get_paper_details": lambda payload: update_candidate_pool(scholarly_tools.get_paper_details(payload)),
             "save_selected_papers": lambda payload: scholarly_tools.save_selected_papers(run_id, payload),
             "load_selected_papers": lambda payload: workspace_tools.load_selected_papers(run_id, payload),
             "save_evidence_cards": lambda payload: workspace_tools.save_evidence_cards(run_id, payload),
@@ -60,14 +81,40 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         }
 
         def invoke(tool_name: str, payload: dict):
-            return registry[tool_name](payload)
+            started_at = perf_counter()
+            try:
+                result = registry[tool_name](payload)
+                repository.record_tool_trace(
+                    run_id=run_id,
+                    agent_name=agent_name,
+                    tool_name=tool_name,
+                    args=payload,
+                    result_summary=_summarize_tool_result(result),
+                    latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
+                    model_name=model_name,
+                    success=True,
+                )
+                return result
+            except Exception as exc:
+                repository.record_tool_trace(
+                    run_id=run_id,
+                    agent_name=agent_name,
+                    tool_name=tool_name,
+                    args=payload,
+                    result_summary={"error": type(exc).__name__},
+                    latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
+                    model_name=model_name,
+                    success=False,
+                    error_message=str(exc),
+                )
+                raise
 
         return invoke
 
     def retrieval_agent(run_id: str, topic: str, constraints) -> RetrievalSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id),
+            tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval),
             output_model=RetrievalSummary,
             agent_name="retrieval",
             model_name=settings.openai_model_retrieval,
@@ -88,7 +135,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     def review_agent(run_id: str) -> ReviewSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id),
+            tool_invoker=make_tool_invoker(run_id, "review", settings.openai_model_review),
             output_model=ReviewSummary,
             agent_name="review",
             model_name=settings.openai_model_review,
@@ -103,7 +150,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     def critic_agent(run_id: str) -> CriticSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id),
+            tool_invoker=make_tool_invoker(run_id, "critic", settings.openai_model_critic),
             output_model=CriticSummary,
             agent_name="critic",
             model_name=settings.openai_model_critic,
@@ -118,7 +165,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     def planner_agent(run_id: str) -> PlannerSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id),
+            tool_invoker=make_tool_invoker(run_id, "planner", settings.openai_model_planner),
             output_model=PlannerSummary,
             agent_name="planner",
             model_name=settings.openai_model_planner,
@@ -138,6 +185,26 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         planner_agent=planner_agent,
     )
     return ServiceContainer(coordinator=coordinator)
+
+
+def _summarize_tool_result(result: dict) -> dict:
+    summary: dict[str, object] = {}
+    if "papers" in result:
+        summary["paper_count"] = len(result["papers"])
+        summary["paper_ids"] = [paper.get("paper_id") for paper in result["papers"][:5]]
+    if "evidence_ids" in result:
+        summary["evidence_ids"] = result["evidence_ids"][:5]
+    if "cluster_ids" in result:
+        summary["cluster_ids"] = result["cluster_ids"][:5]
+    if "hypothesis_ranks" in result:
+        summary["hypothesis_ranks"] = result["hypothesis_ranks"]
+    if "report_markdown" in result:
+        summary["report_length"] = len(result["report_markdown"])
+    if "error" in result:
+        summary["error"] = result["error"]
+    if not summary:
+        summary = result
+    return summary
 
 
 def build_fake_services(
