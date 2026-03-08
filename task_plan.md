@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Completed
+Phase 8 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -58,6 +58,12 @@ Completed
 - [x] 为上述能力补齐 red-green tests，并重新执行 fresh verification
 - **Status:** complete
 
+### Phase 8: Retrieval Recovery Hardening
+- [x] 实现 retrieval 结果过少时的一次自动放宽重试
+- [x] 明确 low-evidence mode，并反映到结构化 stage summary
+- [x] 为 retrieval recovery 与降级状态补齐 TDD 和 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -102,3 +108,6 @@ Completed
 - 2026-03-09 01:14 +08 已完成第一轮实现：新增 `stage_summaries` 持久化、`RunResult.stage_summaries`、review batch helper、批次级 evidence append 和 partial failure 聚合；focused tests 当前 `10 passed`。
 - 2026-03-09 01:24 +08 真实 live test 暴露 planner 在 `save_hypotheses` 处会因缺少 `counterevidence_ids` 降级失败；已在 workspace tool 边界加入基于 conflict clusters 的轻量修复。
 - 2026-03-09 01:31 +08 fresh verification 已完成：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 173.55s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `45 passed in 186.22s`。
+- 2026-03-09 01:39 +08 当前进入 Phase 8，按 SPEC 18.1 优先补 retrieval low-evidence recovery：结果过少时自动放宽一次检索窗口，仍不足则明确 low-evidence mode。
+- 2026-03-09 01:44 +08 retrieval recovery 第一轮实现已完成：新增 `_run_retrieval_with_recovery()`，低召回时自动放宽 `year_from` 一次；`RetrievalSummary.coverage_assessment=low` 与 `ReviewSummary.failed_paper_ids` 现在会把对应 stage summary 标记为 `degraded`。focused tests 当前 `6 passed`。
+- 2026-03-09 01:56 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `47 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 206.52s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `48 passed in 236.87s`。

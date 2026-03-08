@@ -108,6 +108,12 @@
   - 真实 live test 发现 planner 偶发漏填 `counterevidence_ids`，导致 `save_hypotheses` 校验失败；已在 workspace tools 增加基于 conflict clusters 的 repair。
   - fresh real API round-trip 已恢复通过，结果为 `1 passed in 173.55s`。
   - 带真实 API 的全量 fresh verification 已通过，结果为 `45 passed in 186.22s`。
+  - 当前开始 Phase 8，目标是按 SPEC 18.1 补 retrieval low-evidence recovery，并把非异常型降级映射到 stage summary。
+  - 已新增 `tests/unit/test_retrieval_recovery.py` 和 `tests/integration/test_stage_degradation_status.py`，固定 retrieval broaden retry 与 degraded stage summary 行为。
+  - 当前 focused tests 已通过，结果为 `6 passed in 0.27s`。
+  - fresh 全量本地测试已通过，结果为 `47 passed, 1 skipped in 0.63s`。
+  - fresh 真实 API round-trip 已通过，结果为 `1 passed in 206.52s`。
+  - 带真实 API 的全量 fresh verification 已通过，结果为 `48 passed in 236.87s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -174,6 +180,10 @@
 | Hypothesis repair unit test | `./.venv/bin/pytest tests/unit/test_workspace_tools.py -v` | 缺失 `counterevidence_ids` 时按 conflict clusters 自动补齐 | `1 passed in 0.23s` | pass |
 | Fresh live API after planner repair | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | 真实 planner 不再因缺失 `counterevidence_ids` 导致整 run 失败 | `1 passed in 173.55s` | pass |
 | Full pytest with live API after Phase 7 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | 阶段摘要、batched review 与真实 API 一起通过 | `45 passed in 186.22s` | pass |
+| Retrieval recovery focused tests | `./.venv/bin/pytest tests/unit/test_retrieval_recovery.py tests/integration/test_stage_degradation_status.py tests/integration/test_coordinator.py tests/integration/test_coordinator_degradation.py -v` | retrieval broaden retry 与 degraded stage summary 正确 | `6 passed in 0.27s` | pass |
+| Full pytest after Phase 8 | `./.venv/bin/pytest -v` | retrieval recovery 改动未破坏默认路径 | `47 passed, 1 skipped in 0.63s` | pass |
+| Fresh live API after retrieval recovery | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | retrieval broaden retry 改动未破坏真实路径 | `1 passed in 206.52s` | pass |
+| Full pytest with live API after Phase 8 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | retrieval recovery 与真实 API 一起通过 | `48 passed in 236.87s` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -183,8 +193,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 7: Remaining SPEC Hardening 已完成 |
-| Where am I going? | 当前可以转向剩余 SPEC 项，例如更细粒度的 planner repair/retry 或异步运行面 |
-| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review 都纳入可重复验证 |
-| What have I learned? | 真实模型输出需要在入库边界做轻量 repair，尤其是 hypotheses 的 counterevidence 约束 |
-| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair 和远程同步 |
+| Where am I? | Phase 8: Retrieval Recovery Hardening 已完成 |
+| Where am I going? | 当前可以转向剩余 SPEC 项，例如 structured output retry/repair 或 planner-only rerun |
+| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery 都纳入可重复验证 |
+| What have I learned? | retrieval 的低召回恢复和显式 low-evidence mode 能明显缩小“看似完成但证据不足”的灰区 |
+| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery 和远程同步 |

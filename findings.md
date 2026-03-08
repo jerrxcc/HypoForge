@@ -66,6 +66,14 @@
 - 3. review 改为按 `review_batch_size` 分批执行，批次失败时保留已成功 evidence，并通过 `ReviewSummary.failed_paper_ids` 明示 partial extraction。
 - 真实 live test 进一步暴露：planner 的模型输出偶尔会遗漏 `counterevidence_ids`，这类缺口不应该让整条 run 失败；当前已在 `WorkspaceTools.save_hypotheses()` 入库边界加入 repair 逻辑，优先从相关 conflict clusters 的 `conflicting_evidence_ids` 自动补齐。
 - fresh live verification 已确认上述修复有效：真实 API round-trip 和带 live 的全量测试当前都通过。
+- 目前按 SPEC 剩余的高价值缺口主要落在 retrieval 侧：
+- 1. 结果过少时还没有“一次自动放宽 query/year range”的恢复流程；
+- 2. `coverage_assessment=low` 或 review partial extraction 当前并不会自动反映成结构化 stage summary 的 `degraded` 状态。
+- 当前第一轮修复设计如下：
+- 1. retrieval 首次结果低于阈值时，会自动执行一次放宽后的 second pass，目前先落到 `year_from - 5`；
+- 2. second pass 仍低于阈值时，返回明确的 low-evidence mode，避免把低召回伪装成正常完成；
+- 3. coordinator 现在会把 retrieval low-evidence 和 review partial extraction 映射成 `stage_summaries[*].status = degraded`。
+- fresh live verification 已确认 retrieval recovery 没有破坏真实 API 路径：真实 round-trip 和带 live 的全量测试都已转绿。
 
 ## Technical Decisions
 | Decision | Rationale |

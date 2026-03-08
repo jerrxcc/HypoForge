@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import logging
 
-from hypoforge.domain.schemas import CriticSummary, PlannerSummary, RetrievalSummary, ReviewSummary, RunConstraints, RunRequest, RunResult
+from hypoforge.domain.schemas import (
+    CriticSummary,
+    PlannerSummary,
+    RetrievalSummary,
+    ReviewSummary,
+    RunConstraints,
+    RunRequest,
+    RunResult,
+    StageStatus,
+)
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.infrastructure.db.repository import RunRepository
 
@@ -139,9 +148,26 @@ class RunCoordinator:
         summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
     ) -> None:
         payload = summary.model_dump()
-        self._repository.finish_stage(run_id, stage_name, summary=payload)
+        self._repository.finish_stage(
+            run_id,
+            stage_name,
+            summary=payload,
+            status=self._stage_status(summary),
+        )
         self._logger.info(
             "%s stage completed",
             stage_name,
             extra={"run_id": run_id, "summary": payload},
         )
+
+    def _stage_status(
+        self,
+        summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
+    ) -> StageStatus:
+        if isinstance(summary, RetrievalSummary):
+            if summary.coverage_assessment == "low" or summary.needs_broader_search:
+                return "degraded"
+        if isinstance(summary, ReviewSummary):
+            if summary.failed_paper_ids:
+                return "degraded"
+        return "completed"

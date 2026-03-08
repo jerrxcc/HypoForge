@@ -151,24 +151,39 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         return invoke
 
     def retrieval_agent(run_id: str, topic: str, constraints) -> RetrievalSummary:
-        runner = AgentRunner(
-            provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval),
-            output_model=RetrievalSummary,
-            agent_name="retrieval",
-            model_name=settings.openai_model_retrieval,
-            max_tool_steps=settings.max_tool_steps_retrieval,
-        )
-        return runner.execute(
-            instructions=prompt_for("retrieval"),
-            context={"topic": topic, "constraints": constraints.model_dump()},
-            tool_names=[
-                "search_openalex_works",
-                "search_semantic_scholar_papers",
-                "recommend_semantic_scholar_papers",
-                "get_paper_details",
-                "save_selected_papers",
-            ],
+        def execute_attempt(
+            attempt_constraints: RunConstraints,
+            broadened: bool,
+        ) -> tuple[RetrievalSummary, int]:
+            runner = AgentRunner(
+                provider=provider,
+                tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval),
+                output_model=RetrievalSummary,
+                agent_name="retrieval",
+                model_name=settings.openai_model_retrieval,
+                max_tool_steps=settings.max_tool_steps_retrieval,
+            )
+            summary = runner.execute(
+                instructions=prompt_for("retrieval"),
+                context={
+                    "topic": topic,
+                    "constraints": attempt_constraints.model_dump(),
+                    "retrieval_mode": "broadened" if broadened else "default",
+                },
+                tool_names=[
+                    "search_openalex_works",
+                    "search_semantic_scholar_papers",
+                    "recommend_semantic_scholar_papers",
+                    "get_paper_details",
+                    "save_selected_papers",
+                ],
+            )
+            return summary, len(repository.load_selected_papers(run_id))
+
+        return _run_retrieval_with_recovery(
+            topic=topic,
+            constraints=constraints,
+            execute_attempt=execute_attempt,
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
@@ -426,6 +441,33 @@ def _review_papers_in_batches(
         low_confidence_paper_ids=low_confidence_paper_ids,
         failed_paper_ids=failed_paper_ids,
     )
+
+
+def _run_retrieval_with_recovery(
+    *,
+    topic: str,
+    constraints: RunConstraints,
+    execute_attempt: Callable[[RunConstraints, bool], tuple[RetrievalSummary, int]],
+) -> RetrievalSummary:
+    minimum_threshold = min(12, constraints.max_selected_papers)
+    first_summary, first_count = execute_attempt(constraints, False)
+    if first_count >= minimum_threshold:
+        return first_summary
+
+    broadened_constraints = constraints.model_copy(
+        update={"year_from": max(2000, constraints.year_from - 5)}
+    )
+    second_summary, second_count = execute_attempt(broadened_constraints, True)
+    second_summary.search_notes.append("broadened retrieval window after low recall")
+    if second_count >= minimum_threshold:
+        return second_summary
+
+    second_summary.coverage_assessment = "low"
+    second_summary.needs_broader_search = True
+    second_summary.search_notes.append(
+        f"low evidence mode activated for '{topic}' after broadened retrieval ({second_count}/{minimum_threshold} papers)"
+    )
+    return second_summary
 
 
 def build_fake_services(
