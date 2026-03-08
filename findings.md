@@ -82,6 +82,12 @@
 - 2. retry 后仍然不合法时，进入宿主侧 `repair_output` 回调；
 - 3. retrieval/review/critic/planner 分别挂轻量 repairer，优先补齐缺失字段和保守默认值，而不是强行篡改核心结论。
 - fresh live verification 已确认 structured output recovery 没有破坏真实 API 路径：真实 round-trip 和带 live 的全量测试当前均通过。
+- 当前按 SPEC 剩余的高价值缺口之一是 `18.4 planner failure` 的后半句：虽然 planner 失败时已经返回 partial result，但还没有“只重跑 planner”的显式入口。
+- 当前第一轮修复设计如下：
+- 1. 新增 `RunCoordinator.rerun_planner(run_id)`，复用现有 evidence/conflict 状态重新执行 planner；
+- 2. 新增 `POST /v1/runs/{run_id}/planner/rerun`，返回更新后的 `RunResult`；
+- 3. 若 rerun 前缺少 evidence cards，则返回冲突错误而不是静默执行。
+- fresh live verification 已确认 planner rerun 改动没有破坏真实默认链路；这次真实 round-trip 偏慢，但最终仍通过。
 
 ## Technical Decisions
 | Decision | Rationale |

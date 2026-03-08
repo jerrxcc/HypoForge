@@ -135,6 +135,35 @@ class RunCoordinator:
         run = self._repository.get_run(run_id)
         return run.final_report_md or ""
 
+    def rerun_planner(self, run_id: str) -> RunResult:
+        self._repository.get_run(run_id)
+        if not self._repository.load_evidence_cards(run_id):
+            raise RuntimeError(f"planner rerun requires evidence cards: {run_id}")
+
+        self._repository.update_run_status(run_id, "planning", error_message=None)
+        self._repository.start_stage(run_id, "planner")
+        self._logger.info("planner rerun started", extra={"run_id": run_id})
+        try:
+            planner_summary = self._planner_agent(run_id)
+            self._finish_stage(run_id, "planner", planner_summary)
+            self._repository.update_run_status(run_id, "done", error_message=None)
+        except Exception as exc:
+            self._repository.finish_stage(
+                run_id,
+                "planner",
+                summary={},
+                status="degraded",
+                error_message=str(exc),
+            )
+            self._repository.update_run_status(
+                run_id,
+                "failed",
+                error_message="planner unavailable",
+            )
+            self._render_partial_report(run_id)
+            self._logger.warning("planner rerun degraded", extra={"run_id": run_id})
+        return self._repository.build_final_result(run_id)
+
     def _render_partial_report(self, run_id: str) -> None:
         result = self._repository.build_final_result(run_id)
         if result.report_markdown:

@@ -36,3 +36,15 @@ def get_trace(run_id: str, request: Request) -> list[dict]:
 def get_report(run_id: str, request: Request) -> str:
     coordinator = request.app.state.services.coordinator
     return coordinator.get_report_markdown(run_id)
+
+
+@router.post("/{run_id}/planner/rerun", response_model=RunResponseBody)
+def rerun_planner(run_id: str, request: Request) -> RunResponseBody:
+    coordinator = request.app.state.services.coordinator
+    try:
+        result = coordinator.rerun_planner(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return RunResponseBody(**result.model_dump())

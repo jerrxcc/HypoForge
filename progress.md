@@ -120,6 +120,12 @@
   - fresh 全量本地测试已通过，结果为 `49 passed, 1 skipped in 0.63s`。
   - fresh 真实 API round-trip 已通过，结果为 `1 passed in 235.53s`。
   - 带真实 API 的全量 fresh verification 已通过，结果为 `50 passed in 228.74s`。
+  - 当前开始 Phase 10，目标是按 SPEC 18.4 增加 planner-only rerun。
+  - 已扩展 `tests/integration/test_coordinator_degradation.py` 和 `tests/integration/test_runs_api.py`，覆盖 coordinator rerun 与 API rerun 路径。
+  - 当前 focused tests 已通过，结果为 `6 passed in 0.29s`。
+  - fresh 全量本地测试已通过，结果为 `51 passed, 1 skipped in 0.66s`。
+  - fresh 真实 API round-trip 已通过，结果为 `1 passed in 452.52s`。
+  - 带真实 API 的全量 fresh verification 已通过，结果为 `52 passed in 296.65s`。
 - Files created/modified:
   - `task_plan.md` (updated)
   - `findings.md` (updated)
@@ -194,6 +200,10 @@
 | Full pytest after Phase 9 | `./.venv/bin/pytest -v` | structured output recovery 未破坏默认路径 | `49 passed, 1 skipped in 0.63s` | pass |
 | Fresh live API after Phase 9 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | runner 级 retry/repair 未破坏真实路径 | `1 passed in 235.53s` | pass |
 | Full pytest with live API after Phase 9 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | structured output recovery 与真实 API 一起通过 | `50 passed in 228.74s` | pass |
+| Planner rerun focused tests | `./.venv/bin/pytest tests/integration/test_coordinator_degradation.py tests/integration/test_runs_api.py -v` | coordinator rerun 和 API rerun 正确 | `6 passed in 0.29s` | pass |
+| Full pytest after Phase 10 | `./.venv/bin/pytest -v` | planner rerun 改动未破坏默认路径 | `51 passed, 1 skipped in 0.66s` | pass |
+| Fresh live API after Phase 10 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | planner rerun 改动未破坏真实主流程 | `1 passed in 452.52s` | pass |
+| Full pytest with live API after Phase 10 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | planner rerun 与真实 API 一起通过 | `52 passed in 296.65s` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -203,8 +213,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 9: Structured Output Recovery 已完成 |
-| Where am I going? | 当前可以转向剩余 SPEC 项，例如 planner-only rerun 或更系统的 budget 面 |
-| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery、structured output recovery 都纳入可重复验证 |
-| What have I learned? | 把 structured output 的 retry 和 repair 放在 runner 边界，比在各 stage 零散打补丁更稳 |
-| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery、structured output recovery 和远程同步 |
+| Where am I? | Phase 10: Planner Rerun Recovery 已完成 |
+| Where am I going? | 当前可以转向剩余 SPEC 项，例如更系统的 budget 面或 planner rerun 的真实故障回放验证 |
+| What's the goal? | 从 SPEC 构建 HypoForge MVP，并把真实 API、阶段摘要、batched review、retrieval recovery、structured output recovery、planner rerun 都纳入可重复验证 |
+| What have I learned? | planner 失败恢复最好作为显式能力暴露，而不是只停留在 partial result |
+| What have I done? | 已完成工程搭建、真实 API round-trip、带 live 的全量验证、结构化 stage summaries、batched review、planner hypothesis repair、retrieval recovery、structured output recovery、planner rerun 和远程同步 |

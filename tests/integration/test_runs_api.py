@@ -26,6 +26,10 @@ class FakeCoordinator:
         del run_id
         return [{"tool_name": "search_openalex_works"}]
 
+    def rerun_planner(self, run_id: str) -> RunResult:
+        del run_id
+        return self._result
+
 
 def test_post_runs_returns_final_result() -> None:
     services = ServiceContainer(coordinator=FakeCoordinator())
@@ -45,3 +49,13 @@ def test_get_trace_returns_trace_entries() -> None:
 
     assert response.status_code == 200
     assert response.json()[0]["tool_name"] == "search_openalex_works"
+
+
+def test_post_rerun_planner_returns_final_result() -> None:
+    services = ServiceContainer(coordinator=FakeCoordinator())
+    client = TestClient(create_app(services=services))
+
+    response = client.post("/v1/runs/run_123/planner/rerun")
+
+    assert response.status_code == 200
+    assert response.json()["run_id"] == "run_123"

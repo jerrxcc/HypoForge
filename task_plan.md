@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 9 in progress
+Phase 10 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -70,6 +70,12 @@ Phase 9 in progress
 - [x] 为上述恢复路径补齐 TDD 和 fresh verification
 - **Status:** complete
 
+### Phase 10: Planner Rerun Recovery
+- [x] 实现 planner-only rerun 能力
+- [x] 通过 API 暴露 planner rerun 路径
+- [x] 为 rerun 路径补齐 TDD 和 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -120,3 +126,6 @@ Phase 9 in progress
 - 2026-03-09 02:03 +08 当前进入 Phase 9，按 SPEC 18.5 优先补 structured output recovery：先做一次自动重试，再做宿主侧 repair parse。
 - 2026-03-09 02:08 +08 structured output recovery 第一轮实现已完成：`AgentRunner` 在 output model 校验失败时会先发一次 schema retry prompt，再走 repair callback；retrieval/review/critic/planner 已挂各自 repairer。focused tests 当前 `4 passed`。
 - 2026-03-09 02:20 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `49 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 235.53s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `50 passed in 228.74s`。
+- 2026-03-09 02:27 +08 当前进入 Phase 10，按 SPEC 18.4 优先补 planner-only rerun。
+- 2026-03-09 02:31 +08 planner rerun 第一轮实现已完成：新增 `RunCoordinator.rerun_planner()` 与 `POST /v1/runs/{run_id}/planner/rerun`。focused tests 当前 `6 passed`。
+- 2026-03-09 02:44 +08 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `51 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 452.52s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `52 passed in 296.65s`。
