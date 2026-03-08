@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 4
+Phase 5
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -27,16 +27,16 @@ Phase 4
 - **Status:** complete
 
 ### Phase 4: Git & Remote Sync
-- [ ] 初始化本地 Git 仓库
-- [ ] 配置 `.gitignore`、首次提交
-- [ ] 创建并推送远程仓库
-- **Status:** in_progress
+- [x] 初始化本地 Git 仓库
+- [x] 配置 `.gitignore`、首次提交
+- [x] 创建并推送远程仓库
+- **Status:** complete
 
 ### Phase 5: Verification & Delivery
-- [ ] 运行测试与必要验证命令
-- [ ] 更新 `progress.md` 与最终状态
-- [ ] 向用户交付结果与后续说明
-- **Status:** pending
+- [x] 运行测试与必要验证命令
+- [x] 更新 `progress.md` 与最终状态
+- [x] 向用户交付结果与后续说明
+- **Status:** complete
 
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
@@ -61,3 +61,4 @@ Phase 4
 - 远程同步需要明确托管平台/可见性，或确认采用默认假设。
 - 每完成一个阶段都要同步更新本文件、`findings.md` 和 `progress.md`。
 - GitHub CLI 已登录，可直接创建并推送私有仓库。
+- 远程仓库已创建并推送到 `https://github.com/jerrxcc/HypoForge.git`。

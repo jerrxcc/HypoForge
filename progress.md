@@ -61,11 +61,25 @@
   - `tests/e2e/test_end_to_end.py` (created)
 
 ### Phase 4: Git & Remote Sync
-- **Status:** in_progress
+- **Status:** complete
 - Actions taken:
   - 确认 `gh auth status` 已登录账号 `jerrxcc`，可直接创建 GitHub 私有仓库。
+  - 初始化本地 Git 仓库并确认分支为 `main`。
+  - 使用 `gh api user` 读取账号资料后，在仓库本地设置 Git 提交身份 `Cyrus <chu.yue@foxmail.com>`。
+  - 创建根提交 `6b193c4 feat: initialize HypoForge MVP`。
+  - 创建并推送 GitHub 私有仓库 `https://github.com/jerrxcc/HypoForge.git`。
 - Files created/modified:
   - `task_plan.md` (updated)
+
+### Phase 5: Verification & Delivery
+- **Status:** complete
+- Actions taken:
+  - 全量测试、CLI smoke、`uvicorn` 启动验证均已完成。
+  - 准备向用户交付仓库地址、验证证据与剩余说明。
+- Files created/modified:
+  - `task_plan.md` (updated)
+  - `findings.md` (updated)
+  - `progress.md` (updated)
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -76,6 +90,8 @@
 | Full pytest | `./.venv/bin/pytest -v` | 全量测试通过 | `20 passed in 0.32s` | pass |
 | Fake CLI smoke | `./.venv/bin/python scripts/run_topic.py "solid-state battery electrolyte" --fake --database-url sqlite:///./hypoforge.cli.smoke.db` | 输出完成 run 且 hypotheses=3 | 返回 `status=done`、`hypothesis_count=3` 并打印报告 | pass |
 | Uvicorn boot | `./.venv/bin/uvicorn hypoforge.api.app:create_app --factory --host 127.0.0.1 --port 8000` | 应用成功启动 | 日志显示 `Application startup complete`，随后正常 Ctrl-C 退出 | pass |
+| GitHub auth | `gh auth status` | 当前账号已登录且具备 repo scope | 已登录 `jerrxcc`，scope 含 `repo` | pass |
+| Remote push | `gh repo create HypoForge --private --source=. --remote=origin --push` | 远程仓库创建并推送成功 | `HEAD -> main` 且已设置跟踪分支 | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -85,8 +101,8 @@
 ## 5-Question Reboot Check
 | Question | Answer |
 |----------|--------|
-| Where am I? | Phase 1: Requirements & Discovery |
-| Where am I going? | Git 初始化与远程同步 -> 最终交付 |
+| Where am I? | Phase 5: Verification & Delivery |
+| Where am I going? | 最终交付 |
 | What's the goal? | 从 SPEC 构建 HypoForge MVP，并完成 Git 与远程同步 |
 | What have I learned? | 项目已具备可测试的真实集成边界和稳定 fake e2e 路径，GitHub CLI 已登录 |
-| What have I done? | 已完成工程搭建、全量测试、CLI smoke、app boot 验证，正准备推送远程 |
+| What have I done? | 已完成工程搭建、验证、首次提交、GitHub 私有仓库创建与推送 |

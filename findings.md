@@ -32,6 +32,7 @@
 |-------|------------|
 | 当前目录不是 Git 仓库 | 记录为待办，在实现完成后初始化并推送 |
 | 远程仓库信息未知 | 需要在设计确认阶段明确或采用默认假设 |
+| Git 提交缺少 `user.name` / `user.email` | 通过 `gh api user` 读取当前账号资料，并在仓库本地设置提交身份 |
 
 ## Resources
 - SPEC: `/Users/ccy/Documents/KEY/HypoForge/SPEC.md`
