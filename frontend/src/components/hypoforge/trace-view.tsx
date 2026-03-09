@@ -26,13 +26,17 @@ function TraceList({
   activeTrace,
   onSelect,
   isLoading,
-  error
+  error,
+  latestTraceId,
+  runIsActive
 }: {
   traces: ToolTrace[] | undefined;
   activeTrace: ToolTrace | null;
   onSelect: (traceId: string) => void;
   isLoading: boolean;
   error: string | null;
+  latestTraceId: string | null;
+  runIsActive: boolean;
 }) {
   return (
     <div className='space-y-2 p-4'>
@@ -53,7 +57,11 @@ function TraceList({
             'w-full rounded-[1.5rem] border p-4 text-left transition-colors',
             activeTrace?.id === trace.id
               ? 'border-primary/25 bg-primary/8'
-              : 'border-border/70 bg-background/70 hover:bg-background'
+              : 'border-border/70 bg-background/70 hover:bg-background',
+            runIsActive &&
+              latestTraceId === trace.id &&
+              activeTrace?.id !== trace.id &&
+              'border-primary/20 bg-primary/5 shadow-sm'
           )}
         >
           <div className='mb-2 flex items-start justify-between gap-3'>
@@ -63,7 +71,14 @@ function TraceList({
                 {trace.agent_name} • step {index + 1}
               </div>
             </div>
-            <RunStatusBadge status={trace.success ? 'done' : 'failed'} />
+            <div className='flex items-center gap-2'>
+              {runIsActive && latestTraceId === trace.id ? (
+                <span className='rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-primary'>
+                  Latest
+                </span>
+              ) : null}
+              <RunStatusBadge status={trace.success ? 'done' : 'failed'} />
+            </div>
           </div>
           <div className='text-muted-foreground text-xs leading-6'>
             {trace.latency_ms} ms
@@ -235,13 +250,15 @@ export function TraceView({ runId }: { runId: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent className='p-0'>
-            <TraceList
-              traces={traces ?? undefined}
-              activeTrace={activeTrace}
-              onSelect={setSelectedId}
-              isLoading={isLoading}
-              error={traceError}
-            />
+              <TraceList
+                traces={traces ?? undefined}
+                activeTrace={activeTrace}
+                onSelect={setSelectedId}
+                isLoading={isLoading}
+                error={traceError}
+                latestTraceId={latestTrace?.id ?? null}
+                runIsActive={runIsActive}
+              />
           </CardContent>
         </Card>
 
@@ -263,6 +280,8 @@ export function TraceView({ runId }: { runId: string }) {
                   onSelect={setSelectedId}
                   isLoading={isLoading}
                   error={traceError}
+                  latestTraceId={latestTrace?.id ?? null}
+                  runIsActive={runIsActive}
                 />
               </ScrollArea>
             </ResizablePanel>

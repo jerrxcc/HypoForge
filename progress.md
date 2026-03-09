@@ -221,6 +221,9 @@
 | Full pytest after archive live-docket polish | `./.venv/bin/pytest -q` | active archive 入口和运行中徽章改动未影响默认后端路径 | `66 passed, 6 skipped in 0.85s` | pass |
 | Frontend lint after archive live-docket polish | `cd frontend && npm run lint` | `Runs` 页筛选与 active 状态反馈无 ESLint 问题 | 通过 | pass |
 | Frontend build after archive live-docket polish | `cd frontend && npm run build` | `Runs` 页 live docket 与筛选兼容生产构建 | 通过；仅有 `baseline-browser-mapping` 过旧提示 | pass |
+| Full pytest after time-cue polish | `./.venv/bin/pytest -q` | stage update cues 与 latest trace emphasis 未影响默认后端路径 | `66 passed, 6 skipped in 1.55s` | pass |
+| Frontend lint after time-cue polish | `cd frontend && npm run lint` | 时间感提示与默认展开逻辑无 ESLint 问题 | 通过 | pass |
+| Frontend build after time-cue polish | `cd frontend && npm run build` | 时间感提示与 latest trace 强调兼容生产构建 | 通过；仅有 `baseline-browser-mapping` 过旧提示 | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

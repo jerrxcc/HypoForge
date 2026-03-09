@@ -129,6 +129,7 @@ Phase 18 in progress
 - [x] 新增异步 run launch，支持前端立即跳转到 live dossier 并轮询流程状态
 - [x] 补运行中态的 loading skeleton、当前阶段强调和 trace/report live feedback
 - [x] 为 `Runs` 页补 active run 快速入口、状态筛选和更明显的运行中徽章反馈
+- [x] 为 `Overview / Trace` 补“刚更新/正在运行/最新 trace”这一层时间感提示
 - [ ] 提交并推送本轮前端 polish
 - **Status:** in_progress
 
@@ -244,3 +245,5 @@ Phase 18 in progress
 - 2026-03-09 19:39 +08 本轮 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
 - 2026-03-09 19:46 +08 已继续加强 archive 工作流：`Runs` 页新增 live docket 快速入口、`All/Active/Completed/Failed` 筛选，以及运行中 run 的更显著动态标记。
 - 2026-03-09 19:47 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
+- 2026-03-09 19:55 +08 已继续做最后一层时间感 polish：`Overview` 的当前阶段卡片现在会强调“Receiving updates now / Updated x ago”，并默认展开当前或异常阶段的原始 payload；`Trace` 的最新条目会得到 `Latest` 标记和更强的 live 强调。
+- 2026-03-09 19:56 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。

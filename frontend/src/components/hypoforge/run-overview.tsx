@@ -1,5 +1,6 @@
 'use client';
 
+import { formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, Microscope, Search, Sparkles, Split } from 'lucide-react';
 
 import { RunHero } from '@/components/hypoforge/run-hero';
@@ -145,11 +146,21 @@ export function RunOverview({ runId }: { runId: string }) {
             {run.stage_summaries.map((summary) => (
               <div
                 key={summary.stage_name}
-                className='rounded-[1.75rem] border border-border/70 bg-background/75 p-5'
+                className={
+                  summary.stage_name === activeStage && runIsActive
+                    ? 'rounded-[1.75rem] border border-primary/25 bg-primary/6 p-5 shadow-sm'
+                    : 'rounded-[1.75rem] border border-border/70 bg-background/75 p-5'
+                }
               >
                 <div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
                   <div className='min-w-0'>
-                    <div className='text-muted-foreground text-[11px] uppercase tracking-[0.18em]'>
+                    <div className='text-muted-foreground flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]'>
+                      {summary.stage_name === activeStage && runIsActive ? (
+                        <span className='relative flex size-2.5'>
+                          <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-35' />
+                          <span className='relative inline-flex size-2.5 rounded-full bg-primary' />
+                        </span>
+                      ) : null}
                       {summary.stage_name}
                     </div>
                     <div className='mt-2 font-serif text-2xl capitalize'>
@@ -158,6 +169,15 @@ export function RunOverview({ runId }: { runId: string }) {
                     <p className='text-muted-foreground mt-2 max-w-2xl text-sm leading-6'>
                       {getStageDescription(summary.stage_name)}
                     </p>
+                    <div className='text-muted-foreground mt-3 text-xs leading-6'>
+                      {summary.stage_name === activeStage && runIsActive
+                        ? 'Receiving updates now.'
+                        : summary.completed_at
+                          ? `Updated ${formatDistanceToNow(new Date(summary.completed_at), {
+                              addSuffix: true
+                            })}`
+                          : 'Awaiting first checkpoint.'}
+                    </div>
                   </div>
                   {summary.error_message ? (
                     <div className='rounded-full border border-destructive/20 bg-destructive/10 px-3 py-1 text-xs text-destructive'>
@@ -193,7 +213,14 @@ export function RunOverview({ runId }: { runId: string }) {
                   ))}
                 </div>
 
-                <details className='mt-4 rounded-2xl border border-border/60 bg-muted/35 px-4 py-3'>
+                <details
+                  className='mt-4 rounded-2xl border border-border/60 bg-muted/35 px-4 py-3'
+                  open={
+                    (summary.stage_name === activeStage && runIsActive) ||
+                    summary.status === 'degraded' ||
+                    summary.status === 'failed'
+                  }
+                >
                   <summary className='cursor-pointer text-sm font-medium'>
                     View raw stage payload
                   </summary>
