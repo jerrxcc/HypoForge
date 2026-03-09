@@ -73,6 +73,19 @@ class RunState(BaseModel):
     trace_path: str | None = None
 
 
+class RunSummary(BaseModel):
+    run_id: str
+    topic: str
+    status: RunStatus
+    created_at: datetime
+    updated_at: datetime
+    selected_paper_count: int = Field(ge=0)
+    evidence_card_count: int = Field(ge=0)
+    conflict_cluster_count: int = Field(ge=0)
+    hypothesis_count: int = Field(ge=0)
+    error_message: str | None = None
+
+
 class PaperDetail(BaseModel):
     paper_id: str
     external_ids: dict[str, str | int | None] = Field(default_factory=dict)

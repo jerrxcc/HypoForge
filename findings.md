@@ -134,6 +134,66 @@
 - 2. 先前失败的两个 topic targeted rerun 已转绿；
 - 3. 完整 5-topic golden regression 现已 `5/5` 通过。
 - 默认全量测试也已重新确认通过，说明 golden regression 的 helper 和 planner repair 没有破坏日常测试面。
+- 前端设计相关新发现：
+- 1. `pbakaus/impeccable` 相关 skill 已经安装在本机，`frontend-design` 可直接使用，无需额外安装；
+- 2. 这套 skill 强调的是有明确美学立场的、非模板化 dashboard，而不是默认深色霓虹或普通 SaaS 卡片堆叠；
+- 3. 当前仓库仍然是 backend-only，没有现成前端壳子，因此需要先确定“内部研究工作台”还是“对外展示型产品页”为主。
+- 用户已确认前端定位为“对外展示型 demo 产品页”，但核心受众是研究人员。
+- 这意味着页面需要兼顾两类目标：
+- 1. 对外展示：第一屏要快速说明 HypoForge 是什么、为什么可信；
+- 2. 研究人员心智：中后段必须展示流程、trace、evidence、stage progress 和 hypotheses 产物，而不是纯营销文案。
+- 用户进一步澄清：他要的不是介绍型网页，而是“操作界面”。
+- 因此前端信息架构应直接以应用首页/dashboard 为中心，不再保留传统 landing page hero + 营销段落的模式。
+- 用户继续确认了两个关键约束：
+- 1. 前端第一版必须能直接输入 topic 并启动真实 run；
+- 2. 整体结构采用“多视图控制台”，而不是单页堆叠工作台；
+- 3. 页面必须可视化每一个阶段，而不是只显示最终 hypotheses。
+- 用户对前端基底给出明确偏好：优先直接复用 [Kiranism/next-shadcn-dashboard-starter](https://github.com/Kiranism/next-shadcn-dashboard-starter)，并只做最小必要调整。
+- 这意味着前端策略应从“完全原创 dashboard shell”收敛为“复用成熟开源壳子 + 定制 HypoForge 的信息架构和研究工作流视图”。
+- 用户已确认为前端补一个最小后端扩展：新增 `GET /v1/runs` 列表接口。
+- 因此前端 `Runs` 页面可以基于服务端真实历史数据实现，而不是只依赖浏览器本地缓存。
+- 用户再次明确要求按既定方案执行，不能在实现前偏离这套边界：
+- 1. `New Run`
+- 2. `Runs`
+- 3. `Run Detail / Overview`
+- 4. `Trace`
+- 5. `Report`
+- 当前这版方案已经足以进入实现，不需要再继续发散式设计讨论。
+- starter 的当前结构与这套方案是匹配的：
+- 1. `src/app/dashboard/layout.tsx` 可直接承载 HypoForge 的 app shell；
+- 2. `src/config/nav-config.ts` 可以轻量改成 `New Run` / `Runs`；
+- 3. `react-resizable-panels` 适合 `Trace` 的左右分栏；
+- 4. `@tanstack/react-table` 适合 `Runs` 列表；
+- 5. 需要移除 `@clerk/nextjs` 认证门禁，否则和当前 backend-only demo 冲突。
+- 视觉边界也已经固定，不应再摇摆：
+- 1. 默认浅色；
+- 2. 学术编辑台；
+- 3. 纸白、墨蓝灰、氧化青、赭红；
+- 4. `Newsreader + IBM Plex Sans`；
+- 5. 不是工业控制台，也不是营销页。
+- `SPEC.md` 明确“不做复杂前端”，因此前端第一版只做薄壳消费 API，这和当前已确认的方案完全一致。
+- 面向前端的第一批最小后端扩展已经落地并转绿：
+- 1. 新增 `RunSummary` / `RunSummaryBody`；
+- 2. `GET /v1/runs` 已可返回 runs 列表；
+- 3. `RunCoordinator` / `RunRepository` 已暴露列表能力；
+- 4. FastAPI 已支持可配置 CORS，适合本地 `frontend` 直接联调。
+- 前端当前已经不再是纯 scaffold，而是可运行的真实工作台：
+- 1. `New Run` 可直接发起真实 `POST /v1/runs`；
+- 2. `Runs` 消费 `GET /v1/runs` 展示真实历史；
+- 3. `Run Overview` 消费 `GET /v1/runs/{id}` 展示 stage summaries 与结果摘要；
+- 4. `Trace` 消费 `GET /v1/runs/{id}/trace`；
+- 5. `Report` 消费 `GET /v1/runs/{id}/report.md`。
+- starter 残留的 demo 代码很多，如果全部纳入 TS/ESLint 会拖累验证链；当前已通过 `tsconfig` / ESLint ignore 只保留 HypoForge 实际运行路径的检查面。
+- 当前前端验证面是稳定的：
+- 1. `npx tsc --noEmit` 通过；
+- 2. `npm run lint` 通过；
+- 3. `npm run build` 通过；
+- 4. backend 契约相关测试 `13 passed`。
+- 前后端联调 smoke 也已通过：
+- 1. `http://127.0.0.1:3000/` 会重定向到 `/dashboard/new-run`；
+- 2. `http://127.0.0.1:3000/dashboard/new-run` 正常返回 `HypoForge Console`；
+- 3. `http://127.0.0.1:8000/v1/runs` 正常返回真实 run 列表。
+- 当前已知非阻断项只有一个：`baseline-browser-mapping` 过旧提示，会在 build 时重复打印，但不影响产物和路由生成。
 
 ## Technical Decisions
 | Decision | Rationale |
@@ -145,6 +205,11 @@
 | 使用 `.venv` + Python 3.12 作为本地执行环境 | 满足 SPEC 推荐版本并避开系统 Python 3.9 |
 | 默认运行时接真实 provider/connector 边界，默认验证路径使用 fake services | 保持真实集成入口，同时避免本地验证依赖外部密钥和网络 |
 | 真实 retrieval 候选池保存在 `build_default_services()` 的 `run_id` 级闭包缓存中 | 允许模型只用 `paper_ids` 调用 `save_selected_papers`，更贴近真实 tool-calling 行为 |
+| 前端单独放在仓库顶层 `frontend/` 目录 | 避免 Python 打包环境和 Next 构建环境互相污染 |
+| 全局导航只保留 `New Run` / `Runs`，run 详情内部再切 `Overview` / `Trace` / `Report` | 更符合研究工作流，不会让用户在全局层级迷失当前 run 上下文 |
+| 前端先通过 `NEXT_PUBLIC_API_BASE_URL` 直连后端 API，必要时补 CORS | 比在 Next 内再加一层代理更直接，适合第一版 demo |
+| Run 列表接口返回轻量 summary，而不是完整 `RunResult` | 避免 `Runs` 页面加载过重，也让路由契约更稳定 |
+| 先保留 starter 的部分未使用依赖与组件文件，但通过路由清理和 lint/type exclusion 隔离掉 demo 噪音 | 更符合“最小必要调整”，避免把时间浪费在不影响当前功能的模板大清扫上 |
 
 ## Issues Encountered
 | Issue | Resolution |
@@ -158,6 +223,8 @@
 | 真实路径没有保存 tool traces | 在默认服务 `make_tool_invoker()` 中按调用记录 args、摘要、耗时、模型名和成功状态 |
 | fresh verification 脚本直接访问 `services.repository` 失败 | 改为使用 `services.coordinator` 或单独构造 `RunRepository` 读取最新 run / trace |
 | fresh verification 脚本直接访问 `repo.get_latest_runs()` 失败 | `RunRepository` 并未暴露该 helper，改为通过 `RunRow.created_at` 底层查询最新 run |
+| starter 默认启用 Clerk | 当前项目不做认证，因此实现时需要移除该依赖和相关路由守卫 |
+| starter 默认 ESLint 配置与当前 `eslint-config-next` 组合会报 circular structure | 已替换为更简单稳定的 TypeScript ESLint 配置，并把未接入的 demo 目录排除在 lint 外 |
 
 ## Resources
 - SPEC: `/Users/ccy/Documents/KEY/HypoForge/SPEC.md`
@@ -166,6 +233,9 @@
 - test-driven-development skill: `/Users/ccy/.codex/superpowers/skills/test-driven-development/SKILL.md`
 - design doc: `/Users/ccy/Documents/KEY/HypoForge/docs/plans/2026-03-08-hypoforge-design.md`
 - implementation plan: `/Users/ccy/Documents/KEY/HypoForge/docs/plans/2026-03-08-hypoforge-mvp.md`
+- frontend design doc: `/Users/ccy/Documents/KEY/HypoForge/docs/plans/2026-03-09-hypoforge-frontend-design.md`
+- frontend implementation plan: `/Users/ccy/Documents/KEY/HypoForge/docs/plans/2026-03-09-hypoforge-frontend-implementation.md`
+- frontend app root: `/Users/ccy/Documents/KEY/HypoForge/frontend`
 
 ## Visual/Browser Findings
 - 无

@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@import './theme.css';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 16%, transparent) 0%, transparent 34%),
+      linear-gradient(180deg, color-mix(in oklab, var(--sidebar) 28%, transparent), transparent 28%);
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to right,
+      color-mix(in oklab, var(--border) 35%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 32px 32px;
+    mask-image: linear-gradient(180deg, black 0%, transparent 85%);
+    opacity: 0.3;
+  }
+}

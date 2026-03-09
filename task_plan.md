@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 14 in progress
+Phase 16 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -100,6 +100,20 @@ Phase 14 in progress
 - [x] 运行 golden regression 并更新文档/验证记录
 - **Status:** complete
 
+### Phase 15: Frontend Design
+- [x] 基于 `frontend-design` 和 impeccable 指令型 skill 明确视觉方向与信息架构
+- [x] 选择合适的开源前端框架/组件基底，避免重复造轮子
+- [x] 输出设计方案并获用户确认后，再进入实现
+- **Status:** complete
+
+### Phase 16: Frontend Implementation
+- [x] 按已确认方案引入 `Kiranism/next-shadcn-dashboard-starter` 到 `frontend/`
+- [x] 先补 `GET /v1/runs` 与轻量 run list schema
+- [x] 完成 `New Run`、`Runs`、`Run Detail / Overview`、`Trace`、`Report` 五个视图
+- [x] 完成主题 token、字体、stage progress 与 trace inspector 的最小定制
+- [x] 运行前后端联调与验证
+- **Status:** in_progress
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -113,6 +127,10 @@ Phase 14 in progress
 | 默认按 GitHub 私有仓库 `HypoForge` 同步远程 | 用户已确认继续按默认假设执行 |
 | 真实外部依赖通过 adapter 保留，端到端验证默认使用 fake services | 既满足可测试性，又保留 OpenAI/OpenAlex/S2 接线点 |
 | 真实链路调试继续遵循 `planning-with-files`，每轮修复后立即落盘 | 用户明确要求持续记录，避免上下文压缩丢失 |
+| 前端采用 `Kiranism/next-shadcn-dashboard-starter` 作为壳子，并做最小必要调整 | 用户明确要求复用现成框架，不重复造轮子 |
+| 前端主视图固定为 `New Run`、`Runs`、`Run Detail / Overview`、`Trace`、`Report` | 用户已经确认这一版信息架构 |
+| 视觉方向固定为浅色“学术编辑台” | 用户明确要求默认浅色，且更适合研究人员 |
+| 后端新增 `GET /v1/runs` 和轻量 run list schema | 为 `Runs` 页面提供真实历史数据 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -167,3 +185,14 @@ Phase 14 in progress
 - 2026-03-09 11:29 +08 已完成 planner supporting-evidence repair，失败的两个 topic 先做 targeted rerun 后转绿：`2 passed, 3 deselected in 409.99s`。
 - 2026-03-09 11:47 +08 5-topic golden regression fresh verification 已完成：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` 为 `5 passed in 1089.48s`。
 - 2026-03-09 11:48 +08 默认全量测试已再次确认通过：`./.venv/bin/pytest -v` 为 `61 passed, 6 skipped`。
+- 2026-03-09 13:43 +08 当前进入 Phase 15：按 `frontend-design` 与 impeccable 风格，为 HypoForge 设计首个 dashboard 型前端界面。
+- 2026-03-09 14:12 +08 Phase 15 已完成：前端方案固定为复用 `Kiranism/next-shadcn-dashboard-starter`，保留 app shell/sidebar/shadcn primitives，替换默认首页、示例数据、导航结构和所有业务页面。
+- 2026-03-09 14:12 +08 详情视图边界已固定：全局导航只保留 `New Run` / `Runs`，run 详情内部再切 `Overview` / `Trace` / `Report`。
+- 2026-03-09 14:12 +08 当前进入 Phase 16：开始按 TDD 落地 `GET /v1/runs`、前端壳子和五个工作流视图。
+- 2026-03-09 14:21 +08 Phase 16 第一轮 red-green 已完成：新增 `RunSummary` / `RunSummaryBody`、`GET /v1/runs`、`RunCoordinator.list_runs()` 和 `RunRepository.list_runs()`；同时补了可配置 CORS，使本地 `frontend` 可直接访问 FastAPI。
+- 2026-03-09 14:21 +08 当前 focused backend verification 为 `./.venv/bin/pytest tests/integration/test_runs_api.py tests/integration/test_health_api.py -v`，结果 `6 passed`。
+- 2026-03-09 14:43 +08 `frontend/` 已接入 starter 壳并去模板化：移除 auth/proxy 路由门禁，根路由与 `/dashboard` 都改为跳转到 `/dashboard/new-run`。
+- 2026-03-09 14:43 +08 前端五个视图已落地：`New Run`、`Runs`、`Run Overview`、`Trace`、`Report`，并通过 `NEXT_PUBLIC_API_BASE_URL` 直连现有 FastAPI。
+- 2026-03-09 14:43 +08 当前前端验证结果：`npx tsc --noEmit` 通过，`npm run lint` 通过，`npm run build` 通过。仅剩 `baseline-browser-mapping` 版本过旧提示，不阻断构建。
+- 2026-03-09 14:49 +08 前后端本地联调 smoke 已完成：前端 `/` 正常 307 到 `/dashboard/new-run`，页面标题返回 `HypoForge Console`；后端 `GET /v1/runs` 返回真实 run 列表 JSON。
+- 2026-03-09 14:49 +08 当前进入 Phase 17：推送前端集成状态到远程，并执行全流程 fresh verification，覆盖 backend 全量、真实 API、golden topics、frontend build 与浏览器级 smoke。

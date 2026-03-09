@@ -3,10 +3,16 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 
-from hypoforge.api.schemas import RunRequestBody, RunResponseBody
+from hypoforge.api.schemas import RunRequestBody, RunResponseBody, RunSummaryBody
 
 
 router = APIRouter(prefix="/v1/runs", tags=["runs"])
+
+
+@router.get("", response_model=list[RunSummaryBody])
+def list_runs(request: Request) -> list[RunSummaryBody]:
+    coordinator = request.app.state.services.coordinator
+    return [RunSummaryBody(**item.model_dump()) for item in coordinator.list_runs()]
 
 
 @router.post("", response_model=RunResponseBody)

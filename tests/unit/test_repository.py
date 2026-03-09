@@ -224,3 +224,47 @@ def test_repository_allows_duplicate_conflict_cluster_ids_across_runs(tmp_path) 
 
     assert repo.load_conflict_clusters(run_one.run_id)[0].cluster_id == "cluster_1"
     assert repo.load_conflict_clusters(run_two.run_id)[0].cluster_id == "cluster_1"
+
+
+def test_repository_lists_runs_with_counts_and_latest_first(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    older = repo.create_run(RunRequest(topic="older topic"))
+    newer = repo.create_run(RunRequest(topic="newer topic"))
+
+    repo.save_selected_papers(
+        older.run_id,
+        papers=[
+            PaperDetail(
+                paper_id="p1",
+                title="Paper 1",
+                abstract="Abstract 1",
+                year=2024,
+                authors=["A. Author"],
+            )
+        ],
+        selection_reason="seed",
+    )
+    repo.save_evidence_cards(
+        older.run_id,
+        [
+            EvidenceCard(
+                evidence_id="e1",
+                paper_id="p1",
+                title="Paper 1",
+                claim_text="Claim",
+                system_or_material="System",
+                intervention="Intervention",
+                outcome="Outcome",
+                direction="positive",
+                confidence=0.8,
+            )
+        ],
+    )
+    repo.update_run_status(older.run_id, "reviewing")
+
+    summaries = repo.list_runs()
+
+    assert [summary.run_id for summary in summaries] == [older.run_id, newer.run_id]
+    assert summaries[0].selected_paper_count == 1
+    assert summaries[0].evidence_card_count == 1
+    assert summaries[1].selected_paper_count == 0

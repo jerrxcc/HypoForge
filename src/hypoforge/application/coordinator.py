@@ -10,6 +10,7 @@ from hypoforge.domain.schemas import (
     RunConstraints,
     RunRequest,
     RunResult,
+    RunSummary,
     StageStatus,
 )
 from hypoforge.application.report_renderer import ReportRenderer
@@ -127,6 +128,9 @@ class RunCoordinator:
 
     def get_run_result(self, run_id: str) -> RunResult:
         return self._repository.build_final_result(run_id)
+
+    def list_runs(self) -> list[RunSummary]:
+        return self._repository.list_runs()
 
     def get_trace(self, run_id: str) -> list[dict]:
         return self._repository.list_tool_traces(run_id)

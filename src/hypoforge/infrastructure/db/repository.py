@@ -4,7 +4,7 @@ from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from hypoforge.domain.schemas import (
@@ -15,6 +15,7 @@ from hypoforge.domain.schemas import (
     RunConstraints,
     RunRequest,
     RunResult,
+    RunSummary,
     StageName,
     StageStatus,
     StageSummary,
@@ -70,6 +71,11 @@ class RunRepository:
             if row is None:
                 raise KeyError(f"run not found: {run_id}")
             return self._to_run_state(session, row)
+
+    def list_runs(self) -> list[RunSummary]:
+        with self._session_factory() as session:
+            rows = session.execute(select(RunRow).order_by(RunRow.updated_at.desc())).scalars()
+            return [self._to_run_summary(session, row) for row in rows]
 
     def update_run_status(
         self,
@@ -425,4 +431,25 @@ class RunRepository:
             hypothesis_ids=hypothesis_ids,
             final_report_md=row.final_report_md,
             trace_path=f"/v1/runs/{row.id}/trace",
+        )
+
+    def _to_run_summary(self, session: Session, row: RunRow) -> RunSummary:
+        return RunSummary(
+            run_id=row.id,
+            topic=row.topic,
+            status=row.status,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+            selected_paper_count=self._count_rows(session, RunPaperRow, row.id),
+            evidence_card_count=self._count_rows(session, EvidenceCardRow, row.id),
+            conflict_cluster_count=self._count_rows(session, ConflictClusterRow, row.id),
+            hypothesis_count=self._count_rows(session, HypothesisRow, row.id),
+            error_message=row.error_message,
+        )
+
+    def _count_rows(self, session: Session, row_type, run_id: str) -> int:
+        return int(
+            session.execute(
+                select(func.count()).select_from(row_type).where(row_type.run_id == run_id)
+            ).scalar_one()
         )

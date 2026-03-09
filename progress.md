@@ -271,3 +271,89 @@
 
 ## Session Note: 2026-03-09 11:48 +08
 - 默认全量再次确认：`./.venv/bin/pytest -v` -> `61 passed, 6 skipped in 0.74s`。
+
+## Session Note: 2026-03-09 13:43 +08
+- 已切入 Phase 15 前端设计探索：确认 `frontend-design` 与 impeccable 的命令型 skill 已安装，可直接作为设计约束使用。
+- 当前代码库仍无前端基底，因此需要先锁定页面定位和框架方向，再进入实现。
+
+## Session Note: 2026-03-09 13:45 +08
+- 已获得前端关键定位：页面是“对外展示型 demo 产品页”，目标用户是研究人员。
+- 设计方向因此偏向“研究工作流仪表盘 + 展示页混合体”，而不是普通市场化 landing page。
+
+## Session Note: 2026-03-09 13:47 +08
+- 用户进一步明确不要介绍型网页，而要直接可操作的界面。
+- 前端方向已收敛为“研究工作台 dashboard”，后续设计会围绕 run 提交、阶段进度、trace、证据和 hypothesis 结果展开。
+
+## Session Note: 2026-03-09 13:49 +08
+- 用户确认第一版前端需要直接启动真实 run，并采用“多视图控制台”结构。
+- 设计重点因此转向：`New Run / Runs / Trace / Report` 这类研究控制台导航，而不是单页式信息堆叠。
+
+## Session Note: 2026-03-09 13:55 +08
+- 用户进一步给出框架偏好：优先直接复用 `Kiranism/next-shadcn-dashboard-starter`，前端只做最小必要调整。
+- 前端设计策略因此收敛为“复用现成 dashboard shell + 替换成 HypoForge 的研究工作流内容层”。
+
+## Session Note: 2026-03-09 13:58 +08
+- 用户确认前端可以配套补 `GET /v1/runs` 列表接口。
+- 这使得 `Runs` 页面可以直接读取服务端真实运行历史，符合多视图控制台定位。
+
+## Session Note: 2026-03-09 14:12 +08
+- 用户再次要求严格按既定前端方案执行，不要在实现前偏离：
+- 1. 采用 `Kiranism/next-shadcn-dashboard-starter` 作为壳子；
+- 2. 主视图固定为 `New Run`、`Runs`、`Run Detail / Overview`、`Trace`、`Report`；
+- 3. 保留 app shell/sidebar/shadcn primitives，替换默认首页、示例数据、导航结构和业务页面；
+- 4. 视觉固定为浅色学术编辑台。
+- 当前开始把该方案正式写入 `docs/plans/`，然后直接进入 TDD 实现。
+
+## Session Note: 2026-03-09 14:18 +08
+- Phase 16 第一轮 backend TDD 已开始。
+- `GET /v1/runs` 的红阶段已确认：先在 `tests/integration/test_runs_api.py` 写了列表测试，初次运行因为 `RunSummary` 和列表路由缺失而失败。
+- 随后已补最小实现：`RunSummary` / `RunSummaryBody`、`RunCoordinator.list_runs()`、`RunRepository.list_runs()`、`GET /v1/runs`。
+
+## Session Note: 2026-03-09 14:21 +08
+- CORS 的红绿也已完成：先在 `tests/integration/test_health_api.py` 写 preflight 测试，初次失败于 `create_app()` 还不接受 `settings` 且无 CORS middleware。
+- 现已补 `frontend_allowed_origins` 配置和 FastAPI `CORSMiddleware`。
+- Focused verification：`./.venv/bin/pytest tests/integration/test_runs_api.py tests/integration/test_health_api.py -v` -> `6 passed in 0.28s`。
+
+## Session Note: 2026-03-09 14:29 +08
+- 已把 `Kiranism/next-shadcn-dashboard-starter` 拷入 `frontend/`，开始做 auth-free 的 HypoForge 化改造。
+- 先删掉了会进入路由树的 auth/about/privacy/terms/workspaces/product/kanban/billing/exclusive/overview 页面，避免前端仍保留明显的模板入口。
+
+## Session Note: 2026-03-09 14:35 +08
+- 已完成前端壳子的第一轮重写：
+- 1. root 和 `/dashboard` 都跳到 `/dashboard/new-run`；
+- 2. sidebar 只保留 `New Run` / `Runs`；
+- 3. 默认主题改为浅色 `hypoforge`；
+- 4. 字体改为 `Newsreader + IBM Plex Sans + IBM Plex Mono`；
+- 5. `providers.tsx` 已移除 Clerk 包裹，`src/proxy.ts` 已删除。
+
+## Session Note: 2026-03-09 14:39 +08
+- 已完成前端 API client 与五个主视图：
+- 1. `frontend/src/lib/hypoforge.ts`
+- 2. `frontend/src/hooks/use-hypoforge.ts`
+- 3. `New Run` / `Runs` / `Run Overview` / `Trace` / `Report`
+- 当前实现使用 `NEXT_PUBLIC_API_BASE_URL` 直连 FastAPI。
+
+## Session Note: 2026-03-09 14:41 +08
+- 首轮前端校验暴露三类问题：
+- 1. starter 的 TS 配置尾部残留错误字段；
+- 2. `react-markdown` 尚未安装；
+- 3. 另一版占位页面内容覆盖了五个 app route 文件。
+- 上述问题已逐一修复，并重新让 `npx tsc --noEmit` 转绿。
+
+## Session Note: 2026-03-09 14:43 +08
+- 前端完整验证已完成：
+- 1. `cd frontend && npx tsc --noEmit` -> pass
+- 2. `cd frontend && npm run lint` -> pass
+- 3. `cd frontend && npm run build` -> pass
+- backend 契约验证也已再次通过：
+- `./.venv/bin/pytest tests/unit/test_repository.py tests/integration/test_runs_api.py tests/integration/test_health_api.py -v` -> `13 passed in 0.50s`
+- 非阻断提示：Next build 会打印 `baseline-browser-mapping` 版本过旧提醒，但不影响构建与路由生成。
+
+## Session Note: 2026-03-09 14:49 +08
+- 前后端本地联调 smoke 已完成：
+- 1. 启动 `uvicorn hypoforge.api.app:create_app --factory --host 127.0.0.1 --port 8000`；
+- 2. 启动 `cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000`；
+- 3. `curl -I http://127.0.0.1:3000/` 返回 `307` 并指向 `/dashboard/new-run`；
+- 4. `curl http://127.0.0.1:3000/dashboard/new-run` 返回标题 `HypoForge Console`；
+- 5. `curl http://127.0.0.1:8000/v1/runs` 返回真实 run 列表 JSON；
+- 6. 验证后已停止本地前后端 dev 进程。
