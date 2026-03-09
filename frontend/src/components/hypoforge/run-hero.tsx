@@ -22,10 +22,13 @@ export function RunHero({
               Run dossier
             </div>
             <CardTitle className='font-serif text-3xl leading-tight tracking-tight md:text-4xl'>
-              Editorial review workspace
+              {run.topic}
             </CardTitle>
             <div className='text-muted-foreground max-w-2xl space-y-2 text-sm leading-relaxed'>
-              <p>Evidence-backed hypothesis generation with full trace visibility.</p>
+              <p>
+                Editorial review workspace with full trace visibility, structured stage
+                checkpoints, and a final hypothesis memo.
+              </p>
               <div className='inline-flex max-w-full rounded-full border border-border/70 bg-background/75 px-3 py-1 font-mono text-[12px] break-all'>
                 {runId}
               </div>
@@ -48,6 +51,21 @@ export function RunHero({
         </div>
       </CardHeader>
       <CardContent className='space-y-6 pt-6'>
+        <div className='flex flex-wrap gap-2'>
+          {[
+            ['papers', run.selected_papers.length],
+            ['evidence', run.evidence_cards.length],
+            ['clusters', run.conflict_clusters.length],
+            ['hypotheses', run.hypotheses.length]
+          ].map(([label, value]) => (
+            <div
+              key={String(label)}
+              className='rounded-full border border-border/70 bg-background/75 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground'
+            >
+              {label}: <span className='text-foreground'>{value}</span>
+            </div>
+          ))}
+        </div>
         <StageProgressBand
           runStatus={run.status}
           stageSummaries={run.stage_summaries}

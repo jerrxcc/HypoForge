@@ -220,6 +220,7 @@ class StageSummary(BaseModel):
 
 class RunResult(BaseModel):
     run_id: str
+    topic: str
     status: RunStatus
     selected_papers: list[PaperDetail] = Field(default_factory=list)
     evidence_cards: list[EvidenceCard] = Field(default_factory=list)

@@ -379,6 +379,7 @@ class RunRepository:
         run = self.get_run(run_id)
         return RunResult(
             run_id=run.run_id,
+            topic=run.topic,
             status=run.status,
             selected_papers=self.load_selected_papers(run_id),
             evidence_cards=self.load_evidence_cards(run_id),

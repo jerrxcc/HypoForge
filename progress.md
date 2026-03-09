@@ -207,6 +207,10 @@
 | Full pytest after Phase 10 | `./.venv/bin/pytest -v` | planner rerun 改动未破坏默认路径 | `51 passed, 1 skipped in 0.66s` | pass |
 | Fresh live API after Phase 10 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | planner rerun 改动未破坏真实主流程 | `1 passed in 452.52s` | pass |
 | Full pytest with live API after Phase 10 | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` | planner rerun 与真实 API 一起通过 | `52 passed in 296.65s` | pass |
+| RunResult topic red-green | `./.venv/bin/pytest tests/unit/test_repository.py tests/unit/test_report_renderer.py tests/integration/test_runs_api.py -q` | 详情页结果体带回 `topic` 并保持 API 契约稳定 | `12 passed in 0.42s` | pass |
+| Full pytest after Phase 18 polish | `./.venv/bin/pytest -q` | 前端 polish 相关 schema/contract 改动未破坏默认后端路径 | `65 passed, 6 skipped in 0.97s` | pass |
+| Frontend lint after Phase 18 polish | `cd frontend && npm run lint` | 控制台页面与新字段变更无 ESLint 问题 | 通过 | pass |
+| Frontend build after Phase 18 polish | `cd frontend && npm run build` | Next.js 生产构建与新增 `topic` 契约兼容 | 通过；仅有 `baseline-browser-mapping` 过旧提示 | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

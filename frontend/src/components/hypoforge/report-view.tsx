@@ -15,9 +15,41 @@ export function ReportView({ runId }: { runId: string }) {
     return <div className='p-8 text-sm text-destructive'>{runError ?? 'Run not found'}</div>;
   }
 
+  const totalLimitations = run.hypotheses.reduce(
+    (count, hypothesis) => count + hypothesis.limitations.length,
+    0
+  );
+  const totalUncertaintyNotes = run.hypotheses.reduce(
+    (count, hypothesis) => count + hypothesis.uncertainty_notes.length,
+    0
+  );
+  const avgScore =
+    run.hypotheses.reduce((sum, hypothesis) => sum + hypothesis.overall_score, 0) /
+      Math.max(run.hypotheses.length, 1);
+
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
+      <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
+        {[
+          ['Hypotheses', run.hypotheses.length, 'Ranked claims retained in the final report.'],
+          ['Evidence cards', run.evidence_cards.length, 'Structured support carried into drafting.'],
+          ['Average score', avgScore.toFixed(2), `${totalLimitations} limitation note(s) across all ranks.`],
+          ['Uncertainty notes', totalUncertaintyNotes, 'Caveats preserved in the final editorial draft.']
+        ].map(([label, value, detail]) => (
+          <div
+            key={String(label)}
+            className='rounded-[1.55rem] border border-border/70 bg-card/95 px-5 py-4 shadow-sm'
+          >
+            <div className='text-muted-foreground text-[11px] uppercase tracking-[0.18em]'>
+              {label}
+            </div>
+            <div className='mt-3 font-serif text-3xl'>{value}</div>
+            <div className='text-muted-foreground mt-2 text-sm leading-6'>{detail}</div>
+          </div>
+        ))}
+      </div>
+
       <div className='grid gap-6 2xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]'>
         <Card className='border-border/70 bg-card/95 shadow-sm'>
           <CardHeader>
@@ -38,9 +70,11 @@ export function ReportView({ runId }: { runId: string }) {
               <div className='text-sm text-destructive'>{reportError}</div>
             ) : null}
             {report ? (
-              <article className='prose prose-slate max-w-none rounded-[2rem] border border-border/60 bg-background/75 px-6 py-6 prose-headings:font-serif prose-headings:tracking-tight prose-h1:text-4xl prose-h1:leading-tight prose-h2:border-t prose-h2:border-border/60 prose-h2:pt-6 prose-h2:text-2xl prose-p:text-[15px] prose-p:leading-8 prose-li:text-[15px] prose-li:leading-7 prose-strong:text-foreground'>
-                <ReactMarkdown>{report}</ReactMarkdown>
-              </article>
+              <div className='rounded-[2rem] border border-border/60 bg-background/75 px-6 py-6'>
+                <article className='prose prose-slate mx-auto max-w-4xl prose-headings:font-serif prose-headings:tracking-tight prose-h1:text-4xl prose-h1:leading-tight prose-h2:border-t prose-h2:border-border/60 prose-h2:pt-6 prose-h2:text-2xl prose-p:text-[15px] prose-p:leading-8 prose-li:text-[15px] prose-li:leading-7 prose-strong:text-foreground'>
+                  <ReactMarkdown>{report}</ReactMarkdown>
+                </article>
+              </div>
             ) : null}
           </CardContent>
         </Card>

@@ -258,6 +258,16 @@
 - 无
 - 2026-03-09 18:15 +08 前端全面 polish 的关键发现：
 - 1. `Runs` 页不仅有 overflow 问题，也有信息层级过于模板化的问题；历史失败 run 的长错误应作为二级上下文，而不是主导整行布局。
+- 2026-03-09 19:08 +08 新一轮前端 polish 的关键发现：
+- 1. run 详情页缺少 `topic`，导致 `Overview / Trace / Report` 只能共享一个通用标题，dossier 识别度不够；
+- 2. `New Run` 的右栏只有流程说明，缺少启动前的操作性提示，像说明书而不像控制台；
+- 3. sidebar footer 仍写着 `Demo mode`，和当前真实 API 运行路径不一致；
+- 4. `Trace / Report` 需要比“单纯正文”更多一层研究语义摘要，帮助研究人员快速判断是否值得继续深挖。
+
+## Latest Decisions
+- 2026-03-09 19:09 +08 决定把 `RunResult` 扩成真正可供详情页消费的 dossier 头部数据，至少带回 `topic`；这类信息不应再让前端依赖 run list 上下文拼接。
+- 2026-03-09 19:10 +08 本轮前端打磨继续遵循“最小改动 starter 壳，只优化信息层与语义摘要”的边界，不引入新的前端框架或大规模壳层重构。
+- 2026-03-09 19:14 +08 `RunHero` 统一改为 topic 驱动标题，`New Run` 增加 `Launch profile`，`Trace` 增加 `Cache hits`，`Report` 增加 `Uncertainty notes`，作为研究工作流的高价值摘要层。
 - 2. `Overview / Trace / Report` 虽然已经可用，但原始 JSON 和阶段状态过于“裸露”，研究人员需要更可读的摘要映射，而不是直接面对后端字段名。
 - 3. `StageProgressBand` 在 1024px 仍然四列展示会让 `critic/planner` 长文案变成窄高条，属于密度过高而非严格 overflow，但会显著损害可读性。
 - 4. 当前前端仍没有独立 test runner；这轮按既有约束使用 `lint + build + Playwright breakpoint inspection` 作为验证路径，没有临时引入新的测试栈。

@@ -173,6 +173,7 @@ def test_repository_builds_final_result(tmp_path) -> None:
 
     result = repo.build_final_result(run.run_id)
 
+    assert result.topic == "solid-state battery electrolyte"
     assert result.status == "done"
     assert len(result.selected_papers) == 1
     assert len(result.hypotheses) == 3

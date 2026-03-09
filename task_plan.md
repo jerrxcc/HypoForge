@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 16 in progress
+Phase 18 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -114,6 +114,21 @@ Phase 16 in progress
 - [x] 运行前后端联调与验证
 - **Status:** in_progress
 
+### Phase 17: Frontend Verification & Sync
+- [x] 推送前端集成状态到远程
+- [x] 执行 backend 全量、frontend build 与浏览器级 smoke
+- [x] 修复 golden regression 暴露的 retrieval under-select 稳定性问题
+- **Status:** complete
+
+### Phase 18: Frontend Polish
+- [x] 修复控制台布局的右侧空白与流体宽度问题
+- [x] 收紧 `Runs / Overview / Trace / Report` 的展示密度与摘要层级
+- [x] 将 run 详情头部改为真实 `topic` 驱动，而不是通用标题
+- [x] 补前后端 red-green 测试，确保 `RunResult` 带回 `topic`
+- [x] 完成 frontend lint/build 与 backend 全量验证
+- [ ] 提交并推送本轮前端 polish
+- **Status:** in_progress
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -215,3 +230,7 @@ Phase 16 in progress
 - 2026-03-09 18:40 +08 fresh frontend verification 已再次完成：`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过；Playwright 在 `2048x1295` 下复查 `/dashboard/runs/{id}`，`content width = 1980px`、`first card = 1916px`、`scrollWidth == viewport`。
 - 2026-03-09 18:47 +08 用户继续指出 `new-run` 页面仍然“超出屏幕显示范围”。已定位为 `.workspace-shell` 使用 `100vw` 参与计算，忽略了 sidebar 占位宽度，导致内容宽度大于父容器。
 - 2026-03-09 18:50 +08 已将 `.workspace-shell` 修正为父容器驱动：`width: 100%; max-width: 1980px; margin-inline: auto;`。Playwright 复查 `/dashboard/new-run` 时，右侧 `Pipeline` 卡已完整回到主区域，`content width = 1980px`、`grid width = 1916px`、`scrollWidth == viewport`。
+- 2026-03-09 19:08 +08 当前继续进行 Phase 18 细化 polish：开始把 run 详情页从“通用工作台标题”改成真实 topic 驱动，并进一步提升 `New Run / Trace / Report` 的研究语义摘要。
+- 2026-03-09 19:11 +08 已按 TDD 先补 red test：`RunResult` 详情结果必须带回 `topic`，以支撑 dossier 头部展示真实研究主题；`tests/unit/test_repository.py` 与 `tests/integration/test_runs_api.py` 先红后绿。
+- 2026-03-09 19:14 +08 本轮 polish 已完成代码层落地：`RunHero` 改为真实 topic 标题并补 papers/evidence/clusters/hypotheses 胶囊摘要，`New Run` 右栏新增 `Launch profile`，`Trace` 新增 cache-hit 摘要，`Report` 新增 uncertainty 摘要，sidebar 的 `Demo mode` 已替换为 `Live API`。
+- 2026-03-09 19:17 +08 当前 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `65 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。

@@ -38,6 +38,7 @@ def test_report_renderer_contains_three_hypotheses() -> None:
     markdown = renderer.render(
         RunResult(
             run_id="run_1",
+            topic="solid-state battery electrolyte",
             status="done",
             hypotheses=[_hypothesis(1), _hypothesis(2), _hypothesis(3)],
         )

@@ -93,6 +93,7 @@ export type Hypothesis = {
 
 export type RunResult = {
   run_id: string;
+  topic: string;
   status: RunStatus;
   selected_papers: PaperDetail[];
   evidence_cards: EvidenceCard[];

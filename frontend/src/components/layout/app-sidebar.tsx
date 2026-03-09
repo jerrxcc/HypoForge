@@ -86,7 +86,7 @@ export default function AppSidebar() {
             className='mt-3 gap-1 group-data-[collapsible=icon]:hidden'
           >
             <IconRosetteDiscountCheck className='size-3.5' />
-            Demo mode
+            Live API
           </Badge>
         </div>
       </SidebarFooter>

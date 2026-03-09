@@ -12,6 +12,7 @@ class FakeCoordinator:
         timestamp = datetime.now(UTC)
         self._result = RunResult(
             run_id="run_123",
+            topic="solid-state battery electrolyte",
             status="done",
             report_markdown="# Report",
             trace_url="/v1/runs/run_123/trace",
@@ -68,6 +69,7 @@ def test_post_runs_returns_final_result() -> None:
     response = client.post("/v1/runs", json={"topic": "solid-state battery electrolyte"})
 
     assert response.status_code == 200
+    assert response.json()["topic"] == "solid-state battery electrolyte"
     assert response.json()["status"] == "done"
 
 

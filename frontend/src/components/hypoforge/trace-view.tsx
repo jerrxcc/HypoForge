@@ -162,10 +162,34 @@ export function TraceView({ runId }: { runId: string }) {
   }
 
   const activeTrace = traces?.find((trace) => trace.id === selectedId) ?? traces?.[0] ?? null;
+  const traceList = traces ?? [];
+  const failedTraceCount = traceList.filter((trace) => !trace.success).length;
+  const plannerTraceCount = traceList.filter((trace) => trace.agent_name === 'planner').length;
+  const cacheHitCount = traceList.filter((trace) => trace.result_summary.cache_hit === true).length;
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
+
+      <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
+        {[
+          ['Trace steps', traceList.length, 'Recorded tool calls in this dossier.'],
+          ['Failed steps', failedTraceCount, 'Calls that need extra inspection or rerun.'],
+          ['Planner turns', plannerTraceCount, 'Late-stage synthesis and report-writing steps.'],
+          ['Cache hits', cacheHitCount, 'Connector responses reused without another external call.']
+        ].map(([label, value, detail]) => (
+          <div
+            key={String(label)}
+            className='rounded-[1.55rem] border border-border/70 bg-card/95 px-5 py-4 shadow-sm'
+          >
+            <div className='text-muted-foreground text-[11px] uppercase tracking-[0.18em]'>
+              {label}
+            </div>
+            <div className='mt-3 font-serif text-3xl'>{value}</div>
+            <div className='text-muted-foreground mt-2 text-sm leading-6'>{detail}</div>
+          </div>
+        ))}
+      </div>
 
       <div className='grid gap-6 xl:hidden'>
         <Card className='border-border/70 bg-card/95 shadow-sm'>
