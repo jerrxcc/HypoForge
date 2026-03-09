@@ -9,6 +9,13 @@ class BudgetExceededError(RuntimeError):
         self.source = source
 
 
+class ToolStepBudgetExceededError(RuntimeError):
+    def __init__(self, *, agent_name: str, max_steps: int) -> None:
+        super().__init__(f"{agent_name} exceeded tool step budget ({max_steps})")
+        self.agent_name = agent_name
+        self.max_steps = max_steps
+
+
 @dataclass
 class RunBudgetTracker:
     max_openalex_calls: int

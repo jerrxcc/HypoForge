@@ -199,4 +199,10 @@ class RunCoordinator:
         if isinstance(summary, ReviewSummary):
             if summary.failed_paper_ids:
                 return "degraded"
+        if isinstance(summary, CriticSummary):
+            if any("budget exceeded" in note for note in summary.critic_notes):
+                return "degraded"
+        if isinstance(summary, PlannerSummary):
+            if any("budget exceeded" in note for note in summary.planner_notes):
+                return "degraded"
         return "completed"

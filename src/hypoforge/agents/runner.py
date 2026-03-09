@@ -4,6 +4,8 @@ import json
 from typing import Any
 from pydantic import ValidationError
 
+from hypoforge.application.budget import ToolStepBudgetExceededError
+
 
 class AgentRunner:
     def __init__(
@@ -45,7 +47,10 @@ class AgentRunner:
     def _consume_turns(self, turn, tool_names: list[str], step_count: int = 0):
         while turn.final_output is None:
             if step_count >= self._max_tool_steps:
-                raise RuntimeError(f"{self._agent_name} exceeded tool step budget")
+                raise ToolStepBudgetExceededError(
+                    agent_name=self._agent_name,
+                    max_steps=self._max_tool_steps,
+                )
             tool_outputs = []
             for call in turn.tool_calls:
                 if call.name not in tool_names:

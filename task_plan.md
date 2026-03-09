@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 12 in progress
+Phase 13 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -88,6 +88,12 @@ Phase 12 in progress
 - [x] 为上述 hardening 补齐 TDD、报告渲染验证和 fresh verification
 - **Status:** complete
 
+### Phase 13: Tool Step Budget Closure
+- [x] 将 `AgentRunner` 的 tool step 超限转为显式类型，而不是裸 `RuntimeError`
+- [x] 对 retrieval/review/critic/planner 落地“超步数即返回已有最优结果”的阶段收束
+- [x] 为 tool step budget 降级补齐 TDD 和 fresh verification
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -146,3 +152,6 @@ Phase 12 in progress
 - 2026-03-09 03:07 +08 在等待 Phase 11 的 fresh live verification 完成期间，继续对照 SPEC 第 18.3/19.2 节，进入 Phase 12：补 hypothesis 的 limitations / uncertainty 显式承载与宿主侧可信性修复。
 - 2026-03-09 03:12 +08 Phase 12 第一轮实现已完成：`Hypothesis` 新增 `limitations` / `uncertainty_notes`，`save_hypotheses` 会按 retrieval/review/critic 的 degrade 状态自动补齐可信性说明，report renderer 也已同步展示。focused tests 当前 `3 passed`。
 - 2026-03-09 03:21 +08 Phase 11/12 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `56 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 215.29s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `57 passed in 239.67s`。
+- 2026-03-09 03:28 +08 当前进入 Phase 13，目标是补齐 SPEC 16.3 剩余的 `tool step budget` 收束逻辑，并据此更新整体完成度评估。
+- 2026-03-09 03:34 +08 Phase 13 第一轮实现已完成：`AgentRunner` 现在抛 `ToolStepBudgetExceededError`，retrieval/review/critic/planner 都已接入阶段级收束；focused tests 当前 `8 passed`。
+- 2026-03-09 03:43 +08 Phase 13 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `59 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 179.16s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `60 passed in 293.01s`。

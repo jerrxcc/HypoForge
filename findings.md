@@ -106,6 +106,16 @@
 - 2. `save_hypotheses()` 现在会基于 `stage_summaries` 与 `conflict_clusters` 做宿主侧可信性标注；
 - 3. 即使 planner 不主动输出 `risks`，宿主也会补一条保守风险说明，避免最终报告看起来比证据条件更“确定”。
 - fresh verification 已确认上述 hardening 没有破坏真实 API 路径：本地全量为 `56 passed, 1 skipped`，live round-trip 为 `1 passed in 215.29s`，带 live 的全量为 `57 passed in 239.67s`。
+- 当前相对 SPEC 剩余的主要后端缺口已经不在主链路，而在控制面尾差：
+- 1. `AgentRunner` 的 `max_tool_steps` 现在会抛错，但还没有系统地转成“阶段结束并返回已有最优结果”；
+- 2. 这意味着第 16.3 节的 API 预算已经闭环，但 `tool step budget` 只算半完成；
+- 3. 这块补上后，MVP 级 backend 基本就只剩回归覆盖和前端接入问题了。
+- 当前第一轮实现已完成：
+- 1. `AgentRunner` 现在抛显式 `ToolStepBudgetExceededError`；
+- 2. retrieval budget 超限会返回 partial `RetrievalSummary`，而不是继续 broaden retry 或直接整 run 失败；
+- 3. review budget 超限会停止后续批次，返回已有 evidence 的 partial summary；
+- 4. critic/planner budget 超限会优先返回已保存的 clusters / hypotheses，并把阶段标成 `degraded`。
+- fresh verification 已确认 tool step budget 收束没有破坏真实 API 路径：本地全量为 `59 passed, 1 skipped`，live round-trip 为 `1 passed in 179.16s`，带 live 的全量为 `60 passed in 293.01s`。
 
 ## Technical Decisions
 | Decision | Rationale |

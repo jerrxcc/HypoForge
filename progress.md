@@ -235,3 +235,17 @@
 - 本地全量：`./.venv/bin/pytest -v` -> `56 passed, 1 skipped in 0.59s`。
 - 单独 live round-trip：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 215.29s`。
 - 带 live 的全量：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` -> `57 passed in 239.67s`。
+
+## Session Note: 2026-03-09 03:28 +08
+- 已进入 Phase 13：补齐 SPEC 16.3 中剩余的 `tool step budget` 收束逻辑。
+- 当前计划先写 red tests，覆盖 retrieval budget 收束、review 提前停机、以及 critic/planner 因 budget note 被标成 `degraded`。
+
+## Session Note: 2026-03-09 03:34 +08
+- Phase 13 第一轮 red-green 已完成：`AgentRunner` 改为抛 `ToolStepBudgetExceededError`，retrieval/review/critic/planner 都已接入阶段级收束。
+- Focused verification：`./.venv/bin/pytest tests/unit/test_retrieval_recovery.py tests/unit/test_review_batches.py tests/integration/test_stage_degradation_status.py -v` -> `8 passed in 0.22s`。
+
+## Session Note: 2026-03-09 03:43 +08
+- Phase 13 fresh verification 已完成。
+- 本地全量：`./.venv/bin/pytest -v` -> `59 passed, 1 skipped in 0.70s`。
+- 单独 live round-trip：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 179.16s`。
+- 带 live 的全量：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` -> `60 passed in 293.01s`。

@@ -1,3 +1,4 @@
+from hypoforge.application.budget import ToolStepBudgetExceededError
 from hypoforge.application.services import _review_papers_in_batches
 from hypoforge.domain.schemas import PaperDetail, ReviewSummary
 
@@ -68,3 +69,39 @@ def test_review_batches_raise_when_all_batches_fail() -> None:
         assert str(exc) == "all failed"
     else:
         raise AssertionError("expected batch failure to be raised")
+
+
+def test_review_batches_stop_early_when_tool_step_budget_exceeded() -> None:
+    papers = [
+        PaperDetail(paper_id="p1", title="Paper 1"),
+        PaperDetail(paper_id="p2", title="Paper 2"),
+        PaperDetail(paper_id="p3", title="Paper 3"),
+        PaperDetail(paper_id="p4", title="Paper 4"),
+        PaperDetail(paper_id="p5", title="Paper 5"),
+    ]
+    calls: list[list[str]] = []
+
+    def review_batch(batch: list[PaperDetail]) -> ReviewSummary:
+        batch_ids = [paper.paper_id for paper in batch]
+        calls.append(batch_ids)
+        if batch_ids == ["p3", "p4"]:
+            raise ToolStepBudgetExceededError(agent_name="review", max_steps=6)
+        return ReviewSummary(
+            papers_processed=len(batch),
+            evidence_cards_created=len(batch),
+            coverage_summary="ok",
+            dominant_axes=[],
+            low_confidence_paper_ids=[],
+        )
+
+    summary = _review_papers_in_batches(
+        selected_papers=papers,
+        batch_size=2,
+        review_batch=review_batch,
+    )
+
+    assert calls == [["p1", "p2"], ["p3", "p4"]]
+    assert summary.papers_processed == 2
+    assert summary.evidence_cards_created == 2
+    assert summary.failed_paper_ids == ["p3", "p4", "p5"]
+    assert "tool step budget exceeded" in summary.coverage_summary

@@ -11,7 +11,7 @@ from typing import Callable
 from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
-from hypoforge.application.budget import RunBudgetTracker
+from hypoforge.application.budget import RunBudgetTracker, ToolStepBudgetExceededError
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.config import Settings
@@ -198,6 +198,11 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             topic=topic,
             constraints=constraints,
             execute_attempt=execute_attempt,
+            on_tool_step_budget_exceeded=lambda: _build_retrieval_budget_summary(
+                topic=topic,
+                constraints=constraints,
+                selected_paper_ids=[paper.paper_id for paper in repository.load_selected_papers(run_id)],
+            ),
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
@@ -285,11 +290,14 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             max_tool_steps=settings.max_tool_steps_critic,
             repair_output=_repair_critic_output,
         )
-        return runner.execute(
-            instructions=prompt_for("critic"),
-            context={"run_id": run_id},
-            tool_names=["load_evidence_cards", "save_conflict_clusters"],
-        )
+        try:
+            return runner.execute(
+                instructions=prompt_for("critic"),
+                context={"run_id": run_id},
+                tool_names=["load_evidence_cards", "save_conflict_clusters"],
+            )
+        except ToolStepBudgetExceededError:
+            return _build_critic_budget_summary(repository.load_conflict_clusters(run_id))
 
     def planner_agent(run_id: str) -> PlannerSummary:
         runner = AgentRunner(
@@ -301,11 +309,18 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             max_tool_steps=settings.max_tool_steps_planner,
             repair_output=_repair_planner_output,
         )
-        return runner.execute(
-            instructions=prompt_for("planner"),
-            context={"run_id": run_id},
-            tool_names=["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"],
-        )
+        try:
+            return runner.execute(
+                instructions=prompt_for("planner"),
+                context={"run_id": run_id},
+                tool_names=["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"],
+            )
+        except ToolStepBudgetExceededError:
+            return _build_planner_budget_summary(
+                run_id=run_id,
+                repository=repository,
+                renderer=renderer,
+            )
 
     coordinator = RunCoordinator(
         repository=repository,
@@ -417,17 +432,23 @@ def _review_papers_in_batches(
     successful_summaries: list[ReviewSummary] = []
     failed_paper_ids: list[str] = []
     last_error: Exception | None = None
+    budget_exceeded = False
     total_batches = ceil(len(selected_papers) / batch_size)
 
     for index in range(0, len(selected_papers), batch_size):
         batch = selected_papers[index : index + batch_size]
         try:
             successful_summaries.append(review_batch(batch))
+        except ToolStepBudgetExceededError as exc:
+            failed_paper_ids.extend(paper.paper_id for paper in selected_papers[index:])
+            last_error = exc
+            budget_exceeded = True
+            break
         except Exception as exc:
             failed_paper_ids.extend(paper.paper_id for paper in batch)
             last_error = exc
 
-    if not successful_summaries and last_error is not None:
+    if not successful_summaries and last_error is not None and not budget_exceeded:
         raise last_error
 
     papers_processed = sum(summary.papers_processed for summary in successful_summaries)
@@ -447,6 +468,8 @@ def _review_papers_in_batches(
         f"processed {papers_processed}/{len(selected_papers)} selected papers "
         f"across {total_batches} batches"
     )
+    if budget_exceeded:
+        coverage_summary += "; tool step budget exceeded and review stopped early"
     if failed_paper_ids:
         coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
 
@@ -465,16 +488,27 @@ def _run_retrieval_with_recovery(
     topic: str,
     constraints: RunConstraints,
     execute_attempt: Callable[[RunConstraints, bool], tuple[RetrievalSummary, int]],
+    on_tool_step_budget_exceeded: Callable[[], RetrievalSummary] | None = None,
 ) -> RetrievalSummary:
     minimum_threshold = min(12, constraints.max_selected_papers)
-    first_summary, first_count = execute_attempt(constraints, False)
+    try:
+        first_summary, first_count = execute_attempt(constraints, False)
+    except ToolStepBudgetExceededError:
+        if on_tool_step_budget_exceeded is None:
+            raise
+        return on_tool_step_budget_exceeded()
     if first_count >= minimum_threshold:
         return first_summary
 
     broadened_constraints = constraints.model_copy(
         update={"year_from": max(2000, constraints.year_from - 5)}
     )
-    second_summary, second_count = execute_attempt(broadened_constraints, True)
+    try:
+        second_summary, second_count = execute_attempt(broadened_constraints, True)
+    except ToolStepBudgetExceededError:
+        if on_tool_step_budget_exceeded is None:
+            raise
+        return on_tool_step_budget_exceeded()
     second_summary.search_notes.append("broadened retrieval window after low recall")
     if second_count >= minimum_threshold:
         return second_summary
@@ -540,6 +574,60 @@ def _repair_planner_output(output: dict, context: dict) -> dict:
     if repaired["hypotheses_created"] is None and repaired["report_rendered"]:
         repaired["hypotheses_created"] = 3
     return repaired
+
+
+def _build_retrieval_budget_summary(
+    *,
+    topic: str,
+    constraints: RunConstraints,
+    selected_paper_ids: list[str],
+) -> RetrievalSummary:
+    count = len(selected_paper_ids)
+    minimum_threshold = min(12, constraints.max_selected_papers)
+    coverage = "good" if count >= minimum_threshold else "low"
+    return RetrievalSummary(
+        canonical_topic=topic,
+        query_variants_used=[topic],
+        search_notes=["retrieval tool step budget exceeded; returning best available papers"],
+        selected_paper_ids=selected_paper_ids,
+        excluded_paper_ids=[],
+        coverage_assessment=coverage,
+        needs_broader_search=count < minimum_threshold,
+    )
+
+
+def _build_critic_budget_summary(clusters: list[ConflictCluster]) -> CriticSummary:
+    return CriticSummary(
+        clusters_created=len(clusters),
+        top_axes=_top_axes_from_clusters(clusters),
+        critic_notes=["critic tool step budget exceeded; returning saved clusters"],
+    )
+
+
+def _build_planner_budget_summary(
+    *,
+    run_id: str,
+    repository: RunRepository,
+    renderer: ReportRenderer,
+) -> PlannerSummary:
+    hypotheses = repository.load_hypotheses(run_id)
+    if len(hypotheses) != 3:
+        raise ToolStepBudgetExceededError(agent_name="planner", max_steps=0)
+
+    run_state = repository.get_run(run_id)
+    if not run_state.final_report_md:
+        repository.save_report_markdown(run_id, renderer.render(repository.build_final_result(run_id)))
+
+    return PlannerSummary(
+        hypotheses_created=3,
+        report_rendered=True,
+        top_axes=_top_axes_from_clusters(repository.load_conflict_clusters(run_id)),
+        planner_notes=["planner tool step budget exceeded; returning saved hypotheses"],
+    )
+
+
+def _top_axes_from_clusters(clusters: list[ConflictCluster]) -> list[str]:
+    return list(dict.fromkeys(cluster.topic_axis for cluster in clusters if cluster.topic_axis))
 
 
 def build_fake_services(

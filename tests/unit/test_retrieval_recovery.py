@@ -1,3 +1,4 @@
+from hypoforge.application.budget import ToolStepBudgetExceededError
 from hypoforge.application.services import _run_retrieval_with_recovery
 from hypoforge.domain.schemas import RetrievalSummary, RunConstraints
 
@@ -69,3 +70,30 @@ def test_retrieval_recovery_marks_low_evidence_mode_after_broadened_retry() -> N
     assert summary.coverage_assessment == "low"
     assert summary.needs_broader_search is True
     assert "low evidence mode" in summary.search_notes[-1]
+
+
+def test_retrieval_recovery_returns_partial_summary_when_tool_step_budget_exceeded() -> None:
+    def execute_attempt(constraints: RunConstraints, broadened: bool) -> tuple[RetrievalSummary, int]:
+        del constraints, broadened
+        raise ToolStepBudgetExceededError(agent_name="retrieval", max_steps=12)
+
+    def on_tool_step_budget_exceeded() -> RetrievalSummary:
+        return RetrievalSummary(
+            canonical_topic="protein binder design",
+            query_variants_used=["protein binder design"],
+            search_notes=["retrieval tool step budget exceeded; returning best available papers"],
+            selected_paper_ids=["p1", "p2", "p3"],
+            excluded_paper_ids=[],
+            coverage_assessment="low",
+            needs_broader_search=True,
+        )
+
+    summary = _run_retrieval_with_recovery(
+        topic="protein binder design",
+        constraints=RunConstraints(year_from=2022, year_to=2026, max_selected_papers=12),
+        execute_attempt=execute_attempt,
+        on_tool_step_budget_exceeded=on_tool_step_budget_exceeded,
+    )
+
+    assert summary.selected_paper_ids == ["p1", "p2", "p3"]
+    assert "tool step budget exceeded" in summary.search_notes[0]
