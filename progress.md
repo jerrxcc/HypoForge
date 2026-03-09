@@ -227,6 +227,7 @@
 | Full pytest after motion/skeleton polish | `./.venv/bin/pytest -q` | 轻量 motion 与 skeleton archive 改动未影响默认后端路径 | `66 passed, 6 skipped in 1.29s` | pass |
 | Frontend lint after motion/skeleton polish | `cd frontend && npm run lint` | `motion/react` 与 skeleton archive 无 ESLint 问题 | 通过 | pass |
 | Frontend build after motion/skeleton polish | `cd frontend && npm run build` | 轻量 motion 与 skeleton archive 兼容生产构建 | 通过；仅有 `baseline-browser-mapping` 过旧提示 | pass |
+| Real demo walkthrough via async launch | `./.venv/bin/python - <<'PY' ... POST /v1/runs/launch -> poll /v1/runs/{id} -> fetch /trace /report.md /v1/runs -> fetch frontend detail routes ... PY` | 真实前后端演示流转完整可用 | `run_506d493b908c4eb8bba6b120c7da55b1`, `status=done`, `selected_papers=15`, `evidence_cards=15`, `conflict_clusters=4`, `hypotheses=3`, `stage_summaries=4`, `trace_count=18`, archive/front routes all `200` | pass |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

@@ -131,6 +131,7 @@ Phase 18 in progress
 - [x] 为 `Runs` 页补 active run 快速入口、状态筛选和更明显的运行中徽章反馈
 - [x] 为 `Overview / Trace` 补“刚更新/正在运行/最新 trace”这一层时间感提示
 - [x] 为 `Runs / Overview / Trace` 统一微动效和 loading skeleton，完成最后一轮成品感收口
+- [x] 完成一次真实 demo walkthrough：`New Run -> live run detail -> Trace -> Report -> Runs archive`
 - [ ] 提交并推送本轮前端 polish
 - **Status:** in_progress
 
@@ -250,3 +251,5 @@ Phase 18 in progress
 - 2026-03-09 19:56 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
 - 2026-03-09 20:03 +08 已完成最后一轮统一收口：`Runs` 新增 skeleton archive，`Overview` 的 stage cards 和 `Trace` 的条目改为轻量 stagger entrance，live 变化不再是纯静态跳变。
 - 2026-03-09 20:04 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
+- 2026-03-09 20:14 +08 已完成真实 demo walkthrough 检查：通过 `/v1/runs/launch` 发起主题 `solid-state battery electrolyte`，run `run_506d493b908c4eb8bba6b120c7da55b1` 成功经历 `retrieving -> reviewing -> criticizing -> planning -> done` 全链路。
+- 2026-03-09 20:14 +08 这次真实 walkthrough 的最终结果为：15 篇 selected papers、15 张 evidence cards、4 个 conflict clusters、3 个 hypotheses、4 条 stage summaries、18 条 traces；archive 命中，前端 `/dashboard/runs/{id}`、`/trace`、`/report` 路由均返回 200。
