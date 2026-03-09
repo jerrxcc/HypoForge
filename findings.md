@@ -194,6 +194,14 @@
 - 2. `http://127.0.0.1:3000/dashboard/new-run` 正常返回 `HypoForge Console`；
 - 3. `http://127.0.0.1:8000/v1/runs` 正常返回真实 run 列表。
 - 当前已知非阻断项只有一个：`baseline-browser-mapping` 过旧提示，会在 build 时重复打印，但不影响产物和路由生成。
+- Phase 17 full verification 首轮暴露出的唯一真实回归是 retrieval under-select：在 `diffusion model preference optimization` 上，模型偶尔不会把 candidate pool 用满，导致 selected papers 数量低于 golden regression 要求的 12 篇。
+- 为保持 SPEC 门槛不变，已在 retrieval 边界加入宿主侧补位：若 broadened retrieval 后 repository 中 selected papers 仍未达到阈值，则从现有 candidate pool 按 `dedupe + ranking` 规则补齐，并把该动作写入 `search_notes`。
+- 前端 overflow 的主因已经确认：
+- 1. `app-sidebar.tsx` 折叠态误用了 `group-data-[collapsible=icon]/sidebar:*`，导致文本在 48px 宽的 icon rail 中继续显示；
+- 2. `golden-topic-launcher.tsx` 的长主题按钮未允许换行；
+- 3. `new-run-form.tsx` 的底部说明和按钮在较窄宽度下仍强制横向排布；
+- 4. `info-sidebar.tsx` 还保留了 `/SPEC.md` 和本地 docs 的断链。
+- 上述 overflow 与断链都已修复，并在 1024px / 768px 浏览器截图中复查通过。
 
 ## Technical Decisions
 | Decision | Rationale |

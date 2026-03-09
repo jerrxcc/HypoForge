@@ -357,3 +357,42 @@
 - 4. `curl http://127.0.0.1:3000/dashboard/new-run` 返回标题 `HypoForge Console`；
 - 5. `curl http://127.0.0.1:8000/v1/runs` 返回真实 run 列表 JSON；
 - 6. 验证后已停止本地前后端 dev 进程。
+
+## Session Note: 2026-03-09 15:27 +08
+- 已提交并推送前端集成状态：`feat: add hypoforge frontend console`，commit `eda9ca9`。
+- fresh 默认后端全量验证：`./.venv/bin/pytest -v` -> `65 passed, 6 skipped in 0.78s`。
+- 真实 API 验证：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 219.60s`。
+
+## Session Note: 2026-03-09 15:45 +08
+- 5-topic golden regression 首轮 fresh run 出现一个真实稳定性失败：
+- `RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v`
+- 结果：`4 passed, 1 failed in 1071.57s`
+- 失败 topic：`diffusion model preference optimization`
+- 根因：live run 偶发只保存 `<12` 篇 selected papers，未满足 SPEC 回归门槛。
+
+## Session Note: 2026-03-09 15:52 +08
+- 已为 retrieval 增加宿主侧 candidate-pool backfill：
+- 1. 模型 broadened retrieval 后若仍 under-select，则按 `dedupe + ranking` 从当前 candidate pool 自动补足到阈值；
+- 2. focused test：`./.venv/bin/pytest tests/unit/test_retrieval_recovery.py -v` -> `4 passed in 0.22s`；
+- 3. targeted rerun：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -k diffusion-model-preference-optimization -v` -> `1 passed, 4 deselected in 191.21s`。
+
+## Session Note: 2026-03-09 16:09 +08
+- golden regression 已重新 fresh 通过：
+- `RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v`
+- 结果：`5 passed in 1010.48s`
+
+## Session Note: 2026-03-09 16:24 +08
+- 浏览器级 UI 复查发现明显 overflow：
+- 1. 折叠态 sidebar 文本没有隐藏，挤压在 icon rail 中；
+- 2. 长 golden topic 按钮和底部提交区在窄宽度下缺少换行/堆叠；
+- 3. right infobar 仍引用 `/SPEC.md` 和本地 docs，造成前端 404。
+
+## Session Note: 2026-03-09 16:31 +08
+- 已完成前端 overflow hardening，并重新验证：
+- 1. 修正 `app-sidebar.tsx` 折叠态 `group-data` 选择器；
+- 2. `golden-topic-launcher.tsx` 改为允许多行换行；
+- 3. `new-run-form.tsx` 底部说明/按钮改为小屏堆叠；
+- 4. `info-sidebar.tsx` 改成站内可用链接，去掉断链；
+- 5. `cd frontend && npm run lint` -> pass；
+- 6. `cd frontend && npm run build` -> pass；
+- 7. Playwright 在 1024px / 768px 截图下复查，不再出现先前那种明显越界和文本冲出容器。

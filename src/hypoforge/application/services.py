@@ -28,6 +28,8 @@ from hypoforge.domain.schemas import (
 )
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
 from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
+from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
+from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
 from hypoforge.infrastructure.db.repository import RunRepository
@@ -194,7 +196,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             )
             return summary, len(repository.load_selected_papers(run_id))
 
-        return _run_retrieval_with_recovery(
+        summary = _run_retrieval_with_recovery(
             topic=topic,
             constraints=constraints,
             execute_attempt=execute_attempt,
@@ -203,6 +205,13 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 constraints=constraints,
                 selected_paper_ids=[paper.paper_id for paper in repository.load_selected_papers(run_id)],
             ),
+        )
+        return _supplement_selected_papers_from_candidates(
+            repository=repository,
+            run_id=run_id,
+            summary=summary,
+            candidate_pool=candidate_pools.get(run_id, {}),
+            max_selected_papers=constraints.max_selected_papers,
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
@@ -519,6 +528,43 @@ def _run_retrieval_with_recovery(
         f"low evidence mode activated for '{topic}' after broadened retrieval ({second_count}/{minimum_threshold} papers)"
     )
     return second_summary
+
+
+def _supplement_selected_papers_from_candidates(
+    *,
+    repository: RunRepository,
+    run_id: str,
+    summary: RetrievalSummary,
+    candidate_pool: dict[str, PaperDetail],
+    max_selected_papers: int,
+) -> RetrievalSummary:
+    minimum_threshold = min(12, max_selected_papers)
+    selected_papers = repository.load_selected_papers(run_id)
+    if len(selected_papers) >= minimum_threshold or not candidate_pool:
+        return summary
+
+    ranked_candidates = rank_papers(dedupe_papers(list(candidate_pool.values())))
+    selected_ids = {paper.paper_id for paper in selected_papers}
+    supplement = [paper for paper in ranked_candidates if paper.paper_id not in selected_ids]
+    supplement = supplement[: minimum_threshold - len(selected_papers)]
+    if not supplement:
+        return summary
+
+    completed_selection = selected_papers + supplement
+    repository.save_selected_papers(
+        run_id,
+        completed_selection,
+        "automatic backfill after low recall",
+    )
+
+    summary.selected_paper_ids = [paper.paper_id for paper in completed_selection]
+    summary.search_notes.append(
+        f"auto-supplemented selection from candidate pool to {len(completed_selection)}/{minimum_threshold} papers"
+    )
+    if len(completed_selection) >= minimum_threshold and summary.coverage_assessment == "low":
+        summary.coverage_assessment = "medium"
+        summary.needs_broader_search = False
+    return summary
 
 
 def _repair_retrieval_output(output: dict, context: dict) -> dict:

@@ -42,7 +42,7 @@ export function NewRunForm() {
           <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>
             New run
           </div>
-          <CardTitle className='font-serif text-4xl tracking-tight'>
+          <CardTitle className='font-serif text-3xl tracking-tight md:text-4xl'>
             Launch a topic through the full editorial pipeline.
           </CardTitle>
           <CardDescription className='max-w-2xl text-base leading-relaxed'>
@@ -151,14 +151,14 @@ export function NewRunForm() {
               </div>
             ) : null}
 
-            <div className='flex items-center justify-between gap-4'>
-              <p className='text-muted-foreground text-sm'>
+            <div className='flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between'>
+              <p className='text-muted-foreground max-w-2xl text-sm'>
                 The first run is synchronous. Keep this tab open while the pipeline finishes.
               </p>
               <Button
                 type='submit'
                 size='lg'
-                className='rounded-full px-6'
+                className='w-full rounded-full px-6 sm:w-auto'
                 disabled={isSubmitting || !topic.trim()}
               >
                 {isSubmitting ? 'Running…' : 'Start real run'}

@@ -1,6 +1,10 @@
 from hypoforge.application.budget import ToolStepBudgetExceededError
-from hypoforge.application.services import _run_retrieval_with_recovery
-from hypoforge.domain.schemas import RetrievalSummary, RunConstraints
+from hypoforge.application.services import (
+    _run_retrieval_with_recovery,
+    _supplement_selected_papers_from_candidates,
+)
+from hypoforge.domain.schemas import PaperDetail, RetrievalSummary, RunConstraints, RunRequest
+from hypoforge.infrastructure.db.repository import RunRepository
 
 
 def test_retrieval_recovery_retries_once_and_broadens_year_range() -> None:
@@ -97,3 +101,63 @@ def test_retrieval_recovery_returns_partial_summary_when_tool_step_budget_exceed
 
     assert summary.selected_paper_ids == ["p1", "p2", "p3"]
     assert "tool step budget exceeded" in summary.search_notes[0]
+
+
+def test_retrieval_recovery_supplements_from_candidate_pool_when_model_underselects(tmp_path) -> None:
+    repository = RunRepository.from_sqlite_path(tmp_path / "retrieval-recovery.db")
+    run = repository.create_run(
+        RunRequest(
+            topic="diffusion model preference optimization",
+            constraints=RunConstraints(year_from=2018, year_to=2026, max_selected_papers=12),
+        )
+    )
+    selected_papers = [
+        PaperDetail(
+            paper_id=f"p{i}",
+            title=f"Paper {i}",
+            abstract="present",
+            year=2024,
+            citation_count=100 - i,
+        )
+        for i in range(1, 7)
+    ]
+    repository.save_selected_papers(run.run_id, selected_papers, "model selection")
+    candidate_pool = {
+        paper.paper_id: paper
+        for paper in [
+            *selected_papers,
+            *[
+                PaperDetail(
+                    paper_id=f"p{i}",
+                    title=f"Paper {i}",
+                    abstract="present",
+                    year=2024,
+                    citation_count=100 - i,
+                )
+                for i in range(7, 13)
+            ],
+        ]
+    }
+    summary = RetrievalSummary(
+        canonical_topic="diffusion model preference optimization",
+        query_variants_used=["diffusion model preference optimization"],
+        search_notes=["broadened search"],
+        selected_paper_ids=[paper.paper_id for paper in selected_papers],
+        excluded_paper_ids=[],
+        coverage_assessment="low",
+        needs_broader_search=True,
+    )
+
+    supplemented = _supplement_selected_papers_from_candidates(
+        repository=repository,
+        run_id=run.run_id,
+        summary=summary,
+        candidate_pool=candidate_pool,
+        max_selected_papers=12,
+    )
+
+    assert len(repository.load_selected_papers(run.run_id)) == 12
+    assert len(supplemented.selected_paper_ids) == 12
+    assert supplemented.coverage_assessment == "medium"
+    assert supplemented.needs_broader_search is False
+    assert "auto-supplemented selection from candidate pool" in supplemented.search_notes[-1]

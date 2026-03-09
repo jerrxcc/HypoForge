@@ -13,7 +13,7 @@ export function GoldenTopicLauncher({
           key={topic}
           type='button'
           variant='outline'
-          className='rounded-full'
+          className='h-auto max-w-full rounded-full px-4 py-2 text-left leading-snug whitespace-normal'
           onClick={() => onPick(topic)}
         >
           {topic}

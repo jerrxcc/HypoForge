@@ -196,3 +196,9 @@ Phase 16 in progress
 - 2026-03-09 14:43 +08 当前前端验证结果：`npx tsc --noEmit` 通过，`npm run lint` 通过，`npm run build` 通过。仅剩 `baseline-browser-mapping` 版本过旧提示，不阻断构建。
 - 2026-03-09 14:49 +08 前后端本地联调 smoke 已完成：前端 `/` 正常 307 到 `/dashboard/new-run`，页面标题返回 `HypoForge Console`；后端 `GET /v1/runs` 返回真实 run 列表 JSON。
 - 2026-03-09 14:49 +08 当前进入 Phase 17：推送前端集成状态到远程，并执行全流程 fresh verification，覆盖 backend 全量、真实 API、golden topics、frontend build 与浏览器级 smoke。
+- 2026-03-09 15:27 +08 Phase 17 第一轮 full verification 已完成：`git push origin main` 已推送 `eda9ca9`；`./.venv/bin/pytest -v` 为 `65 passed, 6 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 219.60s`。
+- 2026-03-09 15:45 +08 5-topic golden regression 首轮 fresh run 暴露真实稳定性问题：`diffusion model preference optimization` live run 一次性只选出 `<12` 篇 selected papers，未满足 SPEC 回归门槛。
+- 2026-03-09 15:52 +08 已补 retrieval 宿主侧 candidate-pool backfill：broadened retrieval 后若模型 under-select，会按现有 ranking 从候选池补足到阈值；focused tests `4 passed`，失败 topic targeted rerun `1 passed, 4 deselected in 191.21s`。
+- 2026-03-09 16:09 +08 golden regression 已重新 fresh 转绿：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` 为 `5 passed in 1010.48s`。
+- 2026-03-09 16:24 +08 浏览器级 UI 审查暴露前端折叠态 overflow：sidebar 折叠时文本未隐藏、长 golden topic 按钮未换行、右侧 notes 存在断链。
+- 2026-03-09 16:31 +08 已完成前端 overflow hardening：修正 sidebar `group-data` 选择器、补长文本换行和提交区窄屏堆叠、替换 infobar 断链；前端 `npm run lint` / `npm run build` 再次通过，并在 1024px / 768px 浏览器截图下确认不再出现明显越界。

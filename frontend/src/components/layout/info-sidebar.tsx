@@ -23,12 +23,12 @@ const defaultData = {
         'The first frontend pass is focused on navigation, stage visibility, and ready-to-wire workspaces for runs, trace, and report.',
       links: [
         {
-          title: 'Project SPEC',
-          url: '/SPEC.md'
+          title: 'New run workspace',
+          url: '/dashboard/new-run'
         },
         {
-          title: 'Frontend plan',
-          url: '/docs/plans/2026-03-09-hypoforge-frontend-design.md'
+          title: 'Run archive',
+          url: '/dashboard/runs'
         }
       ]
     }
@@ -78,10 +78,10 @@ export function InfoSidebar({
                             <li key={linkIndex}>
                               <Link
                                 href={link.url}
-                                className='text-primary flex items-center gap-1.5 text-sm underline'
+                                className='text-primary flex items-start gap-1.5 text-sm underline underline-offset-4 break-words'
                               >
-                                <span>{link.title}</span>
-                                <IconChevronRight className='h-3 w-3' />
+                                <span className='min-w-0 flex-1'>{link.title}</span>
+                                <IconChevronRight className='mt-0.5 h-3 w-3 shrink-0' />
                               </Link>
                             </li>
                           ))}
