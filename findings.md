@@ -263,3 +263,4 @@
 - 4. 当前前端仍没有独立 test runner；这轮按既有约束使用 `lint + build + Playwright breakpoint inspection` 作为验证路径，没有临时引入新的测试栈。
 - 5. 在超宽屏下，右侧空白不只是 shell gutter 的问题，run 相关页面自己的 `max-w-[1680px]` 也是第二层限制；即使 shell 已经铺开，内容区仍会被内部 container 再次截短。
 - 6. 仅仅移除固定 `max-width` 也不够，这会把问题从“太窄”推到“过满”；正确做法是流体宽度算法，兼顾可用宽度、超宽屏阅读边距和自动居中。
+- 7. 流体宽度算法也不能直接用 `100vw`。在带 sidebar 的 dashboard shell 里，`vw` 看到的是整个浏览器，而不是主内容父容器；这会把内容算得比实际可用宽度更宽。

@@ -448,3 +448,15 @@
 - `first card width = 1916px`
 - `scrollWidth = 2048`
 - 当前状态：无横向溢出，但已保留比满屏略收的可读边距。
+
+## Session Note: 2026-03-09 18:50 +08
+- 已修正 `.workspace-shell` 的第二轮宽度算法错误：
+- 1. 去掉 `100vw` 参与计算，改为 `width: 100%; max-width: 1980px; margin-inline: auto;`
+- 2. 保证宽度永远受父容器约束，不会忽略 sidebar 造成右侧面板被顶出屏幕；
+- 3. `cd frontend && npm run lint` -> pass
+- 4. `cd frontend && npm run build` -> pass
+- 5. Playwright 在 `2048x1295` 下复查 `/dashboard/new-run`：
+- `content width = 1980px`
+- `grid width = 1916px`
+- `scrollWidth = 2048`
+- 结果：右侧 `Pipeline` 卡完整显示，页面无横向溢出。

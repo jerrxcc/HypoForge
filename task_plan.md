@@ -213,3 +213,5 @@ Phase 16 in progress
 - 2026-03-09 18:34 +08 用户继续反馈“现在变成超出屏幕显示范围”，说明不能简单去掉上限，必须用流体宽度。
 - 2026-03-09 18:39 +08 已新增共享 `.workspace-shell` 容器：`width = min(100%, clamp(0px, calc(100vw - clamp(1.5rem, 3vw, 4.5rem)), 1980px))`，恢复自动居中，并接入五个工作区页面。
 - 2026-03-09 18:40 +08 fresh frontend verification 已再次完成：`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过；Playwright 在 `2048x1295` 下复查 `/dashboard/runs/{id}`，`content width = 1980px`、`first card = 1916px`、`scrollWidth == viewport`。
+- 2026-03-09 18:47 +08 用户继续指出 `new-run` 页面仍然“超出屏幕显示范围”。已定位为 `.workspace-shell` 使用 `100vw` 参与计算，忽略了 sidebar 占位宽度，导致内容宽度大于父容器。
+- 2026-03-09 18:50 +08 已将 `.workspace-shell` 修正为父容器驱动：`width: 100%; max-width: 1980px; margin-inline: auto;`。Playwright 复查 `/dashboard/new-run` 时，右侧 `Pipeline` 卡已完整回到主区域，`content width = 1980px`、`grid width = 1916px`、`scrollWidth == viewport`。

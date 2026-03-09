@@ -40,10 +40,8 @@
 
 @layer utilities {
   .workspace-shell {
-    width: min(
-      100%,
-      clamp(0px, calc(100vw - clamp(1.5rem, 3vw, 4.5rem)), 1980px)
-    );
+    width: 100%;
+    max-width: 1980px;
     margin-inline: auto;
   }
 }
