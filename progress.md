@@ -249,3 +249,25 @@
 - 本地全量：`./.venv/bin/pytest -v` -> `59 passed, 1 skipped in 0.70s`。
 - 单独 live round-trip：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 179.16s`。
 - 带 live 的全量：`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` -> `60 passed in 293.01s`。
+
+## Session Note: 2026-03-09 03:49 +08
+- 已进入 Phase 14：补 5 个 golden topics live regression。
+- 当前计划先抽取共享 helper，再增加参数化 golden suite，并跑一次显式 golden regression。
+
+## Session Note: 2026-03-09 03:54 +08
+- Phase 14 第一轮 red-green 已完成：新增共享 live regression helper、单 topic live test 复用、以及 5-topic 参数化 suite。
+- Focused verification：`./.venv/bin/pytest tests/unit/test_live_regressions.py tests/live/test_real_runs_api.py tests/live/test_golden_topics_api.py -v` -> `1 passed, 6 skipped in 0.28s`。
+
+## Session Note: 2026-03-09 11:05 +08
+- 首次 golden regression 实跑：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` -> `3 passed, 2 failed in 1228.22s`。
+- 两个失败 topic 都是 planner 入库边界问题：真实模型给出的第 3 个 hypothesis 缺少足够的 `supporting_evidence_ids`，当前 repair 逻辑尚未补这一类缺口。
+
+## Session Note: 2026-03-09 11:29 +08
+- 已完成 supporting-evidence repair 的 unit red-green：`./.venv/bin/pytest tests/unit/test_workspace_tools.py -v` -> `3 passed in 0.17s`。
+- 失败的两个 golden topics targeted rerun 已通过：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -k 'solid-state-battery-electrolyte or CO2-reduction-catalyst-selectivity' -v` -> `2 passed, 3 deselected in 409.99s`。
+
+## Session Note: 2026-03-09 11:47 +08
+- 5-topic golden regression 全绿：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` -> `5 passed in 1089.48s`。
+
+## Session Note: 2026-03-09 11:48 +08
+- 默认全量再次确认：`./.venv/bin/pytest -v` -> `61 passed, 6 skipped in 0.74s`。

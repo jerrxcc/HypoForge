@@ -93,6 +93,15 @@ class WorkspaceTools:
                 )
                 if candidate_ids:
                     hypothesis["counterevidence_ids"] = candidate_ids[:3]
+            if len(supporting_ids) < 3:
+                repaired_supporting_ids = self._repair_supporting_evidence_ids(
+                    supporting_ids=supporting_ids,
+                    counterevidence_ids=hypothesis.get("counterevidence_ids", []),
+                    clusters=clusters,
+                    all_evidence_ids=all_evidence_ids,
+                )
+                if repaired_supporting_ids:
+                    hypothesis["supporting_evidence_ids"] = repaired_supporting_ids
             self._apply_credibility_annotations(
                 hypothesis,
                 retrieval_low_evidence=retrieval_low_evidence,
@@ -141,6 +150,28 @@ class WorkspaceTools:
         hypothesis["uncertainty_notes"] = list(dict.fromkeys(uncertainty_notes))
         hypothesis["risks"] = list(dict.fromkeys(risks))
 
+    def _repair_supporting_evidence_ids(
+        self,
+        *,
+        supporting_ids: list[str],
+        counterevidence_ids: list[str],
+        clusters: list[ConflictCluster],
+        all_evidence_ids: list[str],
+    ) -> list[str]:
+        repaired = list(dict.fromkeys(supporting_ids))
+        candidate_ids = self._infer_supporting_evidence_ids(
+            counterevidence_ids=counterevidence_ids,
+            clusters=clusters,
+            all_evidence_ids=all_evidence_ids,
+        )
+        for evidence_id in candidate_ids:
+            if evidence_id in repaired:
+                continue
+            repaired.append(evidence_id)
+            if len(repaired) >= 3:
+                break
+        return repaired
+
     def _infer_counterevidence_ids(
         self,
         *,
@@ -170,6 +201,38 @@ class WorkspaceTools:
         for cluster in clusters:
             conflicting_ids.extend(cluster.conflicting_evidence_ids)
         return list(dict.fromkeys(conflicting_ids))
+
+    def _infer_supporting_evidence_ids(
+        self,
+        *,
+        counterevidence_ids: list[str],
+        clusters: list[ConflictCluster],
+        all_evidence_ids: list[str],
+    ) -> list[str]:
+        counterevidence_set = set(counterevidence_ids)
+        related_supporting_ids: list[str] = []
+        for cluster in clusters:
+            if counterevidence_set.intersection(cluster.conflicting_evidence_ids):
+                related_supporting_ids.extend(cluster.supporting_evidence_ids)
+        if related_supporting_ids:
+            return list(dict.fromkeys(related_supporting_ids))
+
+        cluster_supporting_ids: list[str] = []
+        for cluster in clusters:
+            cluster_supporting_ids.extend(cluster.supporting_evidence_ids)
+        cluster_supporting_ids = [
+            evidence_id
+            for evidence_id in cluster_supporting_ids
+            if evidence_id not in counterevidence_set
+        ]
+        if cluster_supporting_ids:
+            return list(dict.fromkeys(cluster_supporting_ids))
+
+        return [
+            evidence_id
+            for evidence_id in all_evidence_ids
+            if evidence_id not in counterevidence_set
+        ]
 
     def _is_retrieval_low_evidence(self, summary: StageSummary | None) -> bool:
         if summary is None:

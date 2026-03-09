@@ -116,6 +116,24 @@
 - 3. review budget 超限会停止后续批次，返回已有 evidence 的 partial summary；
 - 4. critic/planner budget 超限会优先返回已保存的 clusters / hypotheses，并把阶段标成 `degraded`。
 - fresh verification 已确认 tool step budget 收束没有破坏真实 API 路径：本地全量为 `59 passed, 1 skipped`，live round-trip 为 `1 passed in 179.16s`，带 live 的全量为 `60 passed in 293.01s`。
+- 当前按 SPEC 剩余最明显的测试缺口是第 22.2 / 24 节提到的 `5 个 golden topics` 回归集。
+- 设计决定：
+- 1. golden regression 作为单独 env-gated live suite 落在 `tests/live/`，避免把默认 live 测试时间抬得过高；
+- 2. 单 topic live test 与 golden suite 共享 helper，统一断言 `done / selected papers >= 12 / hypotheses == 3 / report 非空 / trace 非空 / retrieval 多次 tool call`；
+- 3. 默认 full pytest 仍保持轻量，golden suite 由显式环境变量触发。
+- 当前第一轮实现已完成：
+- 1. 新增 `hypoforge.testing.live_regressions`，统一 live topic 的 payload、断言和 DB 隔离；
+- 2. `tests/live/test_real_runs_api.py` 已切换到共享 helper；
+- 3. `tests/live/test_golden_topics_api.py` 现在对 5 个 golden topics 做参数化回归。
+- 首次实跑 golden regression 的根因已定位：
+- 1. 失败不是 retrieval/report/trace 层面，而是 planner 入库边界；
+- 2. 两个 topic (`solid-state battery electrolyte`, `CO2 reduction catalyst selectivity`) 都在 `save_hypotheses` 因第 3 个 hypothesis 的 `supporting_evidence_ids < 3` 失败；
+- 3. 当前 `WorkspaceTools._repair_hypothesis_payload()` 只修 `counterevidence_ids`，没有对不足的 supporting evidence 做宿主侧补全。
+- 修复策略已验证有效：
+- 1. 宿主侧现在会优先使用相关 conflict cluster 的 supporting 侧来补齐 `supporting_evidence_ids`；
+- 2. 先前失败的两个 topic targeted rerun 已转绿；
+- 3. 完整 5-topic golden regression 现已 `5/5` 通过。
+- 默认全量测试也已重新确认通过，说明 golden regression 的 helper 和 planner repair 没有破坏日常测试面。
 
 ## Technical Decisions
 | Decision | Rationale |

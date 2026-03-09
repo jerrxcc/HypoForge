@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 13 in progress
+Phase 14 in progress
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -94,6 +94,12 @@ Phase 13 in progress
 - [x] 为 tool step budget 降级补齐 TDD 和 fresh verification
 - **Status:** complete
 
+### Phase 14: Golden Topics Regression
+- [x] 为 5 个 golden topics 增加独立的 live regression suite
+- [x] 抽取可复用的 live API helper，避免单 topic 和 golden suite 重复
+- [x] 运行 golden regression 并更新文档/验证记录
+- **Status:** complete
+
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
 2. MVP 是否按 SPEC 落地为“真实 OpenAI/OpenAlex/S2 集成 + 本地 SQLite”，还是先保留可替换适配层并用测试桩保障可运行？
@@ -155,3 +161,9 @@ Phase 13 in progress
 - 2026-03-09 03:28 +08 当前进入 Phase 13，目标是补齐 SPEC 16.3 剩余的 `tool step budget` 收束逻辑，并据此更新整体完成度评估。
 - 2026-03-09 03:34 +08 Phase 13 第一轮实现已完成：`AgentRunner` 现在抛 `ToolStepBudgetExceededError`，retrieval/review/critic/planner 都已接入阶段级收束；focused tests 当前 `8 passed`。
 - 2026-03-09 03:43 +08 Phase 13 fresh verification 已完成：`./.venv/bin/pytest -v` 为 `59 passed, 1 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 179.16s`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest -v` 为 `60 passed in 293.01s`。
+- 2026-03-09 03:49 +08 当前进入 Phase 14，按 SPEC 22.2/24 的要求补 5 个 golden topics live regression。
+- 2026-03-09 03:54 +08 Phase 14 第一轮实现已完成：新增 `hypoforge.testing.live_regressions` 共享 helper、参数化 golden suite，以及 README 中的 golden regression 跑法。focused tests 当前 `1 passed, 6 skipped`。
+- 2026-03-09 11:05 +08 首次 golden regression 实跑结果为 `3 passed, 2 failed`；失败集中在 planner 入库边界，根因为真实模型未稳定提供 `>=3` 个 `supporting_evidence_ids`。
+- 2026-03-09 11:29 +08 已完成 planner supporting-evidence repair，失败的两个 topic 先做 targeted rerun 后转绿：`2 passed, 3 deselected in 409.99s`。
+- 2026-03-09 11:47 +08 5-topic golden regression fresh verification 已完成：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` 为 `5 passed in 1089.48s`。
+- 2026-03-09 11:48 +08 默认全量测试已再次确认通过：`./.venv/bin/pytest -v` 为 `61 passed, 6 skipped`。
