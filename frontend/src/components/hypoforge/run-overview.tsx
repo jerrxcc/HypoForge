@@ -4,12 +4,16 @@ import { AlertTriangle, Microscope, Search, Sparkles, Split } from 'lucide-react
 
 import { RunHero } from '@/components/hypoforge/run-hero';
 import {
+  getActiveStageName,
   getStageDescription,
   getStageStateLabel,
-  getStageSummaryEntries
+  getStageSummaryEntries,
+  isRunActive
 } from '@/lib/hypoforge-display';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { RunStatusBadge } from '@/components/hypoforge/run-status-badge';
 import { useRun } from '@/hooks/use-hypoforge';
 
 function MetricCard({
@@ -37,11 +41,35 @@ function MetricCard({
   );
 }
 
+function OverviewSkeleton() {
+  return (
+    <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
+      <Card className='border-border/70 bg-card/95 shadow-sm'>
+        <CardContent className='space-y-6 p-6'>
+          <Skeleton className='h-4 w-28' />
+          <Skeleton className='h-12 w-3/4' />
+          <Skeleton className='h-5 w-2/3' />
+          <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className='h-32 rounded-[1.4rem]' />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className='h-36 rounded-[1.4rem]' />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RunOverview({ runId }: { runId: string }) {
   const { data: run, error, isLoading } = useRun(runId);
 
   if (isLoading && !run) {
-    return <div className='p-8 text-sm text-muted-foreground'>Loading run…</div>;
+    return <OverviewSkeleton />;
   }
 
   if (!run) {
@@ -51,10 +79,32 @@ export function RunOverview({ runId }: { runId: string }) {
   const degradedStages = run.stage_summaries.filter(
     (summary) => summary.status === 'degraded' || summary.status === 'failed'
   );
+  const runIsActive = isRunActive(run.status);
+  const activeStage = getActiveStageName(run.status);
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
+
+      {runIsActive ? (
+        <Card className='border-primary/20 bg-primary/8 shadow-sm'>
+          <CardContent className='flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between'>
+            <div className='space-y-2'>
+              <div className='text-[11px] uppercase tracking-[0.18em] text-muted-foreground'>
+                Live pipeline
+              </div>
+              <div className='font-serif text-2xl capitalize'>
+                {activeStage} is currently running.
+              </div>
+              <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
+                This dossier is still being assembled. Keep this page open while stage
+                summaries and trace entries continue to refresh.
+              </p>
+            </div>
+            <RunStatusBadge status={run.status} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
         <MetricCard

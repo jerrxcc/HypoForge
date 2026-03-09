@@ -127,6 +127,7 @@ Phase 18 in progress
 - [x] 补前后端 red-green 测试，确保 `RunResult` 带回 `topic`
 - [x] 完成 frontend lint/build 与 backend 全量验证
 - [x] 新增异步 run launch，支持前端立即跳转到 live dossier 并轮询流程状态
+- [x] 补运行中态的 loading skeleton、当前阶段强调和 trace/report live feedback
 - [ ] 提交并推送本轮前端 polish
 - **Status:** in_progress
 
@@ -238,3 +239,5 @@ Phase 18 in progress
 - 2026-03-09 19:23 +08 已决定优先补齐“真实话题处理过程的流程可视化”，而不是继续做纯静态视觉 polish；实现策略为保留同步 `POST /v1/runs`，新增专供前端使用的异步 `POST /v1/runs/launch`。
 - 2026-03-09 19:28 +08 异步 launch 已完成 red-green：后端新增 `launch_run/execute_run` 与 `/v1/runs/launch`，前端 `New Run` 改为点击后立即跳入 run 详情页，后续阶段和 trace 由现有 polling 持续刷新。
 - 2026-03-09 19:30 +08 fresh verification 已再次完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
+- 2026-03-09 19:37 +08 已继续打磨 live 运行体验：`Overview` 新增 live pipeline banner，`Trace` 新增 live feed banner 与空白 skeleton，`Report` 在 planner 未完成前新增 draft skeleton，占位不再塌陷。
+- 2026-03-09 19:39 +08 本轮 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。

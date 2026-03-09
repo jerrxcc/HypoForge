@@ -1,4 +1,10 @@
-import type { StageName, StageStatus, StageSummary, ToolTrace } from '@/lib/hypoforge';
+import type {
+  RunStatus,
+  StageName,
+  StageStatus,
+  StageSummary,
+  ToolTrace
+} from '@/lib/hypoforge';
 
 export type SummaryEntry = {
   label: string;
@@ -18,6 +24,16 @@ const stageStateLabels: Record<StageStatus | 'pending', string> = {
   completed: 'Completed',
   degraded: 'Degraded',
   failed: 'Failed'
+};
+
+const activeStageByRunStatus: Record<RunStatus, StageName> = {
+  queued: 'retrieval',
+  retrieving: 'retrieval',
+  reviewing: 'review',
+  criticizing: 'critic',
+  planning: 'planner',
+  done: 'planner',
+  failed: 'planner'
 };
 
 function asCount(value: unknown): number | null {
@@ -48,6 +64,14 @@ export function getStageDescription(stageName: StageName): string {
 
 export function getStageStateLabel(status: StageStatus | 'pending'): string {
   return stageStateLabels[status];
+}
+
+export function getActiveStageName(runStatus: RunStatus): StageName {
+  return activeStageByRunStatus[runStatus];
+}
+
+export function isRunActive(runStatus: RunStatus): boolean {
+  return !['done', 'failed'].includes(runStatus);
 }
 
 export function getStageSummaryEntries(summary?: StageSummary): SummaryEntry[] {

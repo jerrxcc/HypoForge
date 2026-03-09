@@ -3,9 +3,12 @@
 import ReactMarkdown from 'react-markdown';
 
 import { RunHero } from '@/components/hypoforge/run-hero';
+import { RunStatusBadge } from '@/components/hypoforge/run-status-badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRun, useRunReport } from '@/hooks/use-hypoforge';
+import { getActiveStageName, isRunActive } from '@/lib/hypoforge-display';
 
 export function ReportView({ runId }: { runId: string }) {
   const { data: run, error: runError } = useRun(runId);
@@ -26,10 +29,31 @@ export function ReportView({ runId }: { runId: string }) {
   const avgScore =
     run.hypotheses.reduce((sum, hypothesis) => sum + hypothesis.overall_score, 0) /
       Math.max(run.hypotheses.length, 1);
+  const runIsActive = isRunActive(run.status);
+  const activeStage = getActiveStageName(run.status);
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
+      {runIsActive ? (
+        <Card className='border-primary/20 bg-primary/8 shadow-sm'>
+          <CardContent className='flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between'>
+            <div className='space-y-2'>
+              <div className='text-[11px] uppercase tracking-[0.18em] text-muted-foreground'>
+                Draft status
+              </div>
+              <div className='font-serif text-2xl capitalize'>
+                The report will appear after {activeStage} completes.
+              </div>
+              <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
+                This panel keeps polling in the background. You can switch between
+                overview and trace while the editorial draft is still being assembled.
+              </p>
+            </div>
+            <RunStatusBadge status={run.status} />
+          </CardContent>
+        </Card>
+      ) : null}
       <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
         {[
           ['Hypotheses', run.hypotheses.length, 'Ranked claims retained in the final report.'],
@@ -74,6 +98,26 @@ export function ReportView({ runId }: { runId: string }) {
                 <article className='prose prose-slate mx-auto max-w-4xl prose-headings:font-serif prose-headings:tracking-tight prose-h1:text-4xl prose-h1:leading-tight prose-h2:border-t prose-h2:border-border/60 prose-h2:pt-6 prose-h2:text-2xl prose-p:text-[15px] prose-p:leading-8 prose-li:text-[15px] prose-li:leading-7 prose-strong:text-foreground'>
                   <ReactMarkdown>{report}</ReactMarkdown>
                 </article>
+              </div>
+            ) : runIsActive ? (
+              <div className='space-y-4 rounded-[2rem] border border-border/60 bg-background/75 px-6 py-6'>
+                <div className='space-y-2'>
+                  <div className='text-[11px] uppercase tracking-[0.18em] text-muted-foreground'>
+                    Editorial draft pending
+                  </div>
+                  <p className='text-muted-foreground text-sm leading-6'>
+                    Planner output has not landed yet. A report skeleton is shown here so
+                    the page does not collapse while the run is still active.
+                  </p>
+                </div>
+                <Skeleton className='h-10 w-1/2' />
+                <Skeleton className='h-4 w-full' />
+                <Skeleton className='h-4 w-11/12' />
+                <Skeleton className='h-4 w-10/12' />
+                <Skeleton className='mt-4 h-8 w-56' />
+                <Skeleton className='h-4 w-full' />
+                <Skeleton className='h-4 w-9/12' />
+                <Skeleton className='mt-4 h-32 w-full rounded-[1.5rem]' />
               </div>
             ) : null}
           </CardContent>

@@ -11,8 +11,13 @@ import {
   ResizablePanelGroup
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRun, useRunTrace } from '@/hooks/use-hypoforge';
-import { getTraceSummaryEntries } from '@/lib/hypoforge-display';
+import {
+  getActiveStageName,
+  getTraceSummaryEntries,
+  isRunActive
+} from '@/lib/hypoforge-display';
 import type { ToolTrace } from '@/lib/hypoforge';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +37,11 @@ function TraceList({
   return (
     <div className='space-y-2 p-4'>
       {isLoading && !traces ? (
-        <div className='text-muted-foreground text-sm'>Loading trace…</div>
+        <div className='space-y-3'>
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className='h-32 rounded-[1.5rem]' />
+          ))}
+        </div>
       ) : null}
       {error ? <div className='text-sm text-destructive'>{error}</div> : null}
       {traces?.map((trace, index) => (
@@ -166,10 +175,36 @@ export function TraceView({ runId }: { runId: string }) {
   const failedTraceCount = traceList.filter((trace) => !trace.success).length;
   const plannerTraceCount = traceList.filter((trace) => trace.agent_name === 'planner').length;
   const cacheHitCount = traceList.filter((trace) => trace.result_summary.cache_hit === true).length;
+  const runIsActive = isRunActive(run.status);
+  const latestTrace = traceList.at(-1) ?? null;
+  const activeStage = getActiveStageName(run.status);
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
+
+      {runIsActive ? (
+        <Card className='border-primary/20 bg-primary/8 shadow-sm'>
+          <CardContent className='flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between'>
+            <div className='space-y-2'>
+              <div className='text-[11px] uppercase tracking-[0.18em] text-muted-foreground'>
+                Live trace feed
+              </div>
+              <div className='font-serif text-2xl capitalize'>
+                {traceList.length
+                  ? `${activeStage} is generating new trace entries.`
+                  : `${activeStage} is warming up the first trace entries.`}
+              </div>
+              <p className='text-muted-foreground max-w-3xl text-sm leading-6'>
+                {latestTrace
+                  ? `Latest activity: ${latestTrace.tool_name} by ${latestTrace.agent_name}.`
+                  : 'Stay on this page while the first retrieval calls are recorded.'}
+              </p>
+            </div>
+            <RunStatusBadge status={run.status} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
         {[
