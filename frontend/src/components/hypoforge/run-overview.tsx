@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, Microscope, Search, Sparkles, Split } from 'lucide-react';
+import { motion } from 'motion/react';
 
 import { RunHero } from '@/components/hypoforge/run-hero';
 import {
@@ -143,9 +144,12 @@ export function RunOverview({ runId }: { runId: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            {run.stage_summaries.map((summary) => (
-              <div
+            {run.stage_summaries.map((summary, index) => (
+              <motion.div
                 key={summary.stage_name}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: Math.min(index * 0.05, 0.2) }}
                 className={
                   summary.stage_name === activeStage && runIsActive
                     ? 'rounded-[1.75rem] border border-primary/25 bg-primary/6 p-5 shadow-sm'
@@ -228,7 +232,7 @@ export function RunOverview({ runId }: { runId: string }) {
                     {JSON.stringify(summary.summary, null, 2)}
                   </pre>
                 </details>
-              </div>
+              </motion.div>
             ))}
           </CardContent>
         </Card>

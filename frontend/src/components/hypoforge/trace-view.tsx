@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'motion/react';
 
 import { RunHero } from '@/components/hypoforge/run-hero';
 import { RunStatusBadge } from '@/components/hypoforge/run-status-badge';
@@ -49,10 +50,13 @@ function TraceList({
       ) : null}
       {error ? <div className='text-sm text-destructive'>{error}</div> : null}
       {traces?.map((trace, index) => (
-        <button
+        <motion.button
           type='button'
           key={trace.id}
           onClick={() => onSelect(trace.id)}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, delay: Math.min(index * 0.04, 0.18) }}
           className={cn(
             'w-full rounded-[1.5rem] border p-4 text-left transition-colors',
             activeTrace?.id === trace.id
@@ -97,7 +101,7 @@ function TraceList({
                 </span>
               ))}
           </div>
-        </button>
+        </motion.button>
       ))}
     </div>
   );

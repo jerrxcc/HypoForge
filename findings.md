@@ -267,6 +267,7 @@
 - 2026-03-09 19:35 +08 异步 launch 打通后，新的短板变成“运行中态反馈仍偏弱”：虽然页面会轮询，但 `Overview / Trace / Report` 在 run 进行中还缺少足够明确的 live 文案、占位内容和当前阶段强调，用户仍会感觉页面像静态结果页。
 - 2026-03-09 19:45 +08 live dossier 做完后，archive 仍然偏“查历史”，对正在运行的条目不够友好；用户还需要一个不翻整张表就能直接回到 in-flight run 的入口，以及更明显的 active 状态标记。
 - 2026-03-09 19:54 +08 archive 和 live-state 都补齐后，剩下的差异主要是“时间感”：用户能看见阶段和 trace，但还需要更明确知道哪一个阶段是刚更新的、哪一条 trace 是最新活动，而不是自己盯着列表猜。
+- 2026-03-09 20:02 +08 在时间感补齐后，最后的短板变成“进入和加载的质感不统一”：`Runs` 还缺少真正的 skeleton archive，`Overview` 和 `Trace` 的状态变化虽然清楚，但仍然偏静态，没有统一的轻量进入节奏。
 
 ## Latest Decisions
 - 2026-03-09 19:09 +08 决定把 `RunResult` 扩成真正可供详情页消费的 dossier 头部数据，至少带回 `topic`；这类信息不应再让前端依赖 run list 上下文拼接。
@@ -277,6 +278,7 @@
 - 2026-03-09 19:36 +08 当前前端运行中态的设计决策是：不再新增独立 loading 页面，而是在现有 `Overview / Trace / Report` 内部分别补 `live banner + skeleton + pending copy`，让用户始终留在同一个 dossier 语境里。
 - 2026-03-09 19:46 +08 `Runs` 页当前的设计决策是“archive + live docket”双层结构：顶部先给正在运行的 dossier 快速入口，下面保留完整归档，并用轻量筛选切换 `All / Active / Completed / Failed`。
 - 2026-03-09 19:55 +08 最后一层时间感反馈的设计决策是“轻量提示，不额外加新页面”：在 `Overview` 里用 `Receiving updates now / Updated x ago` 和默认展开当前/异常阶段，在 `Trace` 里对最新条目增加 `Latest` 标记和更强的 live 高亮。
+- 2026-03-09 20:03 +08 最终成品感收口的设计决策是“轻 motion，不卡性能”：采用 `motion/react` 做 0.22s 级别的 stagger entrance，仅用于阶段卡片和 trace 条目；`Runs` 的 loading 改成 skeleton archive，而不是额外引入新的 loading 页面。
 - 2. `Overview / Trace / Report` 虽然已经可用，但原始 JSON 和阶段状态过于“裸露”，研究人员需要更可读的摘要映射，而不是直接面对后端字段名。
 - 3. `StageProgressBand` 在 1024px 仍然四列展示会让 `critic/planner` 长文案变成窄高条，属于密度过高而非严格 overflow，但会显著损害可读性。
 - 4. 当前前端仍没有独立 test runner；这轮按既有约束使用 `lint + build + Playwright breakpoint inspection` 作为验证路径，没有临时引入新的测试栈。

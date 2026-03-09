@@ -7,7 +7,44 @@ import { RunsTable } from '@/components/hypoforge/runs-table';
 import { RunStatusBadge } from '@/components/hypoforge/run-status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRuns } from '@/hooks/use-hypoforge';
+
+function RunsPageSkeleton() {
+  return (
+    <div className='space-y-6'>
+      <div className='grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]'>
+        <Skeleton className='h-44 rounded-[1.7rem]' />
+        <div className='grid gap-3'>
+          <Skeleton className='h-36 rounded-[1.45rem]' />
+          <Skeleton className='h-36 rounded-[1.45rem]' />
+        </div>
+      </div>
+      <div className='grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]'>
+        <Skeleton className='h-44 rounded-[1.7rem]' />
+        <div className='grid gap-4 sm:grid-cols-2'>
+          <Skeleton className='h-32 rounded-[1.5rem]' />
+          <Skeleton className='h-32 rounded-[1.5rem]' />
+        </div>
+      </div>
+      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className='h-32 rounded-[1.5rem]' />
+        ))}
+      </div>
+      <div className='flex gap-2'>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className='h-10 w-28 rounded-full' />
+        ))}
+      </div>
+      <div className='grid gap-4 xl:hidden'>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className='h-72 rounded-[1.65rem]' />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function RunsPage() {
   const { data: runs, error, isLoading } = useRuns();
@@ -156,9 +193,7 @@ export default function RunsPage() {
             ))}
           </div>
 
-          {isLoading && !runs ? (
-            <div className='text-muted-foreground text-sm'>Loading runs…</div>
-          ) : null}
+          {isLoading && !runs ? <RunsPageSkeleton /> : null}
           {error ? <div className='text-sm text-destructive'>{error}</div> : null}
           {runs ? (
             <div className='space-y-4'>
