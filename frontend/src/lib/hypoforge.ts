@@ -42,6 +42,13 @@ export type RunSummary = {
   error_message: string | null;
 };
 
+export type RunLaunch = {
+  run_id: string;
+  topic: string;
+  status: RunStatus;
+  trace_path: string | null;
+};
+
 export type PaperDetail = {
   paper_id: string;
   title: string;
@@ -185,6 +192,16 @@ export async function createRun(payload: {
   constraints: RunConstraints;
 }): Promise<RunResult> {
   return request<RunResult>('/v1/runs', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function launchRun(payload: {
+  topic: string;
+  constraints: RunConstraints;
+}): Promise<RunLaunch> {
+  return request<RunLaunch>('/v1/runs/launch', {
     method: 'POST',
     body: JSON.stringify(payload)
   });

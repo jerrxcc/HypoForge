@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from copy import deepcopy
 
 from hypoforge.domain.schemas import (
     CriticSummary,
@@ -10,6 +11,7 @@ from hypoforge.domain.schemas import (
     RunConstraints,
     RunRequest,
     RunResult,
+    RunState,
     RunSummary,
     StageStatus,
 )
@@ -37,13 +39,22 @@ class RunCoordinator:
         self._logger = logging.getLogger(__name__)
 
     def run_topic(self, topic: str, constraints: RunConstraints | None = None) -> RunResult:
+        run = self.launch_run(topic, constraints)
+        self.execute_run(run.run_id, raise_on_failure=True)
+        return self._repository.build_final_result(run.run_id)
+
+    def launch_run(self, topic: str, constraints: RunConstraints | None = None) -> RunState:
         request = RunRequest(topic=topic, constraints=constraints or RunConstraints())
-        run = self._repository.create_run(request)
+        return self._repository.create_run(request)
+
+    def execute_run(self, run_id: str, *, raise_on_failure: bool = False) -> RunResult:
+        run = self._repository.get_run(run_id)
+        request = RunRequest(topic=run.topic, constraints=deepcopy(run.constraints))
         try:
             self._repository.update_run_status(run.run_id, "retrieving")
             self._repository.start_stage(run.run_id, "retrieval")
             self._logger.info("retrieval stage started", extra={"run_id": run.run_id})
-            retrieval_summary = self._retrieval_agent(run.run_id, topic, request.constraints)
+            retrieval_summary = self._retrieval_agent(run.run_id, request.topic, request.constraints)
             self._finish_stage(run.run_id, "retrieval", retrieval_summary)
 
             self._repository.update_run_status(run.run_id, "reviewing")
@@ -123,7 +134,8 @@ class RunCoordinator:
             )
             self._render_partial_report(run.run_id)
             self._logger.exception("run failed", extra={"run_id": run.run_id})
-            raise RuntimeError(f"run failed: {run.run_id}") from exc
+            if raise_on_failure:
+                raise RuntimeError(f"run failed: {run.run_id}") from exc
         return self._repository.build_final_result(run.run_id)
 
     def get_run_result(self, run_id: str) -> RunResult:

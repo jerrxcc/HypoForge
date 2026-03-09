@@ -4,18 +4,27 @@ from fastapi.testclient import TestClient
 
 from hypoforge.api.app import create_app
 from hypoforge.application.services import ServiceContainer
-from hypoforge.domain.schemas import RunConstraints, RunResult, RunSummary
+from hypoforge.domain.schemas import RunConstraints, RunResult, RunState, RunSummary
 
 
 class FakeCoordinator:
     def __init__(self) -> None:
         timestamp = datetime.now(UTC)
+        self.launch_calls: list[tuple[str, RunConstraints | None]] = []
+        self.execute_calls: list[str] = []
         self._result = RunResult(
             run_id="run_123",
             topic="solid-state battery electrolyte",
             status="done",
             report_markdown="# Report",
             trace_url="/v1/runs/run_123/trace",
+        )
+        self._launch_state = RunState(
+            run_id="run_queued",
+            topic="solid-state battery electrolyte",
+            constraints=RunConstraints(),
+            status="queued",
+            trace_path="/v1/runs/run_queued/trace",
         )
         self._runs = [
             RunSummary(
@@ -46,6 +55,13 @@ class FakeCoordinator:
         del topic, constraints
         return self._result
 
+    def launch_run(self, topic: str, constraints: RunConstraints | None = None) -> RunState:
+        self.launch_calls.append((topic, constraints))
+        return self._launch_state
+
+    def execute_run(self, run_id: str) -> None:
+        self.execute_calls.append(run_id)
+
     def get_run_result(self, run_id: str) -> RunResult:
         del run_id
         return self._result
@@ -71,6 +87,22 @@ def test_post_runs_returns_final_result() -> None:
     assert response.status_code == 200
     assert response.json()["topic"] == "solid-state battery electrolyte"
     assert response.json()["status"] == "done"
+
+
+def test_post_runs_launch_returns_accepted_run_stub() -> None:
+    coordinator = FakeCoordinator()
+    services = ServiceContainer(coordinator=coordinator)
+    client = TestClient(create_app(services=services))
+
+    response = client.post("/v1/runs/launch", json={"topic": "solid-state battery electrolyte"})
+
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["run_id"] == "run_queued"
+    assert payload["topic"] == "solid-state battery electrolyte"
+    assert payload["status"] == "queued"
+    assert coordinator.launch_calls[0][0] == "solid-state battery electrolyte"
+    assert coordinator.execute_calls == ["run_queued"]
 
 
 def test_get_trace_returns_trace_entries() -> None:

@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { createRun, defaultConstraints } from '@/lib/hypoforge';
+import { defaultConstraints, launchRun } from '@/lib/hypoforge';
 
 const DOSSIER_OUTPUTS: Array<{ icon: LucideIcon; label: string; detail: string }> = [
   { icon: FileSearch, label: 'Selected papers', detail: 'A curated shortlist carried into review.' },
@@ -42,7 +42,7 @@ export function NewRunForm() {
     setError(null);
 
     try {
-      const result = await createRun({ topic, constraints });
+      const result = await launchRun({ topic, constraints });
       router.push(`/dashboard/runs/${result.run_id}`);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'failed to start run');
@@ -217,8 +217,9 @@ export function NewRunForm() {
                   Launch note
                 </div>
                 <p className='text-muted-foreground max-w-2xl text-sm leading-6'>
-                  The first run is synchronous. Keep this tab open while the pipeline
-                  finishes and the dossier is written.
+                  You will land in the live dossier immediately. From there, the stage band
+                  and trace view will keep polling as retrieval, review, critic, and planner
+                  advance.
                 </p>
               </div>
               <Button
@@ -227,7 +228,7 @@ export function NewRunForm() {
                 className='w-full rounded-full px-6 sm:w-auto'
                 disabled={isSubmitting || !topic.trim()}
               >
-                {isSubmitting ? 'Running…' : 'Start real run'}
+                {isSubmitting ? 'Launching…' : 'Launch live run'}
               </Button>
             </div>
           </form>
@@ -282,8 +283,8 @@ export function NewRunForm() {
             {[
               {
                 icon: Gauge,
-                label: 'Synchronous first pass',
-                detail: 'Keep the tab open while retrieval, review, critic, and planner finish.'
+                label: 'Immediate live handoff',
+                detail: 'Launch immediately into the dossier while the pipeline continues to update.'
               },
               {
                 icon: LibraryBig,

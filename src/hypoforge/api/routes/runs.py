@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
 
-from hypoforge.api.schemas import RunRequestBody, RunResponseBody, RunSummaryBody
+from hypoforge.api.schemas import (
+    RunLaunchResponseBody,
+    RunRequestBody,
+    RunResponseBody,
+    RunSummaryBody,
+)
 
 
 router = APIRouter(prefix="/v1/runs", tags=["runs"])
@@ -20,6 +25,22 @@ def create_run(request_body: RunRequestBody, request: Request) -> RunResponseBod
     coordinator = request.app.state.services.coordinator
     result = coordinator.run_topic(request_body.topic, request_body.constraints)
     return RunResponseBody(**result.model_dump())
+
+
+@router.post(
+    "/launch",
+    response_model=RunLaunchResponseBody,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def launch_run(
+    request_body: RunRequestBody,
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> RunLaunchResponseBody:
+    coordinator = request.app.state.services.coordinator
+    run = coordinator.launch_run(request_body.topic, request_body.constraints)
+    background_tasks.add_task(coordinator.execute_run, run.run_id)
+    return RunLaunchResponseBody(**run.model_dump())
 
 
 @router.get("/{run_id}", response_model=RunResponseBody)

@@ -1,4 +1,4 @@
-from hypoforge.domain.schemas import RunRequest, RunResult, RunSummary
+from hypoforge.domain.schemas import RunRequest, RunResult, RunState, RunSummary
 
 
 class RunRequestBody(RunRequest):
@@ -11,3 +11,7 @@ class RunResponseBody(RunResult):
 
 class RunSummaryBody(RunSummary):
     """Public response schema for run list rows."""
+
+
+class RunLaunchResponseBody(RunState):
+    """Public response schema for async run launch."""
