@@ -202,6 +202,15 @@
 - 3. `new-run-form.tsx` 的底部说明和按钮在较窄宽度下仍强制横向排布；
 - 4. `info-sidebar.tsx` 还保留了 `/SPEC.md` 和本地 docs 的断链。
 - 上述 overflow 与断链都已修复，并在 1024px / 768px 浏览器截图中复查通过。
+- 用户新反馈的“浏览器右侧大面积空白”已定位为 shell-level 布局问题，而不是单个组件宽度问题。
+- 直接原因：
+- 1. `frontend/src/app/dashboard/layout.tsx` 一直挂着 `InfoSidebar`；
+- 2. `frontend/src/components/ui/infobar.tsx` 的 desktop 模式会为 infobar 预留固定宽度轨道；
+- 3. 因此即使主页面本身没有内容，也会像“右边留白”。
+- 修复策略：
+- 1. 第一版控制台取消全局常驻右侧 infobar；
+- 2. 页面辅助说明回收到主内容区；
+- 3. 只有在真正需要 inspector 的详情页里再考虑局部侧栏，而不是由 shell 永久占位。
 
 ## Technical Decisions
 | Decision | Rationale |

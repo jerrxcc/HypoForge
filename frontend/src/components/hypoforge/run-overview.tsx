@@ -74,7 +74,7 @@ export function RunOverview({ runId }: { runId: string }) {
         />
       </div>
 
-      <div className='grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]'>
+      <div className='grid gap-6 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]'>
         <Card className='border-border/70 bg-card/95 shadow-sm'>
           <CardHeader>
             <CardTitle className='font-serif text-2xl'>Stage summaries</CardTitle>

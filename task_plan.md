@@ -202,3 +202,5 @@ Phase 16 in progress
 - 2026-03-09 16:09 +08 golden regression 已重新 fresh 转绿：`RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v` 为 `5 passed in 1010.48s`。
 - 2026-03-09 16:24 +08 浏览器级 UI 审查暴露前端折叠态 overflow：sidebar 折叠时文本未隐藏、长 golden topic 按钮未换行、右侧 notes 存在断链。
 - 2026-03-09 16:31 +08 已完成前端 overflow hardening：修正 sidebar `group-data` 选择器、补长文本换行和提交区窄屏堆叠、替换 infobar 断链；前端 `npm run lint` / `npm run build` 再次通过，并在 1024px / 768px 浏览器截图下确认不再出现明显越界。
+- 2026-03-09 16:58 +08 已进一步处理“右侧大面积空白”问题：根因不是主内容不自适应，而是 dashboard layout 常驻了一个全局右侧 infobar，占用了固定 22rem 宽度。
+- 2026-03-09 17:02 +08 已移除全局 infobar 占位，并把 `New Run` / `Run Overview` 的双栏布局触发点从 `xl` 推迟到 `2xl`；1440px 浏览器下页面现在由主内容吃满，不再保留右侧空白槽位。

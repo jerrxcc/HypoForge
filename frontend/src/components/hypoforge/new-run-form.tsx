@@ -36,7 +36,7 @@ export function NewRunForm() {
   }
 
   return (
-    <div className='grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]'>
+    <div className='grid gap-6 2xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.75fr)]'>
       <Card className='border-border/70 bg-card/95 shadow-sm'>
         <CardHeader>
           <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>

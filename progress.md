@@ -396,3 +396,16 @@
 - 5. `cd frontend && npm run lint` -> pass；
 - 6. `cd frontend && npm run build` -> pass；
 - 7. Playwright 在 1024px / 768px 截图下复查，不再出现先前那种明显越界和文本冲出容器。
+
+## Session Note: 2026-03-09 17:02 +08
+- 用户继续指出浏览器右侧存在大面积空白。
+- 已定位为 shell-level 占位：
+- 1. `dashboard/layout.tsx` 常驻渲染 `InfoSidebar`；
+- 2. `infobar.tsx` 在 desktop 模式会保留固定宽度轨道；
+- 3. 这导致主内容虽然可伸缩，但始终被挤压，视觉上像“右边白着一大块”。
+- 已完成修复：
+- 1. 从 dashboard 全局布局移除 `InfoSidebar` / `InfobarProvider`；
+- 2. `NewRunForm` 和 `RunOverview` 的双栏布局只在 `2xl` 才触发；
+- 3. `npm run lint` -> pass；
+- 4. `npm run build` -> pass；
+- 5. Playwright 在 1440px 下复查，`/dashboard/new-run` 与 `/dashboard/runs` 都已由主内容铺满可用宽度，不再保留右侧空白槽位。
