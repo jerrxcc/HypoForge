@@ -409,3 +409,18 @@
 - 3. `npm run lint` -> pass；
 - 4. `npm run build` -> pass；
 - 5. Playwright 在 1440px 下复查，`/dashboard/new-run` 与 `/dashboard/runs` 都已由主内容铺满可用宽度，不再保留右侧空白槽位。
+
+## Session Note: 2026-03-09 18:15 +08
+- 已完成前端控制台的全面打磨第一轮：
+- 1. 新增 `frontend/src/lib/hypoforge-display.ts`，把 stage summary 和 trace result 映射为可读字段；
+- 2. `Runs` 页新增 archive summary cards，并重做为“档案视图”；历史错误信息会压缩成受控预览，不再撑破布局；
+- 3. `Run Overview` 改为 stage summary editorial cards、dossier health、评分面板和更干净的 paper shortlist；
+- 4. `Trace` 改为列表 + inspector 的研究审计面板，小屏堆叠、大屏可分栏；
+- 5. `Report` 改为 narrative draft + hypothesis outline 双区结构，并加入 sharing guidance；
+- 6. 中等桌面响应式已收束：`Runs` 在 1024px 走卡片流，`StageProgressBand` 在 1024px 为双列；
+- 7. 验证结果：
+- `cd frontend && npm run lint` -> pass
+- `cd frontend && npm run build` -> pass
+- Playwright 复查：
+- `1440px`：`/dashboard/runs`、`/dashboard/runs/{id}`、`/trace`、`/report` 均正常
+- `1024px`：`/dashboard/runs` 改走卡片流，`/dashboard/runs/{id}` 的阶段带改为双列，且页面 `scrollWidth == innerWidth`

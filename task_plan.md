@@ -204,3 +204,7 @@ Phase 16 in progress
 - 2026-03-09 16:31 +08 已完成前端 overflow hardening：修正 sidebar `group-data` 选择器、补长文本换行和提交区窄屏堆叠、替换 infobar 断链；前端 `npm run lint` / `npm run build` 再次通过，并在 1024px / 768px 浏览器截图下确认不再出现明显越界。
 - 2026-03-09 16:58 +08 已进一步处理“右侧大面积空白”问题：根因不是主内容不自适应，而是 dashboard layout 常驻了一个全局右侧 infobar，占用了固定 22rem 宽度。
 - 2026-03-09 17:02 +08 已移除全局 infobar 占位，并把 `New Run` / `Run Overview` 的双栏布局触发点从 `xl` 推迟到 `2xl`；1440px 浏览器下页面现在由主内容吃满，不再保留右侧空白槽位。
+- 2026-03-09 17:46 +08 当前进入 Phase 18：对前端控制台做一轮全面 polish，目标是统一 `Runs / Overview / Trace / Report` 的展示密度、语义摘要和响应式行为，并继续维持 planning files 及时回写。
+- 2026-03-09 17:55 +08 Phase 18 第一轮实现已完成：新增 `hypoforge-display.ts` 摘要映射，重做 `Runs` 档案视图、`Run Overview`、`Trace` inspector、`Report` 侧栏和 `StageProgressBand`，同时把历史长错误信息压缩为 `compactError()` 预览。
+- 2026-03-09 18:14 +08 已完成 Phase 18 的响应式收束：`Runs` 页表格展示推迟到 `xl`，1024px 改走卡片档案流；`StageProgressBand` 在中等桌面改为双列、仅在 `2xl` 回到四列，长文案不再被横向压扁。
+- 2026-03-09 18:15 +08 fresh frontend verification 已完成：`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过；Playwright 已复查 `Runs / Overview / Trace / Report` 在 1440px 和 1024px 下均无横向滚动，`Runs` 历史失败行也已稳定限制在卡片/徽章内。

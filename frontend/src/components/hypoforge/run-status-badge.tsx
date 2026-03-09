@@ -12,13 +12,26 @@ const statusClasses: Record<RunStatus, string> = {
   failed: 'bg-destructive/12 text-destructive border-destructive/25'
 };
 
+const statusLabels: Record<RunStatus, string> = {
+  queued: 'Queued',
+  retrieving: 'Retrieval',
+  reviewing: 'Review',
+  criticizing: 'Critic',
+  planning: 'Planner',
+  done: 'Done',
+  failed: 'Failed'
+};
+
 export function RunStatusBadge({ status }: { status: RunStatus }) {
   return (
     <Badge
       variant='outline'
-      className={cn('rounded-full px-3 py-1 capitalize', statusClasses[status])}
+      className={cn(
+        'rounded-full px-3 py-1 font-medium tracking-[0.08em] uppercase',
+        statusClasses[status]
+      )}
     >
-      {status}
+      {statusLabels[status]}
     </Badge>
   );
 }

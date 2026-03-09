@@ -3,11 +3,154 @@
 import { useState } from 'react';
 
 import { RunHero } from '@/components/hypoforge/run-hero';
-import { Card, CardContent } from '@/components/ui/card';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { RunStatusBadge } from '@/components/hypoforge/run-status-badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup
+} from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRun, useRunTrace } from '@/hooks/use-hypoforge';
+import { getTraceSummaryEntries } from '@/lib/hypoforge-display';
+import type { ToolTrace } from '@/lib/hypoforge';
 import { cn } from '@/lib/utils';
+
+function TraceList({
+  traces,
+  activeTrace,
+  onSelect,
+  isLoading,
+  error
+}: {
+  traces: ToolTrace[] | undefined;
+  activeTrace: ToolTrace | null;
+  onSelect: (traceId: string) => void;
+  isLoading: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className='space-y-2 p-4'>
+      {isLoading && !traces ? (
+        <div className='text-muted-foreground text-sm'>Loading trace…</div>
+      ) : null}
+      {error ? <div className='text-sm text-destructive'>{error}</div> : null}
+      {traces?.map((trace, index) => (
+        <button
+          type='button'
+          key={trace.id}
+          onClick={() => onSelect(trace.id)}
+          className={cn(
+            'w-full rounded-[1.5rem] border p-4 text-left transition-colors',
+            activeTrace?.id === trace.id
+              ? 'border-primary/25 bg-primary/8'
+              : 'border-border/70 bg-background/70 hover:bg-background'
+          )}
+        >
+          <div className='mb-2 flex items-start justify-between gap-3'>
+            <div className='min-w-0'>
+              <div className='line-clamp-2 font-medium leading-6'>{trace.tool_name}</div>
+              <div className='text-muted-foreground mt-1 text-xs uppercase tracking-[0.18em]'>
+                {trace.agent_name} • step {index + 1}
+              </div>
+            </div>
+            <RunStatusBadge status={trace.success ? 'done' : 'failed'} />
+          </div>
+          <div className='text-muted-foreground text-xs leading-6'>
+            {trace.latency_ms} ms
+            {trace.input_tokens ? ` • in ${trace.input_tokens}` : ''}
+            {trace.output_tokens ? ` • out ${trace.output_tokens}` : ''}
+          </div>
+          <div className='mt-3 flex flex-wrap gap-2'>
+            {getTraceSummaryEntries(trace)
+              .slice(0, 2)
+              .map((entry) => (
+                <span
+                  key={`${trace.id}-${entry.label}`}
+                  className='rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] text-muted-foreground'
+                >
+                  {entry.label}: {entry.value}
+                </span>
+              ))}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function TraceInspector({ trace }: { trace: ToolTrace | null }) {
+  if (!trace) {
+    return <div className='text-muted-foreground text-sm'>No trace entries yet.</div>;
+  }
+
+  const summaryEntries = getTraceSummaryEntries(trace);
+
+  return (
+    <div className='space-y-4 p-6'>
+      <div className='space-y-2'>
+        <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>
+          Trace inspector
+        </div>
+        <div className='font-serif text-3xl'>{trace.tool_name}</div>
+        <p className='text-muted-foreground text-sm leading-7'>
+          Inspect tool inputs, summarized outputs, and token/latency metadata before you
+          trust the downstream report.
+        </p>
+      </div>
+
+      <div className='grid gap-3 md:grid-cols-2 xl:grid-cols-4'>
+        {[
+          ['Agent', trace.agent_name],
+          ['Model', trace.model_name],
+          ['Latency', `${trace.latency_ms} ms`],
+          ['Status', trace.success ? 'success' : 'failed']
+        ].map(([label, value]) => (
+          <div key={label} className='rounded-2xl border border-border/70 bg-background/70 p-4'>
+            <div className='text-muted-foreground text-xs uppercase tracking-[0.18em]'>
+              {label}
+            </div>
+            <div className='mt-2 text-sm font-medium break-all'>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {summaryEntries.length ? (
+        <div className='grid gap-3 md:grid-cols-2'>
+          {summaryEntries.map((entry) => (
+            <div key={entry.label} className='rounded-2xl border border-border/70 bg-card px-4 py-4'>
+              <div className='text-muted-foreground text-xs uppercase tracking-[0.18em]'>
+                {entry.label}
+              </div>
+              <div className='mt-2 text-sm font-medium leading-6 break-words'>{entry.value}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {trace.error_message ? (
+        <div className='rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
+          {trace.error_message}
+        </div>
+      ) : null}
+
+      <div className='grid gap-4 xl:grid-cols-2'>
+        <div className='space-y-2'>
+          <div className='font-medium'>Tool args</div>
+          <pre className='max-h-[360px] overflow-x-auto rounded-[1.5rem] border border-border/70 bg-muted/40 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words'>
+            {JSON.stringify(trace.args, null, 2)}
+          </pre>
+        </div>
+        <div className='space-y-2'>
+          <div className='font-medium'>Result summary</div>
+          <pre className='max-h-[360px] overflow-x-auto rounded-[1.5rem] border border-border/70 bg-muted/40 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words'>
+            {JSON.stringify(trace.result_summary, null, 2)}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function TraceView({ runId }: { runId: string }) {
   const { data: run, error: runError } = useRun(runId);
@@ -18,104 +161,56 @@ export function TraceView({ runId }: { runId: string }) {
     return <div className='p-8 text-sm text-destructive'>{runError ?? 'Run not found'}</div>;
   }
 
-  const activeTrace =
-    traces?.find((trace) => trace.id === selectedId) ?? traces?.[0] ?? null;
+  const activeTrace = traces?.find((trace) => trace.id === selectedId) ?? traces?.[0] ?? null;
 
   return (
-    <div className='flex flex-1 flex-col gap-6 p-4 md:p-8'>
+    <div className='mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
-      <Card className='min-h-[640px] border-border/70 bg-card/95 shadow-sm'>
+
+      <div className='grid gap-6 xl:hidden'>
+        <Card className='border-border/70 bg-card/95 shadow-sm'>
+          <CardHeader>
+            <CardTitle className='font-serif text-2xl'>Trace steps</CardTitle>
+            <CardDescription>
+              Select a tool call to inspect its inputs, outputs, and request metadata.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='p-0'>
+            <TraceList
+              traces={traces ?? undefined}
+              activeTrace={activeTrace}
+              onSelect={setSelectedId}
+              isLoading={isLoading}
+              error={traceError}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className='border-border/70 bg-card/95 shadow-sm'>
+          <CardContent>
+            <TraceInspector trace={activeTrace} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className='hidden min-h-[680px] border-border/70 bg-card/95 shadow-sm xl:block'>
         <CardContent className='h-full p-0'>
           <ResizablePanelGroup direction='horizontal'>
-            <ResizablePanel defaultSize={38} minSize={28}>
-              <ScrollArea className='h-[640px]'>
-                <div className='space-y-2 p-4'>
-                  {isLoading && !traces ? (
-                    <div className='text-muted-foreground text-sm'>Loading trace…</div>
-                  ) : null}
-                  {traceError ? (
-                    <div className='text-sm text-destructive'>{traceError}</div>
-                  ) : null}
-                  {traces?.map((trace, index) => (
-                    <button
-                      type='button'
-                      key={trace.id}
-                      onClick={() => setSelectedId(trace.id)}
-                      className={cn(
-                        'w-full rounded-3xl border p-4 text-left transition-colors',
-                        activeTrace?.id === trace.id
-                          ? 'border-primary bg-primary/8'
-                          : 'border-border/70 bg-background/70'
-                      )}
-                    >
-                      <div className='mb-2 flex items-center justify-between gap-3'>
-                        <div className='font-medium'>{trace.tool_name}</div>
-                        <div className='text-muted-foreground text-xs'>#{index + 1}</div>
-                      </div>
-                      <div className='text-muted-foreground text-sm'>
-                        {trace.agent_name} • {trace.model_name}
-                      </div>
-                      <div className='text-muted-foreground mt-2 text-xs'>
-                        {trace.latency_ms} ms
-                        {trace.input_tokens ? ` • in ${trace.input_tokens}` : ''}
-                        {trace.output_tokens ? ` • out ${trace.output_tokens}` : ''}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            <ResizablePanel defaultSize={36} minSize={24}>
+              <ScrollArea className='h-[680px]'>
+                <TraceList
+                  traces={traces ?? undefined}
+                  activeTrace={activeTrace}
+                  onSelect={setSelectedId}
+                  isLoading={isLoading}
+                  error={traceError}
+                />
               </ScrollArea>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={62}>
-              <ScrollArea className='h-[640px]'>
-                <div className='space-y-4 p-6'>
-                  {activeTrace ? (
-                    <>
-                      <div>
-                        <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>
-                          Trace inspector
-                        </div>
-                        <div className='mt-2 font-serif text-3xl'>{activeTrace.tool_name}</div>
-                      </div>
-                      <div className='grid gap-3 md:grid-cols-4'>
-                        {[
-                          ['Agent', activeTrace.agent_name],
-                          ['Model', activeTrace.model_name],
-                          ['Latency', `${activeTrace.latency_ms} ms`],
-                          ['Request', activeTrace.request_id ?? 'n/a']
-                        ].map(([label, value]) => (
-                          <div key={label} className='rounded-2xl border border-border/70 bg-background/70 p-4'>
-                            <div className='text-muted-foreground text-xs uppercase tracking-[0.18em]'>
-                              {label}
-                            </div>
-                            <div className='mt-2 text-sm font-medium break-all'>{value}</div>
-                          </div>
-                        ))}
-                      </div>
-                      {activeTrace.error_message ? (
-                        <div className='rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
-                          {activeTrace.error_message}
-                        </div>
-                      ) : null}
-                      <div className='grid gap-4 xl:grid-cols-2'>
-                        <div className='space-y-2'>
-                          <div className='font-medium'>Tool args</div>
-                          <pre className='overflow-x-auto rounded-3xl border border-border/70 bg-muted/40 p-4 font-mono text-xs whitespace-pre-wrap'>
-                            {JSON.stringify(activeTrace.args, null, 2)}
-                          </pre>
-                        </div>
-                        <div className='space-y-2'>
-                          <div className='font-medium'>Result summary</div>
-                          <pre className='overflow-x-auto rounded-3xl border border-border/70 bg-muted/40 p-4 font-mono text-xs whitespace-pre-wrap'>
-                            {JSON.stringify(activeTrace.result_summary, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className='text-muted-foreground text-sm'>No trace entries yet.</div>
-                  )}
-                </div>
+            <ResizablePanel defaultSize={64}>
+              <ScrollArea className='h-[680px]'>
+                <TraceInspector trace={activeTrace} />
               </ScrollArea>
             </ResizablePanel>
           </ResizablePanelGroup>

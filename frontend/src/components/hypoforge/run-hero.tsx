@@ -21,14 +21,17 @@ export function RunHero({
             <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>
               Run dossier
             </div>
-            <CardTitle className='font-serif text-3xl leading-tight tracking-tight'>
-              {runId}
+            <CardTitle className='font-serif text-3xl leading-tight tracking-tight md:text-4xl'>
+              Editorial review workspace
             </CardTitle>
-            <p className='text-muted-foreground max-w-2xl text-sm leading-relaxed'>
-              Evidence-backed hypothesis generation with full trace visibility.
-            </p>
+            <div className='text-muted-foreground max-w-2xl space-y-2 text-sm leading-relaxed'>
+              <p>Evidence-backed hypothesis generation with full trace visibility.</p>
+              <div className='inline-flex max-w-full rounded-full border border-border/70 bg-background/75 px-3 py-1 font-mono text-[12px] break-all'>
+                {runId}
+              </div>
+            </div>
           </div>
-          <div className='space-y-3 text-right'>
+          <div className='space-y-3 lg:text-right'>
             <RunStatusBadge status={run.status} />
             <div className='text-muted-foreground text-sm'>
               Updated{' '}

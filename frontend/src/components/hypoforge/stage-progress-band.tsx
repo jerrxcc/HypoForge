@@ -1,6 +1,11 @@
 'use client';
 
 import type { RunStatus, StageSummary } from '@/lib/hypoforge';
+import {
+  getStageDescription,
+  getStageStateLabel,
+  getStageSummaryEntries
+} from '@/lib/hypoforge-display';
 import { cn } from '@/lib/utils';
 
 const STAGES = ['retrieval', 'review', 'critic', 'planner'] as const;
@@ -41,7 +46,7 @@ export function StageProgressBand({
   return (
     <div
       className={cn(
-        'grid gap-3 rounded-[1.5rem] border bg-card/85 p-4 shadow-sm md:grid-cols-4',
+        'grid gap-3 rounded-[1.5rem] border bg-card/85 p-4 shadow-sm md:grid-cols-2 2xl:grid-cols-4',
         className
       )}
     >
@@ -55,7 +60,7 @@ export function StageProgressBand({
           <div
             key={stage}
             className={cn(
-              'rounded-[1.25rem] border px-4 py-3 transition-colors',
+              'rounded-[1.35rem] border px-4 py-4 transition-colors',
               state === 'completed' && 'border-primary/20 bg-primary/10 text-primary',
               state === 'started' && 'border-accent/40 bg-accent/20',
               state === 'degraded' && 'border-amber-300/50 bg-amber-100/70 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100',
@@ -68,10 +73,42 @@ export function StageProgressBand({
                 Stage {index + 1}
               </p>
               <span className='text-[10px] uppercase tracking-[0.18em]'>
-                {state}
+                {getStageStateLabel(state)}
               </span>
             </div>
-            <p className='font-serif mt-2 text-lg capitalize'>{stage}</p>
+            <p className='mt-2 font-serif text-lg capitalize'>{stage}</p>
+            <p
+              className={cn(
+                'mt-2 text-sm leading-6',
+                state === 'pending' ? 'text-muted-foreground' : 'text-current/80'
+              )}
+            >
+              {getStageDescription(stage)}
+            </p>
+            {summary ? (
+              <div className='mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1'>
+                {getStageSummaryEntries(summary)
+                  .slice(0, 2)
+                  .map((entry) => (
+                    <div
+                      key={`${stage}-${entry.label}`}
+                      className={cn(
+                        'rounded-2xl border px-3 py-2',
+                        state === 'pending'
+                          ? 'border-border/60 bg-background/70'
+                          : 'border-current/12 bg-white/55 dark:bg-black/10'
+                      )}
+                    >
+                      <div className='text-[11px] uppercase tracking-[0.16em] opacity-70'>
+                        {entry.label}
+                      </div>
+                      <div className='mt-1 text-sm font-medium leading-snug break-words'>
+                        {entry.value}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : null}
           </div>
         );
       })}

@@ -256,3 +256,8 @@
 
 ## Visual/Browser Findings
 - 无
+- 2026-03-09 18:15 +08 前端全面 polish 的关键发现：
+- 1. `Runs` 页不仅有 overflow 问题，也有信息层级过于模板化的问题；历史失败 run 的长错误应作为二级上下文，而不是主导整行布局。
+- 2. `Overview / Trace / Report` 虽然已经可用，但原始 JSON 和阶段状态过于“裸露”，研究人员需要更可读的摘要映射，而不是直接面对后端字段名。
+- 3. `StageProgressBand` 在 1024px 仍然四列展示会让 `critic/planner` 长文案变成窄高条，属于密度过高而非严格 overflow，但会显著损害可读性。
+- 4. 当前前端仍没有独立 test runner；这轮按既有约束使用 `lint + build + Playwright breakpoint inspection` 作为验证路径，没有临时引入新的测试栈。
