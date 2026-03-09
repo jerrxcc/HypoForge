@@ -22,7 +22,17 @@ const statusLabels: Record<RunStatus, string> = {
   failed: 'Failed'
 };
 
+const activeStatuses: RunStatus[] = [
+  'queued',
+  'retrieving',
+  'reviewing',
+  'criticizing',
+  'planning'
+];
+
 export function RunStatusBadge({ status }: { status: RunStatus }) {
+  const isActive = activeStatuses.includes(status);
+
   return (
     <Badge
       variant='outline'
@@ -31,6 +41,12 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
         statusClasses[status]
       )}
     >
+      {isActive ? (
+        <span className='relative mr-1.5 flex size-2'>
+          <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-40' />
+          <span className='relative inline-flex h-full w-full rounded-full bg-current' />
+        </span>
+      ) : null}
       {statusLabels[status]}
     </Badge>
   );

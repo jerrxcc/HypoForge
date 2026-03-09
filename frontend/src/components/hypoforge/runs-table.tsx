@@ -22,8 +22,13 @@ function compactError(errorMessage: string | null): string | null {
   return compact.length > 140 ? `${compact.slice(0, 137)}...` : compact;
 }
 
+function isActiveRun(status: RunSummary['status']): boolean {
+  return !['done', 'failed'].includes(status);
+}
+
 function RunCard({ run }: { run: RunSummary }) {
   const errorPreview = compactError(run.error_message);
+  const active = isActiveRun(run.status);
 
   return (
     <Link
@@ -32,8 +37,14 @@ function RunCard({ run }: { run: RunSummary }) {
     >
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0 space-y-2'>
-          <div className='text-muted-foreground text-[11px] uppercase tracking-[0.18em]'>
-            Run dossier
+          <div className='text-muted-foreground flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]'>
+            {active ? (
+              <span className='relative flex size-2.5'>
+                <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-35' />
+                <span className='relative inline-flex size-2.5 rounded-full bg-primary' />
+              </span>
+            ) : null}
+            {active ? 'Live dossier' : 'Run dossier'}
           </div>
           <div className='line-clamp-2 font-serif text-2xl leading-tight'>
             {run.topic}
@@ -117,6 +128,15 @@ export function RunsTable({ runs }: { runs: RunSummary[] }) {
                     className='block rounded-2xl border border-transparent px-2 py-1 -mx-2 transition-colors hover:border-border/60 hover:bg-background/80'
                   >
                     <div className='line-clamp-2 font-medium leading-6'>{run.topic}</div>
+                    {isActiveRun(run.status) ? (
+                      <div className='mt-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-primary'>
+                        <span className='relative flex size-2'>
+                          <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-40' />
+                          <span className='relative inline-flex h-full w-full rounded-full bg-current' />
+                        </span>
+                        In progress
+                      </div>
+                    ) : null}
                     <div className='text-muted-foreground mt-2 break-all font-mono text-[12px]'>
                       {run.run_id}
                     </div>

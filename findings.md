@@ -265,6 +265,7 @@
 - 4. `Trace / Report` 需要比“单纯正文”更多一层研究语义摘要，帮助研究人员快速判断是否值得继续深挖。
 - 2026-03-09 19:23 +08 现有“流程可视化”只做了一半：详情页本身会轮询 `run/trace/report`，但 `New Run` 仍调用同步 `POST /v1/runs`，所以用户在点击启动后要等整个 run 完成，无法看到 retrieval -> review -> critic -> planner 的实时推进过程。
 - 2026-03-09 19:35 +08 异步 launch 打通后，新的短板变成“运行中态反馈仍偏弱”：虽然页面会轮询，但 `Overview / Trace / Report` 在 run 进行中还缺少足够明确的 live 文案、占位内容和当前阶段强调，用户仍会感觉页面像静态结果页。
+- 2026-03-09 19:45 +08 live dossier 做完后，archive 仍然偏“查历史”，对正在运行的条目不够友好；用户还需要一个不翻整张表就能直接回到 in-flight run 的入口，以及更明显的 active 状态标记。
 
 ## Latest Decisions
 - 2026-03-09 19:09 +08 决定把 `RunResult` 扩成真正可供详情页消费的 dossier 头部数据，至少带回 `topic`；这类信息不应再让前端依赖 run list 上下文拼接。
@@ -273,6 +274,7 @@
 - 2026-03-09 19:24 +08 决定采用“兼容式异步启动”而不是直接改写原有 `POST /v1/runs`：同步入口继续服务现有 live tests 和脚本，新增 `/v1/runs/launch` 专供前端使用，避免破坏既有回归套件。
 - 2026-03-09 19:28 +08 异步 launch 落地后，前端点击 `Launch live run` 会立即进入 `/dashboard/runs/{run_id}`；详情页已有的 `useRun()` / `useRunTrace()` / `useRunReport()` 轮询机制开始接管真实阶段可视化。
 - 2026-03-09 19:36 +08 当前前端运行中态的设计决策是：不再新增独立 loading 页面，而是在现有 `Overview / Trace / Report` 内部分别补 `live banner + skeleton + pending copy`，让用户始终留在同一个 dossier 语境里。
+- 2026-03-09 19:46 +08 `Runs` 页当前的设计决策是“archive + live docket”双层结构：顶部先给正在运行的 dossier 快速入口，下面保留完整归档，并用轻量筛选切换 `All / Active / Completed / Failed`。
 - 2. `Overview / Trace / Report` 虽然已经可用，但原始 JSON 和阶段状态过于“裸露”，研究人员需要更可读的摘要映射，而不是直接面对后端字段名。
 - 3. `StageProgressBand` 在 1024px 仍然四列展示会让 `critic/planner` 长文案变成窄高条，属于密度过高而非严格 overflow，但会显著损害可读性。
 - 4. 当前前端仍没有独立 test runner；这轮按既有约束使用 `lint + build + Playwright breakpoint inspection` 作为验证路径，没有临时引入新的测试栈。

@@ -128,6 +128,7 @@ Phase 18 in progress
 - [x] 完成 frontend lint/build 与 backend 全量验证
 - [x] 新增异步 run launch，支持前端立即跳转到 live dossier 并轮询流程状态
 - [x] 补运行中态的 loading skeleton、当前阶段强调和 trace/report live feedback
+- [x] 为 `Runs` 页补 active run 快速入口、状态筛选和更明显的运行中徽章反馈
 - [ ] 提交并推送本轮前端 polish
 - **Status:** in_progress
 
@@ -241,3 +242,5 @@ Phase 18 in progress
 - 2026-03-09 19:30 +08 fresh verification 已再次完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
 - 2026-03-09 19:37 +08 已继续打磨 live 运行体验：`Overview` 新增 live pipeline banner，`Trace` 新增 live feed banner 与空白 skeleton，`Report` 在 planner 未完成前新增 draft skeleton，占位不再塌陷。
 - 2026-03-09 19:39 +08 本轮 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
+- 2026-03-09 19:46 +08 已继续加强 archive 工作流：`Runs` 页新增 live docket 快速入口、`All/Active/Completed/Failed` 筛选，以及运行中 run 的更显著动态标记。
+- 2026-03-09 19:47 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
