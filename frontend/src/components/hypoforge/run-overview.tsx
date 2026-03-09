@@ -53,7 +53,7 @@ export function RunOverview({ runId }: { runId: string }) {
   );
 
   return (
-    <div className='mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-6 p-4 md:p-8'>
+    <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
 
       <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>

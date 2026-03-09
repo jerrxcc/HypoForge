@@ -16,7 +16,7 @@ export function ReportView({ runId }: { runId: string }) {
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-6 p-4 md:p-8'>
+    <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
       <div className='grid gap-6 2xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]'>
         <Card className='border-border/70 bg-card/95 shadow-sm'>

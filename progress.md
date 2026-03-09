@@ -424,3 +424,27 @@
 - Playwright 复查：
 - `1440px`：`/dashboard/runs`、`/dashboard/runs/{id}`、`/trace`、`/report` 均正常
 - `1024px`：`/dashboard/runs` 改走卡片流，`/dashboard/runs/{id}` 的阶段带改为双列，且页面 `scrollWidth == innerWidth`
+
+## Session Note: 2026-03-09 18:28 +08
+- 已继续修正“卡片没有填充完整屏幕”的问题：
+- 1. 根因是多个页面外层统一写成 `max-w-[1680px]`，在超宽屏下会留下额外留白；
+- 2. 已从 `new-run/page.tsx`、`runs/page.tsx`、`run-overview.tsx`、`trace-view.tsx`、`report-view.tsx` 去掉该上限；
+- 3. `cd frontend && npm run lint` -> pass
+- 4. `cd frontend && npm run build` -> pass
+- 5. Playwright 在 `2048x1295` 下复查 `/dashboard/runs/{id}`：
+- `main/content width = 2000px`
+- `first card width = 1936px`
+- `scrollWidth = 2048`
+
+## Session Note: 2026-03-09 18:40 +08
+- 已将“去掉 max-width”调整为真正的自适应宽度算法：
+- 1. 在 `frontend/src/styles/globals.css` 新增 `.workspace-shell`；
+- 2. 规则为 `min(100%, clamp(0px, calc(100vw - clamp(1.5rem, 3vw, 4.5rem)), 1980px))`，兼顾铺满、边距和超宽屏上限；
+- 3. `new-run`、`runs`、`run-overview`、`trace-view`、`report-view` 全部改用该容器；
+- 4. `cd frontend && npm run lint` -> pass
+- 5. `cd frontend && npm run build` -> pass
+- 6. Playwright 在 `2048x1295` 下复查：
+- `content width = 1980px`
+- `first card width = 1916px`
+- `scrollWidth = 2048`
+- 当前状态：无横向溢出，但已保留比满屏略收的可读边距。

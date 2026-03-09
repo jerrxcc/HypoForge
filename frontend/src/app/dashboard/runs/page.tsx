@@ -12,7 +12,7 @@ export default function RunsPage() {
   const failedRuns = runList.filter((run) => run.status === 'failed');
 
   return (
-    <div className='mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-6 p-4 md:p-8'>
+    <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <Card className='border-border/70 bg-card/95 shadow-sm'>
         <CardHeader>
           <div className='text-muted-foreground text-xs uppercase tracking-[0.24em]'>

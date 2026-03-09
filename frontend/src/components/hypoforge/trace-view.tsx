@@ -164,7 +164,7 @@ export function TraceView({ runId }: { runId: string }) {
   const activeTrace = traces?.find((trace) => trace.id === selectedId) ?? traces?.[0] ?? null;
 
   return (
-    <div className='mx-auto flex w-full max-w-[1680px] flex-1 flex-col gap-6 p-4 md:p-8'>
+    <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
       <RunHero run={run} runId={runId} />
 
       <div className='grid gap-6 xl:hidden'>

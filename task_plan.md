@@ -208,3 +208,8 @@ Phase 16 in progress
 - 2026-03-09 17:55 +08 Phase 18 第一轮实现已完成：新增 `hypoforge-display.ts` 摘要映射，重做 `Runs` 档案视图、`Run Overview`、`Trace` inspector、`Report` 侧栏和 `StageProgressBand`，同时把历史长错误信息压缩为 `compactError()` 预览。
 - 2026-03-09 18:14 +08 已完成 Phase 18 的响应式收束：`Runs` 页表格展示推迟到 `xl`，1024px 改走卡片档案流；`StageProgressBand` 在中等桌面改为双列、仅在 `2xl` 回到四列，长文案不再被横向压扁。
 - 2026-03-09 18:15 +08 fresh frontend verification 已完成：`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过；Playwright 已复查 `Runs / Overview / Trace / Report` 在 1440px 和 1024px 下均无横向滚动，`Runs` 历史失败行也已稳定限制在卡片/徽章内。
+- 2026-03-09 18:24 +08 用户反馈超宽屏下“整个卡片都没有填充完整屏幕”。已定位为 run 相关页面统一使用 `max-w-[1680px]` 的外层容器，导致在 2K 屏上被人为截断。
+- 2026-03-09 18:28 +08 已移除 `New Run / Runs / Run Overview / Trace / Report` 五个视图外层的 `max-w-[1680px]` 限制；2048px 浏览器复查时，主内容轨道宽度为 `2000px`、首张主卡片宽度为 `1936px`，已接近可用主区域宽度。
+- 2026-03-09 18:34 +08 用户继续反馈“现在变成超出屏幕显示范围”，说明不能简单去掉上限，必须用流体宽度。
+- 2026-03-09 18:39 +08 已新增共享 `.workspace-shell` 容器：`width = min(100%, clamp(0px, calc(100vw - clamp(1.5rem, 3vw, 4.5rem)), 1980px))`，恢复自动居中，并接入五个工作区页面。
+- 2026-03-09 18:40 +08 fresh frontend verification 已再次完成：`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过；Playwright 在 `2048x1295` 下复查 `/dashboard/runs/{id}`，`content width = 1980px`、`first card = 1916px`、`scrollWidth == viewport`。
