@@ -260,3 +260,5 @@ Phase 18 in progress
 - 2026-03-10 14:25 +08 经对照 SPEC 原意，上一轮“重复 supporting evidence id 补位”的策略被判定为过于宽松，已撤回。
 - 2026-03-10 14:25 +08 当前严格派实现为：`Hypothesis` 必须具备至少 3 个 distinct supporting evidence ids；若 planner 无法满足，则按既有 planner partial-result 路径失败/降级，而不伪装成成功。
 - 2026-03-10 14:25 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `67 passed, 6 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 221.69s`。
+- 2026-03-10 15:26 +08 已完成严格派 8-topic live 扩样：在完整 frontend+backend 链路上连续运行 8 个真实研究课题，结果 `8/8 done`，包括此前更敏感的 `diffusion model preference optimization`。
+- 2026-03-10 15:26 +08 当前最强结论更新为：HypoForge 在 strict grounding 模式下，已经在 8-topic live batch 上完成端到端验证，且前端 detail/trace/report 路由全部返回 200。

@@ -492,3 +492,4 @@
 | 2026-03-10 14:18 +08 | Strict planner grounding focused tests | `./.venv/bin/pytest tests/unit/test_workspace_tools.py tests/integration/test_coordinator_degradation.py tests/integration/test_coordinator.py -v` | unit and integration checks passed after switching to `3 distinct supporting evidence ids` rule and removing duplicate padding | pass |
 | 2026-03-10 14:22 +08 | Backend fresh regression after strict pass | `./.venv/bin/pytest -q` | `67 passed, 6 skipped in 0.91s` | pass |
 | 2026-03-10 14:22 +08 | Real API round-trip after strict pass | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | `1 passed in 221.69s` | pass |
+| 2026-03-10 15:26 +08 | Strict 8-topic live batch | `./.venv/bin/python - <<'PY' ...` | ran 8 real topics through `/v1/runs/launch`, `/trace`, `/report.md`, `/v1/runs`, and frontend detail/trace/report routes; result `8/8 done`, all frontend route checks `200`, all traces recorded tokens | pass |

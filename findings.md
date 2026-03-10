@@ -303,3 +303,7 @@
 - 2. 因此当前正式策略改为严格派：至少 3 个 distinct supporting evidence ids 才算有效 grounding。
 - 3. 在 strict 模式下，低证据 topic 重新失败是可接受的，因为这比伪造证据强度更符合 HypoForge 的产品定位。
 - 4. 当前更高优先级是“诚实降级 + planner rerun”，而不是“强行把所有 topic 都跑成 done”。
+- 2026-03-10 strict 扩样后的新发现：
+- 1. 严格派并没有像先前担心的那样显著降低 live success rate；在 8-topic batch 中当前结果是 `8/8 done`。
+- 2. 这说明之前那个 planner grounding 失败更像是偶发真实边界问题，而不是 strict 语义本身必然导致大面积失败。
+- 3. 当前可以更有信心地说：strict grounding 和可运行性并不冲突，至少在现阶段这 8 个真实 topic 上是兼容的。
