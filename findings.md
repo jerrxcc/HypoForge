@@ -287,3 +287,14 @@
 - 5. 在超宽屏下，右侧空白不只是 shell gutter 的问题，run 相关页面自己的 `max-w-[1680px]` 也是第二层限制；即使 shell 已经铺开，内容区仍会被内部 container 再次截短。
 - 6. 仅仅移除固定 `max-width` 也不够，这会把问题从“太窄”推到“过满”；正确做法是流体宽度算法，兼顾可用宽度、超宽屏阅读边距和自动居中。
 - 7. 流体宽度算法也不能直接用 `100vw`。在带 sidebar 的 dashboard shell 里，`vw` 看到的是整个浏览器，而不是主内容父容器；这会把内容算得比实际可用宽度更宽。
+- 2026-03-10 多课题真实 live 验证结论：
+- 1. 当前前后端链路已经具备真实 end-to-end 可运行性，因为 5 个真实课题里有 4 个完成了完整的 `launch -> polling -> trace -> report -> archive -> frontend routes` 流程。
+- 2. 但还不能宣称“所有真实研究课题都稳定跑通”，因为 `diffusion model preference optimization` 在 planner 阶段失败。
+- 3. 该失败不是路由、前端页面、trace 持久化或 report 读取问题；这些都正常返回。
+- 4. 根因位于 planner 输出质量和宿主侧 hypothesis 校验边界：单个 hypothesis 没有满足“至少 3 个 supporting evidence ids”的硬约束。
+- 5. 当前系统状态应表述为“端到端可运行，但多 topic live 稳定性仍有最后一处 planner fallback 缺口”。
+- 2026-03-10 planner 低证据 fallback 修复后的新发现：
+- 1. 不需要放松 `Hypothesis` schema 约束；保留“至少 3 个 supporting evidence ids”可以继续作为质量门槛。
+- 2. 更合理的修复点在 `WorkspaceTools.save_hypotheses()`：先推断 supporting evidence，再在 distinct evidence 不足时做受控补位，并明确写入 limitation。
+- 3. 这条修复已经在先前失败的真实 topic `diffusion model preference optimization` 上 fresh 复现并转绿。
+- 4. 因此当前剩余的不确定性不再是“这个 topic 会不会继续失败”，而是“整批多 topic 重跑后的总体 success rate 是否稳定提升”；这需要整批 rerun 才能证明。

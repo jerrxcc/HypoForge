@@ -481,3 +481,11 @@
 - `grid width = 1916px`
 - `scrollWidth = 2048`
 - 结果：右侧 `Pipeline` 卡完整显示，页面无横向溢出。
+| 2026-03-10 13:11 +08 | Multi-topic live frontend+backend verification | `./.venv/bin/python - <<'PY' ...` | ran 5 real topics through `/v1/runs/launch` plus frontend detail/trace/report routes; 4 runs reached `done`, 1 run failed at planner validation (`run_217b6d7096524418a8cfed2b89cb2a58`) | mixed |
+| 2026-03-10 13:13 +08 | Backend fresh regression | `./.venv/bin/pytest -q` | `66 passed, 6 skipped in 0.95s` | pass |
+| 2026-03-10 13:13 +08 | Frontend fresh quality gates | `cd frontend && npm run lint && npm run build` | lint passed; production build passed; only repeated `baseline-browser-mapping` staleness warnings | pass |
+| 2026-03-10 13:46 +08 | Focused planner fallback tests | `./.venv/bin/pytest tests/unit/test_workspace_tools.py -k 'partial_grounding or missing_supporting_evidence_ids or repairs_missing_counterevidence_ids' -v` | `3 passed, 1 deselected in 0.23s` | pass |
+| 2026-03-10 13:46 +08 | Coordinator degradation regression | `./.venv/bin/pytest tests/integration/test_coordinator_degradation.py -v` | `3 passed in 0.26s` | pass |
+| 2026-03-10 13:54 +08 | Targeted live rerun of previous failure | `./.venv/bin/python - <<'PY' ...` | previous failing topic `diffusion model preference optimization` now completed as `run_039a9802068c409898c963b574b53fc8`; `status=done`, `selected_papers=18`, `evidence_cards=18`, `conflict_clusters=6`, `hypotheses=3`, `trace_count=34` | pass |
+| 2026-03-10 13:58 +08 | Backend fresh regression after planner fix | `./.venv/bin/pytest -q` | `67 passed, 6 skipped in 0.96s` | pass |
+| 2026-03-10 13:58 +08 | Frontend fresh quality gates after planner fix | `cd frontend && npm run lint && npm run build` | lint passed; production build passed; only repeated `baseline-browser-mapping` staleness warnings | pass |

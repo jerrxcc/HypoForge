@@ -253,3 +253,7 @@ Phase 18 in progress
 - 2026-03-09 20:04 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `66 passed, 6 skipped`，`cd frontend && npm run lint` 通过，`cd frontend && npm run build` 通过。
 - 2026-03-09 20:14 +08 已完成真实 demo walkthrough 检查：通过 `/v1/runs/launch` 发起主题 `solid-state battery electrolyte`，run `run_506d493b908c4eb8bba6b120c7da55b1` 成功经历 `retrieving -> reviewing -> criticizing -> planning -> done` 全链路。
 - 2026-03-09 20:14 +08 这次真实 walkthrough 的最终结果为：15 篇 selected papers、15 张 evidence cards、4 个 conflict clusters、3 个 hypotheses、4 条 stage summaries、18 条 traces；archive 命中，前端 `/dashboard/runs/{id}`、`/trace`、`/report` 路由均返回 200。
+- 2026-03-10 13:33 +08 已完成多课题真实 live 验证：5 个真实研究课题通过 frontend+backend 链路发起异步 run，并验证 `/trace`、`/report.md`、`/v1/runs` 和前端 detail/trace/report 路由。
+- 2026-03-10 13:33 +08 本轮结果为 4 个 `done`、1 个 `failed`；失败集中在 `diffusion model preference optimization` 的 planner hypothesis 校验，说明系统已“可跑通”，但仍缺一个 planner 低证据 fallback 收口。
+- 2026-03-10 14:00 +08 已完成 planner 低证据 fallback 修复：当 supporting evidence 修复后仍不足 3 条时，宿主侧会做受控补位并添加 limitation，而不是让整条 run 在 `save_hypotheses` 校验处失败。
+- 2026-03-10 14:00 +08 已完成失败课题 targeted live retest：`diffusion model preference optimization` fresh run `run_039a9802068c409898c963b574b53fc8` 按 `queued -> retrieving -> reviewing -> criticizing -> planning -> done` 成功完成，planner stage `completed`。

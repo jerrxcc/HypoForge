@@ -102,6 +102,11 @@ class WorkspaceTools:
                 )
                 if repaired_supporting_ids:
                     hypothesis["supporting_evidence_ids"] = repaired_supporting_ids
+                    self._annotate_sparse_supporting_evidence(
+                        hypothesis,
+                        original_support_count=len(list(dict.fromkeys(supporting_ids))),
+                        repaired_supporting_ids=repaired_supporting_ids,
+                    )
             self._apply_credibility_annotations(
                 hypothesis,
                 retrieval_low_evidence=retrieval_low_evidence,
@@ -170,7 +175,26 @@ class WorkspaceTools:
             repaired.append(evidence_id)
             if len(repaired) >= 3:
                 break
+        if repaired and len(repaired) < 3:
+            repaired.extend([repaired[-1]] * (3 - len(repaired)))
         return repaired
+
+    def _annotate_sparse_supporting_evidence(
+        self,
+        hypothesis: dict,
+        *,
+        original_support_count: int,
+        repaired_supporting_ids: list[str],
+    ) -> None:
+        unique_repaired_count = len(list(dict.fromkeys(repaired_supporting_ids)))
+        if original_support_count >= 3 or unique_repaired_count >= 3:
+            return
+
+        limitations = list(hypothesis.get("limitations") or [])
+        limitations.append(
+            "Recovered after planner output provided fewer than 3 distinct supporting evidence ids; supporting evidence was too sparse and required host-side padding."
+        )
+        hypothesis["limitations"] = list(dict.fromkeys(limitations))
 
     def _infer_counterevidence_ids(
         self,
