@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
+from typing import Callable
 
 from hypoforge.domain.schemas import (
     CriticSummary,
@@ -20,14 +21,21 @@ from hypoforge.infrastructure.db.repository import RunRepository
 
 
 class RunCoordinator:
+    """Orchestrates the four-stage hypothesis generation pipeline.
+
+    Stages: retrieval → review → critic → planner.  Each stage can
+    degrade gracefully when the agent encounters an error, preserving
+    partial results so that downstream stages still have data to work with.
+    """
+
     def __init__(
         self,
         *,
         repository: RunRepository,
-        retrieval_agent,
-        review_agent,
-        critic_agent,
-        planner_agent,
+        retrieval_agent: Callable[..., RetrievalSummary],
+        review_agent: Callable[..., ReviewSummary],
+        critic_agent: Callable[..., CriticSummary],
+        planner_agent: Callable[..., PlannerSummary],
         report_renderer: ReportRenderer | None = None,
     ) -> None:
         self._repository = repository

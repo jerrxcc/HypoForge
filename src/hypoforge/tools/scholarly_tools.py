@@ -1,19 +1,36 @@
 from __future__ import annotations
 
+import logging
 from typing import Callable
 
 import httpx
 
 from hypoforge.application.budget import BudgetExceededError
 from hypoforge.domain.schemas import PaperDetail
+from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
 from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
 from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.schemas import GetPaperDetailsArgs, RecommendPapersArgs, SaveSelectedPapersArgs, SearchPapersArgs
 
+logger = logging.getLogger(__name__)
+
 
 class ScholarlyTools:
-    def __init__(self, openalex, semantic_scholar, repository: RunRepository, paper_lookup: Callable[[list[str]], list[dict | PaperDetail]] | None = None) -> None:
+    """Tool facade for paper search, recommendation, and selection.
+
+    Wraps OpenAlex and Semantic Scholar connectors with consistent error
+    handling, deduplication, ranking, and persistence through the
+    repository layer.
+    """
+
+    def __init__(
+        self,
+        openalex: CachedOpenAlexConnector,
+        semantic_scholar: CachedSemanticScholarConnector,
+        repository: RunRepository,
+        paper_lookup: Callable[[list[str]], list[dict | PaperDetail]] | None = None,
+    ) -> None:
         self._openalex = openalex
         self._semantic_scholar = semantic_scholar
         self._repository = repository
@@ -73,7 +90,7 @@ class ScholarlyTools:
         self._repository.save_selected_papers(run_id, papers, args.selection_reason)
         return {"paper_ids": [paper.paper_id for paper in papers], "selection_reason": args.selection_reason}
 
-    def _run_source_call(self, fn: Callable[[], list[PaperDetail]], *, source=None) -> dict:
+    def _run_source_call(self, fn: Callable[[], list[PaperDetail]], *, source: object = None) -> dict:
         try:
             papers = fn()
             return {
@@ -81,6 +98,7 @@ class ScholarlyTools:
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
             }
         except httpx.HTTPStatusError as exc:
+            logger.warning("HTTP %d from source call: %s", exc.response.status_code, exc)
             return {
                 "papers": [],
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
@@ -91,6 +109,7 @@ class ScholarlyTools:
                 },
             }
         except BudgetExceededError as exc:
+            logger.warning("Budget exceeded for %s: %s", exc.source, exc)
             return {
                 "papers": [],
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
@@ -101,6 +120,7 @@ class ScholarlyTools:
                 },
             }
         except httpx.HTTPError as exc:
+            logger.warning("HTTP error from source call: %s", exc)
             return {
                 "papers": [],
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
