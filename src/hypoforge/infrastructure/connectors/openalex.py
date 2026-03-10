@@ -9,8 +9,13 @@ from hypoforge.infrastructure.connectors.normalizers import reconstruct_openalex
 class OpenAlexConnector:
     BASE_URL = "https://api.openalex.org"
 
-    def __init__(self, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        client: httpx.Client | None = None,
+        api_key: str | None = None,
+    ) -> None:
         self._client = client or httpx.Client(timeout=30.0)
+        self._api_key = api_key or None
 
     def search_works(
         self,
@@ -19,14 +24,14 @@ class OpenAlexConnector:
         year_to: int,
         limit: int,
     ) -> list[PaperDetail]:
-        response = self._client.get(
-            f"{self.BASE_URL}/works",
-            params={
-                "search": query,
-                "filter": f"from_publication_date:{year_from}-01-01,to_publication_date:{year_to}-12-31",
-                "per-page": limit,
-            },
-        )
+        params = {
+            "search": query,
+            "filter": f"from_publication_date:{year_from}-01-01,to_publication_date:{year_to}-12-31",
+            "per-page": limit,
+        }
+        if self._api_key:
+            params["api_key"] = self._api_key
+        response = self._client.get(f"{self.BASE_URL}/works", params=params)
         response.raise_for_status()
         payload = response.json()
         return [self._normalize_work(work) for work in payload.get("results", [])]
@@ -62,4 +67,3 @@ class OpenAlexConnector:
             source_urls={"openalex": work.get("id", "")},
             provenance=["openalex"],
         )
-

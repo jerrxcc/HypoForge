@@ -307,3 +307,7 @@
 - 1. 严格派并没有像先前担心的那样显著降低 live success rate；在 8-topic batch 中当前结果是 `8/8 done`。
 - 2. 这说明之前那个 planner grounding 失败更像是偶发真实边界问题，而不是 strict 语义本身必然导致大面积失败。
 - 3. 当前可以更有信心地说：strict grounding 和可运行性并不冲突，至少在现阶段这 8 个真实 topic 上是兼容的。
+- 2026-03-10 OpenAlex key 接入后的关键发现：
+- 1. 之前仓库里的 `OPENALEX_API_KEY` 只是配置占位，并没有真正影响 HTTP 请求。
+- 2. 现在 connector 已按 OpenAlex 预期改成 `?api_key=...` 方式注入。
+- 3. `SEMANTIC_SCHOLAR_API_KEY` 目前仍然只是配置占位，尚未真正接入请求头。

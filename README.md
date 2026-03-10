@@ -179,6 +179,8 @@ MAX_TOOL_STEPS_CRITIC=4
 MAX_TOOL_STEPS_PLANNER=4
 ```
 
+When `OPENALEX_API_KEY` is set, HypoForge appends it as `api_key` on OpenAlex `/works` requests. If it is omitted, the connector still uses anonymous OpenAlex access.
+
 ### Frontend `frontend/.env.local`
 
 ```env

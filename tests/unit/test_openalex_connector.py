@@ -38,3 +38,15 @@ def test_openalex_search_normalizes_response() -> None:
     assert papers[0].paper_id == "oa:W123"
     assert papers[0].abstract == "Paper A"
 
+
+def test_openalex_search_includes_api_key_when_configured() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params.get("api_key") == "openalex-secret"
+        return httpx.Response(200, json={"results": []})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    connector = OpenAlexConnector(client=client, api_key="openalex-secret")
+
+    papers = connector.search_works("battery", 2018, 2026, 5)
+
+    assert papers == []

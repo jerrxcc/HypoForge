@@ -55,7 +55,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     )
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)
-    openalex_base = OpenAlexConnector()
+    openalex_base = OpenAlexConnector(api_key=settings.openalex_api_key or None)
     semantic_scholar_base = SemanticScholarConnector()
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]

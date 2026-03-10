@@ -262,3 +262,6 @@ Phase 18 in progress
 - 2026-03-10 14:25 +08 fresh verification 已完成：`./.venv/bin/pytest -q` 为 `67 passed, 6 skipped`，`RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` 为 `1 passed in 221.69s`。
 - 2026-03-10 15:26 +08 已完成严格派 8-topic live 扩样：在完整 frontend+backend 链路上连续运行 8 个真实研究课题，结果 `8/8 done`，包括此前更敏感的 `diffusion model preference optimization`。
 - 2026-03-10 15:26 +08 当前最强结论更新为：HypoForge 在 strict grounding 模式下，已经在 8-topic live batch 上完成端到端验证，且前端 detail/trace/report 路由全部返回 200。
+- 2026-03-10 15:44 +08 已完成 OpenAlex API key 真接入：`Settings.openalex_api_key` 现在会传入 `OpenAlexConnector`，connector 在存在配置时会给 `/works` 请求附加 `api_key` query param。
+- 2026-03-10 15:44 +08 本地 `.env` 已填入用户提供的 OpenAlex key；该值仅存在本地开发环境，不进入 git。
+- 2026-03-10 15:44 +08 fresh verification 已完成：OpenAlex wiring focused tests `3 passed`，backend 全量 `69 passed, 6 skipped`，真实 round-trip `1 passed in 215.02s`。

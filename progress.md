@@ -493,3 +493,6 @@
 | 2026-03-10 14:22 +08 | Backend fresh regression after strict pass | `./.venv/bin/pytest -q` | `67 passed, 6 skipped in 0.91s` | pass |
 | 2026-03-10 14:22 +08 | Real API round-trip after strict pass | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | `1 passed in 221.69s` | pass |
 | 2026-03-10 15:26 +08 | Strict 8-topic live batch | `./.venv/bin/python - <<'PY' ...` | ran 8 real topics through `/v1/runs/launch`, `/trace`, `/report.md`, `/v1/runs`, and frontend detail/trace/report routes; result `8/8 done`, all frontend route checks `200`, all traces recorded tokens | pass |
+| 2026-03-10 15:38 +08 | OpenAlex key focused TDD verification | `./.venv/bin/pytest tests/unit/test_openalex_connector.py tests/unit/test_service_wiring.py -v` | `3 passed in 0.67s`; verified connector appends `api_key` and services wiring passes configured key | pass |
+| 2026-03-10 15:39 +08 | Backend fresh regression after OpenAlex wiring | `./.venv/bin/pytest -q` | `69 passed, 6 skipped in 2.37s` | pass |
+| 2026-03-10 15:43 +08 | Real API round-trip after OpenAlex wiring | `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` | `1 passed in 215.02s` | pass |
