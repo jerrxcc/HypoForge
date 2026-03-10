@@ -298,3 +298,8 @@
 - 2. 更合理的修复点在 `WorkspaceTools.save_hypotheses()`：先推断 supporting evidence，再在 distinct evidence 不足时做受控补位，并明确写入 limitation。
 - 3. 这条修复已经在先前失败的真实 topic `diffusion model preference optimization` 上 fresh 复现并转绿。
 - 4. 因此当前剩余的不确定性不再是“这个 topic 会不会继续失败”，而是“整批多 topic 重跑后的总体 success rate 是否稳定提升”；这需要整批 rerun 才能证明。
+- 2026-03-10 对照 SPEC 原意后的最终判断：
+- 1. “重复 evidence id 补位”虽然提高了 live success rate，但不符合第 8.4、19.1、19.2、23 节对 grounding 和 hypothesis 质量的真实要求。
+- 2. 因此当前正式策略改为严格派：至少 3 个 distinct supporting evidence ids 才算有效 grounding。
+- 3. 在 strict 模式下，低证据 topic 重新失败是可接受的，因为这比伪造证据强度更符合 HypoForge 的产品定位。
+- 4. 当前更高优先级是“诚实降级 + planner rerun”，而不是“强行把所有 topic 都跑成 done”。

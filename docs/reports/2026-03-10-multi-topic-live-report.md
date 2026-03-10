@@ -111,3 +111,25 @@ Updated interpretation after retest:
 - I have not rerun the full 5-topic batch after the fix, so the strongest verified claim is:
   - the previously failing live topic now completes end-to-end
   - backend regressions and frontend build checks remain green after the fix
+
+## Strict-SPEC Addendum
+Date: 2026-03-10
+
+After reviewing the change against the original SPEC, the permissive fallback above was judged too weak semantically:
+- it satisfied schema shape,
+- but it did so by padding repeated supporting evidence IDs,
+- which is not a faithful interpretation of "3 supporting evidence ids" in the spec.
+
+Strict alignment changes:
+- `Hypothesis` grounding now requires at least `3 distinct supporting evidence ids`.
+- Host-side duplicate padding was removed.
+- If planner cannot produce hypotheses with enough distinct support, the system falls back to the existing planner partial-result path instead of pretending success.
+
+Fresh verification after strict pass:
+- `./.venv/bin/pytest -q` -> `67 passed, 6 skipped`
+- `RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v` -> `1 passed in 221.69s`
+
+Current interpretation:
+- The system is now more faithful to the original grounding and hypothesis-quality intent of the SPEC.
+- This may reduce apparent success rate on difficult low-evidence topics, but it is a more honest behavior.
+- The permissive remediation section above should be treated as historical context, not the current policy.

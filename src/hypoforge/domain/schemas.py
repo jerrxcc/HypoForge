@@ -162,8 +162,8 @@ class Hypothesis(BaseModel):
 
     @model_validator(mode="after")
     def validate_grounding(self) -> "Hypothesis":
-        if len(self.supporting_evidence_ids) < 3:
-            raise ValueError("each hypothesis requires at least 3 supporting evidence ids")
+        if len(dict.fromkeys(self.supporting_evidence_ids)) < 3:
+            raise ValueError("each hypothesis requires at least 3 distinct supporting evidence ids")
         if len(self.counterevidence_ids) < 1:
             raise ValueError("each hypothesis requires at least 1 counterevidence id")
         if not self.minimal_experiment.readouts:

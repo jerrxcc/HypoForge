@@ -1,3 +1,5 @@
+import pytest
+
 from hypoforge.domain.schemas import ConflictCluster, EvidenceCard, PaperDetail, RunRequest
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.workspace_tools import WorkspaceTools
@@ -36,6 +38,28 @@ def test_save_hypotheses_repairs_missing_counterevidence_ids(tmp_path) -> None:
                 direction="negative",
                 confidence=0.7,
             ),
+            EvidenceCard(
+                evidence_id="e3",
+                paper_id="p1",
+                title="Paper 1",
+                claim_text="Support 2",
+                system_or_material="System",
+                intervention="Intervention",
+                outcome="Outcome",
+                direction="positive",
+                confidence=0.8,
+            ),
+            EvidenceCard(
+                evidence_id="e4",
+                paper_id="p1",
+                title="Paper 1",
+                claim_text="Support 3",
+                system_or_material="System",
+                intervention="Intervention",
+                outcome="Outcome",
+                direction="positive",
+                confidence=0.75,
+            ),
         ],
     )
     repo.save_conflict_clusters(
@@ -44,7 +68,7 @@ def test_save_hypotheses_repairs_missing_counterevidence_ids(tmp_path) -> None:
             ConflictCluster(
                 cluster_id="cluster_1",
                 topic_axis="axis",
-                supporting_evidence_ids=["e1"],
+                supporting_evidence_ids=["e1", "e3", "e4"],
                 conflicting_evidence_ids=["e2"],
                 conflict_type="direct_conflict",
                 critic_summary="conflict",
@@ -64,7 +88,7 @@ def test_save_hypotheses_repairs_missing_counterevidence_ids(tmp_path) -> None:
                     "hypothesis_statement": "Statement",
                     "why_plausible": "Plausible",
                     "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1", "e1", "e1"],
+                    "supporting_evidence_ids": ["e1", "e3", "e4"],
                     "counterevidence_ids": [],
                     "prediction": "Prediction",
                     "minimal_experiment": {
@@ -86,7 +110,7 @@ def test_save_hypotheses_repairs_missing_counterevidence_ids(tmp_path) -> None:
                     "hypothesis_statement": "Statement",
                     "why_plausible": "Plausible",
                     "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1", "e1", "e1"],
+                    "supporting_evidence_ids": ["e1", "e3", "e4"],
                     "counterevidence_ids": ["e2"],
                     "prediction": "Prediction",
                     "minimal_experiment": {
@@ -108,7 +132,7 @@ def test_save_hypotheses_repairs_missing_counterevidence_ids(tmp_path) -> None:
                     "hypothesis_statement": "Statement",
                     "why_plausible": "Plausible",
                     "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1", "e1", "e1"],
+                    "supporting_evidence_ids": ["e1", "e3", "e4"],
                     "counterevidence_ids": ["e2"],
                     "prediction": "Prediction",
                     "minimal_experiment": {
@@ -444,7 +468,7 @@ def test_save_hypotheses_repairs_missing_supporting_evidence_ids(tmp_path) -> No
     assert hypotheses[2].supporting_evidence_ids == ["e1", "e2", "e3"]
 
 
-def test_save_hypotheses_pads_supporting_evidence_when_only_partial_grounding_exists(tmp_path) -> None:
+def test_save_hypotheses_rejects_insufficient_distinct_supporting_evidence_ids(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     run = repo.create_run(RunRequest(topic="diffusion model preference optimization"))
     repo.save_selected_papers(
@@ -495,80 +519,77 @@ def test_save_hypotheses_pads_supporting_evidence_when_only_partial_grounding_ex
     )
 
     tools = WorkspaceTools(repository=repo)
-    tools.save_hypotheses(
-        run.run_id,
-        {
-            "hypotheses": [
-                {
-                    "rank": 1,
-                    "title": "Hypothesis 1",
-                    "hypothesis_statement": "Statement",
-                    "why_plausible": "Plausible",
-                    "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1"],
-                    "counterevidence_ids": ["e2"],
-                    "prediction": "Prediction",
-                    "minimal_experiment": {
-                        "system": "System",
-                        "design": "Design",
-                        "control": "Control",
-                        "readouts": ["Readout"],
-                        "success_criteria": "Success",
-                        "failure_interpretation": "Failure",
+    with pytest.raises(ValueError, match="3 distinct supporting evidence ids"):
+        tools.save_hypotheses(
+            run.run_id,
+            {
+                "hypotheses": [
+                    {
+                        "rank": 1,
+                        "title": "Hypothesis 1",
+                        "hypothesis_statement": "Statement",
+                        "why_plausible": "Plausible",
+                        "why_not_obvious": "Not obvious",
+                        "supporting_evidence_ids": ["e1"],
+                        "counterevidence_ids": ["e2"],
+                        "prediction": "Prediction",
+                        "minimal_experiment": {
+                            "system": "System",
+                            "design": "Design",
+                            "control": "Control",
+                            "readouts": ["Readout"],
+                            "success_criteria": "Success",
+                            "failure_interpretation": "Failure",
+                        },
+                        "risks": ["risk"],
+                        "novelty_score": 0.7,
+                        "feasibility_score": 0.8,
+                        "overall_score": 0.75,
                     },
-                    "risks": ["risk"],
-                    "novelty_score": 0.7,
-                    "feasibility_score": 0.8,
-                    "overall_score": 0.75,
-                },
-                {
-                    "rank": 2,
-                    "title": "Hypothesis 2",
-                    "hypothesis_statement": "Statement",
-                    "why_plausible": "Plausible",
-                    "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1"],
-                    "counterevidence_ids": ["e2"],
-                    "prediction": "Prediction",
-                    "minimal_experiment": {
-                        "system": "System",
-                        "design": "Design",
-                        "control": "Control",
-                        "readouts": ["Readout"],
-                        "success_criteria": "Success",
-                        "failure_interpretation": "Failure",
+                    {
+                        "rank": 2,
+                        "title": "Hypothesis 2",
+                        "hypothesis_statement": "Statement",
+                        "why_plausible": "Plausible",
+                        "why_not_obvious": "Not obvious",
+                        "supporting_evidence_ids": ["e1"],
+                        "counterevidence_ids": ["e2"],
+                        "prediction": "Prediction",
+                        "minimal_experiment": {
+                            "system": "System",
+                            "design": "Design",
+                            "control": "Control",
+                            "readouts": ["Readout"],
+                            "success_criteria": "Success",
+                            "failure_interpretation": "Failure",
+                        },
+                        "risks": ["risk"],
+                        "novelty_score": 0.7,
+                        "feasibility_score": 0.8,
+                        "overall_score": 0.75,
                     },
-                    "risks": ["risk"],
-                    "novelty_score": 0.7,
-                    "feasibility_score": 0.8,
-                    "overall_score": 0.75,
-                },
-                {
-                    "rank": 3,
-                    "title": "Hypothesis 3",
-                    "hypothesis_statement": "Statement",
-                    "why_plausible": "Plausible",
-                    "why_not_obvious": "Not obvious",
-                    "supporting_evidence_ids": ["e1"],
-                    "counterevidence_ids": ["e2"],
-                    "prediction": "Prediction",
-                    "minimal_experiment": {
-                        "system": "System",
-                        "design": "Design",
-                        "control": "Control",
-                        "readouts": ["Readout"],
-                        "success_criteria": "Success",
-                        "failure_interpretation": "Failure",
+                    {
+                        "rank": 3,
+                        "title": "Hypothesis 3",
+                        "hypothesis_statement": "Statement",
+                        "why_plausible": "Plausible",
+                        "why_not_obvious": "Not obvious",
+                        "supporting_evidence_ids": ["e1"],
+                        "counterevidence_ids": ["e2"],
+                        "prediction": "Prediction",
+                        "minimal_experiment": {
+                            "system": "System",
+                            "design": "Design",
+                            "control": "Control",
+                            "readouts": ["Readout"],
+                            "success_criteria": "Success",
+                            "failure_interpretation": "Failure",
+                        },
+                        "risks": ["risk"],
+                        "novelty_score": 0.7,
+                        "feasibility_score": 0.8,
+                        "overall_score": 0.75,
                     },
-                    "risks": ["risk"],
-                    "novelty_score": 0.7,
-                    "feasibility_score": 0.8,
-                    "overall_score": 0.75,
-                },
-            ]
-        },
-    )
-
-    hypotheses = repo.load_hypotheses(run.run_id)
-    assert hypotheses[0].supporting_evidence_ids == ["e1", "e1", "e1"]
-    assert any("supporting evidence was too sparse" in item for item in hypotheses[0].limitations)
+                ]
+            },
+        )
