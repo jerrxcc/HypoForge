@@ -31,6 +31,6 @@ dev = [
 packages = ["src/hypoforge"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = "-ra"

@@ -269,7 +269,7 @@ class IterationState(BaseModel):
     iteration_id: str = Field(default_factory=lambda: f"iter_{uuid4().hex[:12]}")
     run_id: str
     stage_name: StageName
-    iteration_number: int = Field(ge=1)
+    iteration_number: int = Field(default=1, ge=1)
     max_iterations: int = Field(default=3)
     quality_threshold: float = Field(default=0.5)
     current_quality_score: float | None = None

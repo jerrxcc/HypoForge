@@ -469,7 +469,7 @@ class RunRepository:
         """Save the run's iteration state."""
         with self._session_factory() as session:
             row = self._require_run(session, run_id)
-            row.iteration_state_json = iteration_state.model_dump()
+            row.iteration_state_json = iteration_state.model_dump(mode="json")
             row.reflection_enabled = iteration_state.reflection_enabled
             session.commit()
 
