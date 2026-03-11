@@ -29,6 +29,8 @@ class RunRow(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     final_report_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    iteration_state_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    reflection_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -143,4 +145,20 @@ class ToolTraceRow(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ReflectionFeedbackRow(Base):
+    __tablename__ = "reflection_feedback"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=default_id)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), nullable=False)
+    feedback_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    issues_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="medium")
+    suggested_actions_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    backtrack_stage: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    quality_scores_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    iteration_number: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

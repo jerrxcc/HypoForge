@@ -1,4 +1,65 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class ReflectionSettings(BaseSettings):
+    """Configuration for the reflection-correction loop system."""
+
+    max_stage_iterations: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Maximum iterations per stage before giving up",
+    )
+    max_cross_stage_iterations: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+        description="Maximum cross-stage backtracking iterations",
+    )
+    retrieval_quality_threshold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Minimum quality score for retrieval stage",
+    )
+    review_quality_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum quality score for review stage",
+    )
+    critic_quality_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum quality score for critic stage",
+    )
+    planner_quality_threshold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Minimum quality score for planner stage",
+    )
+    enable_multi_perspective: bool = Field(
+        default=True,
+        description="Enable multi-perspective critique mode",
+    )
+    critic_perspectives: list[str] = Field(
+        default=["methodological", "statistical", "domain"],
+        description="List of critique perspectives to use",
+    )
+    enable_reflection: bool = Field(
+        default=True,
+        description="Globally enable/disable the reflection system",
+    )
+
+    model_config = SettingsConfigDict(
+        env_prefix="REFLECTION_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class Settings(BaseSettings):
@@ -31,6 +92,11 @@ class Settings(BaseSettings):
     max_openalex_calls_per_run: int = 20
     max_s2_calls_per_run: int = 20
     request_timeout_seconds: int = 30
+
+    reflection_settings: ReflectionSettings = Field(
+        default_factory=ReflectionSettings,
+        description="Reflection-correction loop configuration",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

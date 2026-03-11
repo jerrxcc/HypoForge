@@ -9,12 +9,14 @@ from collections import defaultdict
 from typing import Callable
 
 from hypoforge.agents.prompts import prompt_for
+from hypoforge.agents.reflection import ReflectionAgent
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
 from hypoforge.application.budget import RunBudgetTracker, ToolStepBudgetExceededError
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
-from hypoforge.config import Settings
+from hypoforge.application.stage_graph import StageNavigator
+from hypoforge.config import ReflectionSettings, Settings
 from hypoforge.domain.schemas import (
     ConflictCluster,
     CriticSummary,
@@ -336,6 +338,30 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 renderer=renderer,
             )
 
+    # Create reflection agent if enabled
+    reflection_agent: ReflectionAgent | None = None
+    stage_navigator: StageNavigator | None = None
+    if settings.reflection_settings.enable_reflection:
+        reflection_agent = ReflectionAgent(
+            repository=repository,
+            quality_thresholds={
+                "retrieval": settings.reflection_settings.retrieval_quality_threshold,
+                "review": settings.reflection_settings.review_quality_threshold,
+                "critic": settings.reflection_settings.critic_quality_threshold,
+                "planner": settings.reflection_settings.planner_quality_threshold,
+            },
+            enable_multi_perspective=settings.reflection_settings.enable_multi_perspective,
+            perspectives=settings.reflection_settings.critic_perspectives,
+        )
+        stage_navigator = StageNavigator(repository=repository)
+        logger.info(
+            "Reflection system enabled",
+            extra={
+                "max_stage_iterations": settings.reflection_settings.max_stage_iterations,
+                "max_cross_stage_iterations": settings.reflection_settings.max_cross_stage_iterations,
+            },
+        )
+
     coordinator = RunCoordinator(
         repository=repository,
         retrieval_agent=retrieval_agent,
@@ -343,6 +369,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         critic_agent=critic_agent,
         planner_agent=planner_agent,
         report_renderer=renderer,
+        reflection_agent=reflection_agent,
+        reflection_settings=settings.reflection_settings,
+        stage_navigator=stage_navigator,
     )
     return ServiceContainer(coordinator=coordinator)
 
@@ -854,11 +883,15 @@ def build_fake_services(
         )
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=["fake planner complete"])
 
+    # Create reflection components for fake services (disabled by default for tests)
+    reflection_settings = ReflectionSettings(enable_reflection=False)
+
     coordinator = RunCoordinator(
         repository=repository,
         retrieval_agent=retrieval_agent,
         review_agent=review_agent,
         critic_agent=critic_agent,
         planner_agent=planner_agent,
+        reflection_settings=reflection_settings,
     )
     return ServiceContainer(coordinator=coordinator)

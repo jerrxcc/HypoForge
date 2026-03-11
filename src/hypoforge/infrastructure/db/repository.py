@@ -11,8 +11,11 @@ from hypoforge.domain.schemas import (
     ConflictCluster,
     EvidenceCard,
     Hypothesis,
+    IterationState,
     PaperDetail,
+    ReflectionFeedback,
     RunConstraints,
+    RunIterationState,
     RunRequest,
     RunResult,
     RunSummary,
@@ -27,6 +30,7 @@ from hypoforge.infrastructure.db.models import (
     EvidenceCardRow,
     HypothesisRow,
     PaperRow,
+    ReflectionFeedbackRow,
     RunPaperRow,
     RunRow,
     StageSummaryRow,
@@ -454,3 +458,127 @@ class RunRepository:
                 select(func.count()).select_from(row_type).where(row_type.run_id == run_id)
             ).scalar_one()
         )
+
+    # Reflection-related methods
+
+    def save_iteration_state(
+        self,
+        run_id: str,
+        iteration_state: RunIterationState,
+    ) -> None:
+        """Save the run's iteration state."""
+        with self._session_factory() as session:
+            row = self._require_run(session, run_id)
+            row.iteration_state_json = iteration_state.model_dump()
+            row.reflection_enabled = iteration_state.reflection_enabled
+            session.commit()
+
+    def load_iteration_state(self, run_id: str) -> RunIterationState | None:
+        """Load the run's iteration state."""
+        with self._session_factory() as session:
+            row = self._require_run(session, run_id)
+            if row.iteration_state_json is None:
+                return None
+            return RunIterationState.model_validate(row.iteration_state_json)
+
+    def set_reflection_enabled(self, run_id: str, enabled: bool) -> None:
+        """Set whether reflection is enabled for a run."""
+        with self._session_factory() as session:
+            row = self._require_run(session, run_id)
+            row.reflection_enabled = enabled
+            session.commit()
+
+    def is_reflection_enabled(self, run_id: str) -> bool:
+        """Check if reflection is enabled for a run."""
+        with self._session_factory() as session:
+            row = self._require_run(session, run_id)
+            return row.reflection_enabled
+
+    def save_reflection_feedback(
+        self,
+        run_id: str,
+        feedback: ReflectionFeedback,
+    ) -> None:
+        """Save reflection feedback for a run."""
+        with self._session_factory() as session:
+            self._require_run(session, run_id)
+            row = ReflectionFeedbackRow(
+                id=f"{run_id}_fb_{feedback.iteration_number}_{feedback.target_stage}",
+                run_id=run_id,
+                feedback_id=feedback.feedback_id,
+                target_stage=feedback.target_stage,
+                issues_json=feedback.issues_found,
+                severity=feedback.severity,
+                suggested_actions_json=feedback.suggested_actions,
+                backtrack_stage=feedback.recommended_backtrack_stage,
+                quality_scores_json=feedback.quality_scores,
+                iteration_number=feedback.iteration_number,
+            )
+            session.add(row)
+            session.commit()
+
+    def load_reflection_history(
+        self,
+        run_id: str,
+        stage_name: StageName | None = None,
+    ) -> list[ReflectionFeedback]:
+        """Load reflection feedback history for a run.
+
+        Args:
+            run_id: The run identifier
+            stage_name: Optional stage filter
+
+        Returns:
+            List of ReflectionFeedback entries
+        """
+        with self._session_factory() as session:
+            query = select(ReflectionFeedbackRow).where(
+                ReflectionFeedbackRow.run_id == run_id
+            ).order_by(ReflectionFeedbackRow.created_at.asc())
+            if stage_name:
+                query = query.where(ReflectionFeedbackRow.target_stage == stage_name)
+            rows = session.execute(query).scalars()
+
+            return [
+                ReflectionFeedback(
+                    feedback_id=row.feedback_id,
+                    target_stage=row.target_stage,
+                    issues_found=row.issues_json,
+                    severity=row.severity,
+                    suggested_actions=row.suggested_actions_json,
+                    recommended_backtrack_stage=row.backtrack_stage,
+                    quality_scores=row.quality_scores_json,
+                    iteration_number=row.iteration_number,
+                )
+                for row in rows
+            ]
+
+    def clear_downstream_data(
+        self,
+        run_id: str,
+        from_stage: StageName,
+    ) -> None:
+        """Clear data from downstream stages after backtracking.
+
+        Args:
+            run_id: The run identifier
+            from_stage: The stage to start clearing from (inclusive)
+        """
+        stage_order = ["retrieval", "review", "critic", "planner"]
+        from_idx = stage_order.index(from_stage)
+
+        stages_to_clear = stage_order[from_idx:]
+
+        with self._session_factory() as session:
+            self._require_run(session, run_id)
+
+            if "retrieval" in stages_to_clear:
+                session.execute(delete(RunPaperRow).where(RunPaperRow.run_id == run_id))
+            if "review" in stages_to_clear:
+                session.execute(delete(EvidenceCardRow).where(EvidenceCardRow.run_id == run_id))
+            if "critic" in stages_to_clear:
+                session.execute(delete(ConflictClusterRow).where(ConflictClusterRow.run_id == run_id))
+            if "planner" in stages_to_clear:
+                session.execute(delete(HypothesisRow).where(HypothesisRow.run_id == run_id))
+
+            session.commit()
