@@ -263,3 +263,118 @@ def make_three_test_hypotheses() -> list[Hypothesis]:
         make_test_hypothesis(rank=2),
         make_test_hypothesis(rank=3),
     ]
+
+
+def make_passing_stage_agents(
+    repo: RunRepository,
+    *,
+    paper_count: int = 1,
+    evidence_count: int = 1,
+    cluster_count: int = 1,
+) -> dict[str, Callable]:
+    """Create a set of passing stage agents for testing.
+
+    Args:
+        repo: Repository for saving test data
+        paper_count: Number of papers to create in retrieval
+        evidence_count: Number of evidence cards to create in review
+        cluster_count: Number of conflict clusters to create in critic
+
+    Returns:
+        Dict with keys: 'retrieval', 'review', 'critic', 'planner'
+    """
+    from hypoforge.domain.schemas import (
+        CriticSummary,
+        PlannerSummary,
+        RetrievalSummary,
+        ReviewSummary,
+    )
+
+    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+        del constraints
+        repo.save_selected_papers(
+            run_id,
+            [make_test_paper(f"p{i}", f"Paper {i}") for i in range(paper_count)],
+            "seed",
+        )
+        return RetrievalSummary(
+            canonical_topic=topic,
+            query_variants_used=[topic],
+            search_notes=[],
+            selected_paper_ids=[f"p{i}" for i in range(paper_count)],
+            excluded_paper_ids=[],
+            coverage_assessment="good",
+            needs_broader_search=False,
+        )
+
+    def review(run_id: str) -> ReviewSummary:
+        repo.save_evidence_cards(
+            run_id,
+            [make_test_evidence(f"e{i}", "p0") for i in range(evidence_count)],
+        )
+        return ReviewSummary(
+            papers_processed=paper_count,
+            evidence_cards_created=evidence_count,
+            coverage_summary="ok",
+            dominant_axes=["axis"],
+            low_confidence_paper_ids=[],
+        )
+
+    def critic(run_id: str) -> CriticSummary:
+        repo.save_conflict_clusters(
+            run_id,
+            [
+                make_test_cluster(f"c{i}", ["e0"], ["e1"] if evidence_count > 1 else ["e0"])
+                for i in range(cluster_count)
+            ],
+        )
+        return CriticSummary(
+            clusters_created=cluster_count,
+            top_axes=["axis"],
+            critic_notes=[],
+        )
+
+    def planner(run_id: str) -> PlannerSummary:
+        repo.save_hypotheses(run_id, make_three_test_hypotheses())
+        repo.save_report_markdown(run_id, "# Report")
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
+
+    return {
+        "retrieval": retrieval,
+        "review": review,
+        "critic": critic,
+        "planner": planner,
+    }
+
+
+def make_coordinator(
+    repo: RunRepository,
+    agents: dict[str, Callable],
+    reflection_agent: ScriptedReflectionAgent | None = None,
+    settings: ReflectionSettings | None = None,
+) -> RunCoordinator:
+    """Create a RunCoordinator with the given agents.
+
+    Args:
+        repo: Repository for the coordinator
+        agents: Dict with keys 'retrieval', 'review', 'critic', 'planner'
+        reflection_agent: Optional reflection agent
+        settings: Optional reflection settings
+
+    Returns:
+        Configured RunCoordinator instance
+    """
+    return RunCoordinator(
+        repository=repo,
+        retrieval_agent=agents["retrieval"],
+        review_agent=agents["review"],
+        critic_agent=agents["critic"],
+        planner_agent=agents["planner"],
+        reflection_agent=reflection_agent,
+        reflection_settings=settings or ReflectionSettings(),
+    )
