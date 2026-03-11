@@ -46,6 +46,10 @@ class RunConstraints(BaseModel):
 
     @model_validator(mode="after")
     def validate_weights(self) -> "RunConstraints":
+        if self.novelty_weight < 0 or self.novelty_weight > 1:
+            raise ValueError("novelty_weight must be between 0 and 1")
+        if self.feasibility_weight < 0 or self.feasibility_weight > 1:
+            raise ValueError("feasibility_weight must be between 0 and 1")
         total = self.novelty_weight + self.feasibility_weight
         if round(total, 6) != 1.0:
             raise ValueError("novelty_weight and feasibility_weight must sum to 1.0")
@@ -57,6 +61,12 @@ class RunConstraints(BaseModel):
 class RunRequest(BaseModel):
     topic: str = Field(min_length=1)
     constraints: RunConstraints = Field(default_factory=RunConstraints)
+
+    @model_validator(mode="after")
+    def validate_topic(self) -> "RunRequest":
+        if not self.topic.strip():
+            raise ValueError("topic must contain non-whitespace characters")
+        return self
 
 
 class RunState(BaseModel):

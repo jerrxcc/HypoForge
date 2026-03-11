@@ -1,23 +1,30 @@
 from __future__ import annotations
 
 import json
-from typing import Any
-from pydantic import ValidationError
+from typing import Any, Callable, Type
+from pydantic import BaseModel, ValidationError
 
 from hypoforge.application.budget import ToolStepBudgetExceededError
 
 
 class AgentRunner:
+    """Executes a single AI agent turn loop with tool-calling support.
+
+    Drives the provider through tool-call turns until a final structured
+    output is produced, validates the output against *output_model*, and
+    optionally retries or repairs invalid outputs.
+    """
+
     def __init__(
         self,
         *,
-        provider,
-        tool_invoker,
-        output_model,
+        provider: Any,
+        tool_invoker: Callable[[str, dict, dict], Any],
+        output_model: Type[BaseModel],
         agent_name: str,
         model_name: str,
         max_tool_steps: int,
-        repair_output=None,
+        repair_output: Callable[[dict, dict[str, Any]], dict] | None = None,
     ) -> None:
         self._provider = provider
         self._tool_invoker = tool_invoker

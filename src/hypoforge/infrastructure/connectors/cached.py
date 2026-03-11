@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 from hashlib import sha256
+from typing import Callable
 
 from hypoforge.domain.schemas import PaperDetail
+from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
+from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
+
+logger = logging.getLogger(__name__)
 
 
 def _args_key(source: str, payload: dict) -> str:
@@ -23,7 +29,20 @@ def _paper_cache_keys(paper: PaperDetail) -> list[str]:
 
 
 class CachedOpenAlexConnector:
-    def __init__(self, connector, cache: CacheRepository, *, ttl_seconds: int, on_external_call=None) -> None:
+    """Caching wrapper for OpenAlexConnector.
+
+    Caches raw API responses to avoid redundant network requests
+    across agent tool calls within a single run.
+    """
+
+    def __init__(
+        self,
+        connector: OpenAlexConnector,
+        cache: CacheRepository,
+        *,
+        ttl_seconds: int,
+        on_external_call: Callable[[], None] | None = None,
+    ) -> None:
         self._connector = connector
         self._cache = cache
         self._ttl_seconds = ttl_seconds
@@ -36,7 +55,7 @@ class CachedOpenAlexConnector:
             {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
         )
         cached = self._cache.get("raw_response", cache_key)
-        if cached is not None:
+        if cached is not None and "papers" in cached:
             self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
         self.last_cache_hit = False
@@ -49,14 +68,20 @@ class CachedOpenAlexConnector:
 
 
 class CachedSemanticScholarConnector:
+    """Caching wrapper for SemanticScholarConnector.
+
+    Caches raw API responses and individual normalized papers to avoid
+    redundant network requests across agent tool calls.
+    """
+
     def __init__(
         self,
-        connector,
+        connector: SemanticScholarConnector,
         cache: CacheRepository,
         *,
         ttl_seconds: int,
         normalized_ttl_seconds: int,
-        on_external_call=None,
+        on_external_call: Callable[[], None] | None = None,
     ) -> None:
         self._connector = connector
         self._cache = cache
@@ -66,55 +91,27 @@ class CachedSemanticScholarConnector:
         self.last_cache_hit = False
 
     def search_papers(self, query: str, year_from: int, year_to: int, limit: int) -> list[PaperDetail]:
-        cache_key = _args_key(
-            "semantic_scholar_search",
-            {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
+        return self._cached_search(
+            cache_source="semantic_scholar_search",
+            cache_payload={"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
+            fetch=lambda: self._connector.search_papers(query, year_from, year_to, limit),
+            cache_normalized=True,
         )
-        cached = self._cache.get("raw_response", cache_key)
-        if cached is not None:
-            self.last_cache_hit = True
-            return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
-        self.last_cache_hit = False
-        if self._on_external_call is not None:
-            self._on_external_call()
-        papers = self._connector.search_papers(query, year_from, year_to, limit)
-        self._cache.set(
-            "raw_response",
-            cache_key,
-            {"papers": [paper.model_dump() for paper in papers]},
-            ttl_seconds=self._ttl_seconds,
-        )
-        self._cache_papers(papers)
-        return papers
 
     def recommend_papers(self, positive_paper_ids: list[str], limit: int) -> list[PaperDetail]:
-        cache_key = _args_key(
-            "semantic_scholar_recommend",
-            {"positive_paper_ids": positive_paper_ids, "limit": limit},
+        return self._cached_search(
+            cache_source="semantic_scholar_recommend",
+            cache_payload={"positive_paper_ids": positive_paper_ids, "limit": limit},
+            fetch=lambda: self._connector.recommend_papers(positive_paper_ids, limit),
+            cache_normalized=True,
         )
-        cached = self._cache.get("raw_response", cache_key)
-        if cached is not None:
-            self.last_cache_hit = True
-            return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
-        self.last_cache_hit = False
-        if self._on_external_call is not None:
-            self._on_external_call()
-        papers = self._connector.recommend_papers(positive_paper_ids, limit)
-        self._cache.set(
-            "raw_response",
-            cache_key,
-            {"papers": [paper.model_dump() for paper in papers]},
-            ttl_seconds=self._ttl_seconds,
-        )
-        self._cache_papers(papers)
-        return papers
 
     def get_paper_details(self, paper_ids: list[str]) -> list[PaperDetail]:
         cached_papers: list[PaperDetail] = []
         missing_ids: list[str] = []
         for paper_id in paper_ids:
             payload = self._cache.get("normalized_paper", paper_id)
-            if payload is None:
+            if payload is None or "paper" not in payload:
                 missing_ids.append(paper_id)
                 continue
             cached_papers.append(PaperDetail.model_validate(payload["paper"]))
@@ -140,3 +137,31 @@ class CachedSemanticScholarConnector:
                     payload,
                     ttl_seconds=self._normalized_ttl_seconds,
                 )
+
+    def _cached_search(
+        self,
+        *,
+        cache_source: str,
+        cache_payload: dict,
+        fetch: Callable[[], list[PaperDetail]],
+        cache_normalized: bool = False,
+    ) -> list[PaperDetail]:
+        """Look up a raw-response cache entry; on miss, call *fetch* and store."""
+        cache_key = _args_key(cache_source, cache_payload)
+        cached = self._cache.get("raw_response", cache_key)
+        if cached is not None and "papers" in cached:
+            self.last_cache_hit = True
+            return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
+        self.last_cache_hit = False
+        if self._on_external_call is not None:
+            self._on_external_call()
+        papers = fetch()
+        self._cache.set(
+            "raw_response",
+            cache_key,
+            {"papers": [paper.model_dump() for paper in papers]},
+            ttl_seconds=self._ttl_seconds,
+        )
+        if cache_normalized:
+            self._cache_papers(papers)
+        return papers

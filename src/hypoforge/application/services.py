@@ -44,6 +44,11 @@ class ServiceContainer:
 
 
 def build_default_services(settings: Settings | None = None) -> ServiceContainer:
+    """Build a fully-wired :class:`ServiceContainer` for production use.
+
+    Initialises the repository, cache, OpenAI provider, all four agents,
+    and the :class:`RunCoordinator` that orchestrates them.
+    """
     settings = settings or Settings()
     repository = RunRepository.from_database_url(settings.database_url)
     cache_repository = CacheRepository(repository._session_factory)
