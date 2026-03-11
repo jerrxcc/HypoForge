@@ -55,7 +55,7 @@ class CachedOpenAlexConnector:
             {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
         )
         cached = self._cache.get("raw_response", cache_key)
-        if cached is not None:
+        if cached is not None and "papers" in cached:
             self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
         self.last_cache_hit = False
@@ -149,7 +149,7 @@ class CachedSemanticScholarConnector:
         """Look up a raw-response cache entry; on miss, call *fetch* and store."""
         cache_key = _args_key(cache_source, cache_payload)
         cached = self._cache.get("raw_response", cache_key)
-        if cached is not None:
+        if cached is not None and "papers" in cached:
             self.last_cache_hit = True
             return [PaperDetail.model_validate(paper) for paper in cached["papers"]]
         self.last_cache_hit = False
