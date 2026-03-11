@@ -80,7 +80,10 @@ def assert_live_run_meets_spec(
     assert len(run_body["selected_papers"]) >= 12
     assert len(run_body["hypotheses"]) == 3
     assert report_markdown
-    assert "# HypoForge Report:" in report_markdown
+    assert "# HypoForge Briefing:" in report_markdown
+    assert "## Executive Summary" in report_markdown
+    assert "## Evidence Appendix" in report_markdown
+    assert "## Paper Appendix" in report_markdown
     assert len(traces) > 0
     retrieval_traces = [item for item in traces if item["agent_name"] == "retrieval"]
     assert len(retrieval_traces) >= 2

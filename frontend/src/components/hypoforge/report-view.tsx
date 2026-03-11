@@ -31,6 +31,42 @@ export function ReportView({ runId }: { runId: string }) {
       Math.max(run.hypotheses.length, 1);
   const runIsActive = isRunActive(run.status);
   const activeStage = getActiveStageName(run.status);
+  const retrievalSummary = run.stage_summaries.find((summary) => summary.stage_name === 'retrieval');
+  const reviewSummary = run.stage_summaries.find((summary) => summary.stage_name === 'review');
+  const criticSummary = run.stage_summaries.find((summary) => summary.stage_name === 'critic');
+  const retrievalCoverage =
+    typeof retrievalSummary?.summary.coverage_assessment === 'string'
+      ? retrievalSummary.summary.coverage_assessment
+      : 'not reported';
+  const dominantAxes =
+    Array.isArray(reviewSummary?.summary.dominant_axes) &&
+    reviewSummary.summary.dominant_axes.length
+      ? reviewSummary.summary.dominant_axes.map(String)
+      : [];
+  const topConflictAxes =
+    Array.isArray(criticSummary?.summary.top_axes) && criticSummary.summary.top_axes.length
+      ? criticSummary.summary.top_axes.map(String)
+      : run.conflict_clusters.map((cluster) => cluster.topic_axis);
+  const referencedEvidenceCounts = new Map<string, number>();
+  for (const hypothesis of run.hypotheses) {
+    for (const evidenceId of hypothesis.supporting_evidence_ids) {
+      referencedEvidenceCounts.set(
+        evidenceId,
+        (referencedEvidenceCounts.get(evidenceId) ?? 0) + 1
+      );
+    }
+  }
+  const topReferencedEvidence = [...run.evidence_cards]
+    .sort((left, right) => {
+      const countDiff =
+        (referencedEvidenceCounts.get(right.evidence_id) ?? 0) -
+        (referencedEvidenceCounts.get(left.evidence_id) ?? 0);
+      if (countDiff !== 0) {
+        return countDiff;
+      }
+      return right.confidence - left.confidence;
+    })
+    .slice(0, 5);
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
@@ -56,10 +92,10 @@ export function ReportView({ runId }: { runId: string }) {
       ) : null}
       <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
         {[
-          ['Hypotheses', run.hypotheses.length, 'Ranked claims retained in the final report.'],
+          ['Coverage', retrievalCoverage, 'Retrieval footing carried into the briefing.'],
           ['Evidence cards', run.evidence_cards.length, 'Structured support carried into drafting.'],
           ['Average score', avgScore.toFixed(2), `${totalLimitations} limitation note(s) across all ranks.`],
-          ['Uncertainty notes', totalUncertaintyNotes, 'Caveats preserved in the final editorial draft.']
+          ['Conflict axes', topConflictAxes.length, `${totalUncertaintyNotes} uncertainty note(s) preserved.`]
         ].map(([label, value, detail]) => (
           <div
             key={String(label)}
@@ -127,7 +163,7 @@ export function ReportView({ runId }: { runId: string }) {
           <Card className='border-border/70 bg-card/95 shadow-sm'>
             <CardHeader>
               <div className='text-muted-foreground text-xs uppercase tracking-[0.18em]'>
-                Reading guide
+                Dossier footing
               </div>
               <CardTitle className='font-serif text-2xl'>Hypothesis outline</CardTitle>
               <CardDescription>
@@ -187,17 +223,69 @@ export function ReportView({ runId }: { runId: string }) {
 
           <Card className='border-border/70 bg-card/95 shadow-sm'>
             <CardHeader>
-              <CardTitle className='font-serif text-2xl'>Read before sharing</CardTitle>
+              <CardTitle className='font-serif text-2xl'>Reading route</CardTitle>
             </CardHeader>
             <CardContent className='space-y-3 text-sm leading-7 text-muted-foreground'>
               <p>
-                Start with the narrative draft, then cross-check the corresponding stage
-                summaries and trace entries if a hypothesis feels under-supported.
+                Start with the executive summary, then move through retrieval coverage and
+                the conflict map before reading the ranked hypotheses in detail.
               </p>
               <p>
-                If a rank includes limitations or uncertainty notes, treat the report as a
-                working editorial memo rather than a final recommendation.
+                Treat the evidence appendix and paper appendix as your grounding layer when
+                you need to verify whether a strong claim is backed by enough material.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card className='border-border/70 bg-card/95 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='font-serif text-2xl'>Coverage notes</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-3 text-sm leading-7 text-muted-foreground'>
+              <p>
+                Retrieval coverage is currently <span className='font-medium capitalize text-foreground'>{retrievalCoverage}</span>.
+              </p>
+              <p>
+                {dominantAxes.length
+                  ? `Review concentrated on: ${dominantAxes.slice(0, 3).join(' • ')}.`
+                  : 'Review did not report dominant axes for this run.'}
+              </p>
+              <p>
+                {topConflictAxes.length
+                  ? `Critic highlighted: ${topConflictAxes.slice(0, 3).join(' • ')}.`
+                  : 'Critic did not record explicit conflict axes.'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className='border-border/70 bg-card/95 shadow-sm'>
+            <CardHeader>
+              <CardTitle className='font-serif text-2xl'>Most cited evidence</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-3'>
+              {topReferencedEvidence.length ? (
+                topReferencedEvidence.map((card) => (
+                  <div
+                    key={card.evidence_id}
+                    className='rounded-[1.4rem] border border-border/70 bg-background/80 p-4'
+                  >
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='text-[11px] uppercase tracking-[0.16em] text-muted-foreground'>
+                        {card.evidence_id}
+                      </div>
+                      <div className='rounded-full border border-border/70 bg-card px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground'>
+                        cited {referencedEvidenceCounts.get(card.evidence_id) ?? 0}x
+                      </div>
+                    </div>
+                    <p className='mt-2 text-sm leading-6'>{card.claim_text}</p>
+                    <div className='text-muted-foreground mt-2 text-xs leading-5'>
+                      {card.system_or_material} • {card.intervention} • {card.outcome}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className='text-sm text-muted-foreground'>No evidence cards to summarize yet.</div>
+              )}
             </CardContent>
           </Card>
         </div>

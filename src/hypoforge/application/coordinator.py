@@ -157,7 +157,12 @@ class RunCoordinator:
 
     def get_report_markdown(self, run_id: str) -> str:
         run = self._repository.get_run(run_id)
-        return run.final_report_md or ""
+        report_markdown = run.final_report_md or ""
+        if not report_markdown or report_markdown.startswith("# HypoForge Report:"):
+            refreshed = self._report_renderer.render(self._repository.build_final_result(run_id))
+            self._repository.save_report_markdown(run_id, refreshed)
+            return refreshed
+        return report_markdown
 
     def rerun_planner(self, run_id: str) -> RunResult:
         self._repository.get_run(run_id)
@@ -218,7 +223,7 @@ class RunCoordinator:
         summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
     ) -> StageStatus:
         if isinstance(summary, RetrievalSummary):
-            if summary.coverage_assessment == "low" or summary.needs_broader_search:
+            if summary.coverage_assessment == "low":
                 return "degraded"
         if isinstance(summary, ReviewSummary):
             if summary.failed_paper_ids:

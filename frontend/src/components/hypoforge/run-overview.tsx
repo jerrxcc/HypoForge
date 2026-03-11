@@ -83,6 +83,27 @@ export function RunOverview({ runId }: { runId: string }) {
   );
   const runIsActive = isRunActive(run.status);
   const activeStage = getActiveStageName(run.status);
+  const retrievalSummary = run.stage_summaries.find((summary) => summary.stage_name === 'retrieval');
+  const reviewSummary = run.stage_summaries.find((summary) => summary.stage_name === 'review');
+  const criticSummary = run.stage_summaries.find((summary) => summary.stage_name === 'critic');
+  const retrievalCoverage =
+    typeof retrievalSummary?.summary.coverage_assessment === 'string'
+      ? retrievalSummary.summary.coverage_assessment
+      : 'not reported';
+  const retrievalNote =
+    Array.isArray(retrievalSummary?.summary.search_notes) &&
+    retrievalSummary.summary.search_notes.length
+      ? String(retrievalSummary.summary.search_notes[0])
+      : 'No retrieval caveat recorded.';
+  const dominantAxes =
+    Array.isArray(reviewSummary?.summary.dominant_axes) &&
+    reviewSummary.summary.dominant_axes.length
+      ? reviewSummary.summary.dominant_axes.map(String)
+      : [];
+  const topConflictAxes =
+    Array.isArray(criticSummary?.summary.top_axes) && criticSummary.summary.top_axes.length
+      ? criticSummary.summary.top_axes.map(String)
+      : run.conflict_clusters.map((cluster) => cluster.topic_axis);
 
   return (
     <div className='workspace-shell flex w-full flex-1 flex-col gap-6 p-4 md:p-8'>
@@ -278,6 +299,46 @@ export function RunOverview({ runId }: { runId: string }) {
 
           <Card className='border-border/70 bg-card/95 shadow-sm'>
             <CardHeader>
+              <CardTitle className='font-serif text-2xl'>Briefing focus</CardTitle>
+              <CardDescription>
+                The shortest path to understanding what this run actually says.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='rounded-[1.55rem] border border-border/70 bg-background/75 p-4'>
+                <div className='text-muted-foreground text-[11px] uppercase tracking-[0.16em]'>
+                  Retrieval footing
+                </div>
+                <div className='mt-2 text-sm font-medium capitalize'>
+                  Coverage {retrievalCoverage}
+                </div>
+                <p className='text-muted-foreground mt-2 text-sm leading-6'>{retrievalNote}</p>
+              </div>
+              <div className='rounded-[1.55rem] border border-border/70 bg-background/75 p-4'>
+                <div className='text-muted-foreground text-[11px] uppercase tracking-[0.16em]'>
+                  Evidence axes
+                </div>
+                <div className='mt-2 text-sm leading-6'>
+                  {dominantAxes.length
+                    ? dominantAxes.slice(0, 3).join(' • ')
+                    : 'Review did not report dominant axes.'}
+                </div>
+              </div>
+              <div className='rounded-[1.55rem] border border-border/70 bg-background/75 p-4'>
+                <div className='text-muted-foreground text-[11px] uppercase tracking-[0.16em]'>
+                  Conflict focus
+                </div>
+                <div className='mt-2 text-sm leading-6'>
+                  {topConflictAxes.length
+                    ? topConflictAxes.slice(0, 3).join(' • ')
+                    : 'No conflict clusters recorded.'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border-border/70 bg-card/95 shadow-sm'>
+            <CardHeader>
               <CardTitle className='font-serif text-2xl'>Hypotheses</CardTitle>
               <CardDescription>Ranked outputs, each grounded in evidence.</CardDescription>
             </CardHeader>
@@ -294,6 +355,7 @@ export function RunOverview({ runId }: { runId: string }) {
                   <p className='text-muted-foreground mt-2 text-sm leading-6'>
                     {hypothesis.hypothesis_statement}
                   </p>
+                  <p className='mt-2 text-sm leading-6'>{hypothesis.prediction}</p>
                   <div className='mt-4 grid gap-2 sm:grid-cols-3'>
                     {[
                       ['Novelty', hypothesis.novelty_score],
@@ -335,6 +397,8 @@ export function RunOverview({ runId }: { runId: string }) {
                       <div className='text-muted-foreground mt-1 text-xs leading-5'>
                         {(paper.authors ?? []).slice(0, 3).join(', ') || 'Authors unavailable'}
                         {paper.year ? ` • ${paper.year}` : ''}
+                        {paper.venue ? ` • ${paper.venue}` : ''}
+                        {paper.source ? ` • ${paper.source}` : ''}
                       </div>
                     </div>
                   ))}

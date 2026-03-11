@@ -65,9 +65,13 @@ export type EvidenceCard = {
   paper_id: string;
   title: string;
   claim_text: string;
+  system_or_material: string;
+  intervention: string;
   outcome: string;
   direction: string;
   confidence: number;
+  evidence_kind: string;
+  conditions: string[];
   limitations: string[];
 };
 

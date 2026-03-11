@@ -311,3 +311,22 @@
 - 1. 之前仓库里的 `OPENALEX_API_KEY` 只是配置占位，并没有真正影响 HTTP 请求。
 - 2. 现在 connector 已按 OpenAlex 预期改成 `?api_key=...` 方式注入。
 - 3. `SEMANTIC_SCHOLAR_API_KEY` 目前仍然只是配置占位，尚未真正接入请求头。
+- 2026-03-10 GitHub 仓库可见性调整后的关键发现：
+- 1. 当前规范远程仓库 `https://github.com/jerrxcc/HypoForge` 已经从 private 切为 public。
+- 2. 这次变更不涉及代码、测试或部署逻辑，只影响 GitHub 仓库访问权限。
+- 3. 本地 `main` 在变更发生前已经与 `origin/main` 同步，后续仅需补记 planning files 并推送记录提交。
+- 2026-03-10 `CRISPR delivery lipid nanoparticles` 降级分析关键发现：
+- 1. 本地真实 run `run_765958f20f5e418888f48c5e4a169af3` 与 `run_f25dce2a20a8426d8926bf0d29f318a8` 都是仅 `retrieval` 阶段为 `degraded`，`review / critic / planner` 均为 `completed`。
+- 2. 这两个 run 的 retrieval 实际已选出 `16` 和 `17` 篇 paper，高于 SPEC 第 18.1 节的最低可用阈值 `12`；因此它们不是典型的 low-evidence case。
+- 3. 真正触发降级的是 `needs_broader_search = true`。当前实现中，只要 retrieval summary 命中 `coverage_assessment == "low" or needs_broader_search`，stage 就会被标成 `degraded`。
+- 4. 该 topic 的 retrieval notes 明确记录了 `Semantic Scholar HTTP 429`，所以有效覆盖主要来自 OpenAlex。当前仓库里 `semantic_scholar_api_key` 仍只是配置占位，connector 也没有把 key 接入请求头。
+- 5. 按 SPEC 原意看，“单源可用时用单源继续”是预期行为，但未明确要求“只要单源降级就一定显示 degraded”；因此当前实现比 SPEC 更保守，存在“结果可用但标签偏黄”的过标记倾向。
+- 2026-03-10 信息量增强方向的新发现：
+- 1. 当前“等了很久但成品显得薄”的主因是后端最终产物太薄，而不是前端没有堆足够多的卡片。
+- 2. `ReportRenderer` 目前几乎只是 counts + 3 条 hypothesis 摘要，缺少 executive summary、evidence footing、conflict map、paper appendix 等研究备忘录必备层。
+- 3. 单纯改前端只会把“内容少”的问题放大；更合理的顺序是先扩 briefing，再重做 dossier 呈现。
+- 2026-03-10 Phase 19 落地后的新发现：
+- 1. retrieval `degraded` 的更合理语义已经收敛为“真正 low evidence 才标黄”；`needs_broader_search` 现在更像 warning，而不是自动降级。
+- 2. 仅依赖现有 grounded artifacts，就能把最终报告扩成明显更有信息密度的 briefing，不需要额外新增 report-only 模型调用。
+- 3. 对真实 run `run_765958f20f5e418888f48c5e4a169af3` 重新用新 renderer 抽样后，报告已经包含 `Executive Summary / Retrieval Coverage / Evidence Footing / Conflict Map Snapshot / Experiment Slate / Evidence Appendix / Paper Appendix`，说服力明显强于旧版。
+- 4. 这轮唯一新暴露的问题不是业务 bug，而是 live regression helper 还在断言旧标题 `# HypoForge Report:`；已同步更新到新的 briefing 结构。

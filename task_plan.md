@@ -4,7 +4,7 @@
 根据 `SPEC.md` 从零搭建 HypoForge MVP：完成 FastAPI + 多 agent 后端工程骨架、核心运行链路、测试与文档，并初始化 Git 仓库后同步到远程仓库。
 
 ## Current Phase
-Phase 18 in progress
+Phase 19 complete
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -134,6 +134,14 @@ Phase 18 in progress
 - [x] 完成一次真实 demo walkthrough：`New Run -> live run detail -> Trace -> Report -> Runs archive`
 - [ ] 提交并推送本轮前端 polish
 - **Status:** in_progress
+
+### Phase 19: Report Depth & Retrieval Semantics
+- [x] 按 SPEC 修正 retrieval 过度保守的 `degraded` 判定
+- [x] 将最终报告升级为更高信息密度的 research briefing
+- [x] 将 `Overview / Report` 前端改成 dossier 风格，突出 briefing 内容而不是只显示计数
+- [x] 按 TDD 补齐报告结构和 retrieval 语义的红绿测试
+- [x] 完成 backend / frontend fresh verification，并补记 planning files
+- **Status:** complete
 
 ## Key Questions
 1. 远程仓库是否默认创建到 GitHub，且是否使用私有仓库？
@@ -265,3 +273,10 @@ Phase 18 in progress
 - 2026-03-10 15:44 +08 已完成 OpenAlex API key 真接入：`Settings.openalex_api_key` 现在会传入 `OpenAlexConnector`，connector 在存在配置时会给 `/works` 请求附加 `api_key` query param。
 - 2026-03-10 15:44 +08 本地 `.env` 已填入用户提供的 OpenAlex key；该值仅存在本地开发环境，不进入 git。
 - 2026-03-10 15:44 +08 fresh verification 已完成：OpenAlex wiring focused tests `3 passed`，backend 全量 `69 passed, 6 skipped`，真实 round-trip `1 passed in 215.02s`。
+- 2026-03-10 20:00 +08 已按用户要求将 GitHub 远程仓库 `jerrxcc/HypoForge` 的可见性从 `PRIVATE` 调整为 `PUBLIC`，并开始补记 planning files 与同步记录提交。
+- 2026-03-10 20:17 +08 已启动 `CRISPR delivery lipid nanoparticles` 的 `degraded` 原因分析：目标是区分这是符合 SPEC 的保守降级，还是当前实现把 retrieval 标记得过于敏感。
+- 2026-03-10 20:22 +08 用户已确认采用“方案 2”：主改后端产物深度、辅改前端 dossier 展示；这轮会同时修正 retrieval 的过度降级判定，并用 TDD 提升 run 完成后的信息量与说服力。
+- 2026-03-10 20:36 +08 Phase 19 red tests 已建立：一条锁定 retrieval `medium + needs_broader_search` 不应自动 `degraded`，一条锁定 report 必须产出 `Executive Summary / Retrieval Coverage / Evidence Footing / Conflict Map / Appendix` 等 briefing sections。
+- 2026-03-10 20:44 +08 Phase 19 backend green 已完成：`RunCoordinator._stage_status()` 对 retrieval 只在 `coverage_assessment == low` 时标记 `degraded`；`ReportRenderer` 已升级为多 section research briefing。
+- 2026-03-10 20:49 +08 Phase 19 frontend dossier 改造已完成：`Run Overview` 新增 `Briefing focus`，`Report` 新增 `Coverage notes`、`Most cited evidence` 和更明确的阅读路径，前端不再主要依赖纯计数卡解释结果价值。
+- 2026-03-10 21:00 +08 Phase 19 fresh verification 已完成：focused backend tests `9 passed`，backend 全量 `71 passed, 6 skipped`，真实 API round-trip `1 passed in 228.00s`，frontend `npm run lint` / `npm run build` 通过。真实 `CRISPR delivery lipid nanoparticles` run 的新 briefing 已抽样检查，内容密度显著高于旧版报告。
