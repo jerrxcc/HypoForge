@@ -36,6 +36,7 @@ from tests.helpers.reflection_helpers import (
 
 def test_stage_navigator_can_validate_backtrack(tmp_path: Path) -> None:
     """Test that StageNavigator can validate backtrack requests."""
+    # Repository is required by constructor but not used for validation methods
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     navigator = StageNavigator(repository=repo)
 
