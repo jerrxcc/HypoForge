@@ -25,24 +25,20 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <HeroSection />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
-          ) : (
-            <QuickStats {...stats} />
-          )}
+      {/* Quick Stats - full width */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
         </div>
+      ) : (
+        <QuickStats {...stats} />
+      )}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <GoldenTopicsGrid onTopicSelect={handleTopicSelect} />
-        </div>
-      </div>
+      {/* Golden Topics - full width like stats */}
+      <GoldenTopicsGrid onTopicSelect={handleTopicSelect} />
 
       <RecentRuns />
     </div>

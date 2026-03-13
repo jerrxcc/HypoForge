@@ -1,0 +1,98 @@
+[    1212ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=538327d1:34
+[    1318ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthenticated) @ http://localhost:3000/api/chats/sessions:0
+[    1319ms] [ERROR] [Chat Store] Failed to initialize from database: FetchError: [GET] "/api/chats/sessions": 401 Unauthenticated
+    at async $fetch2 (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=538327d1:332:15)
+    at async Proxy.initializeFromDatabase (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/stores/useChatStore.ts:92:26)
+    at async setup (http://localhost:3000/_nuxt/plugins/chat-init.client.ts:12:107)
+    at async applyPlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:138:25)
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:165:17
+    at async Promise.all (index 4)
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:160:11
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async applyPlugins (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:193:5) @ http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/stores/useChatStore.ts:118
+[    1319ms] [WARNING] [Chat Init Plugin] Chat store initialization failed, using empty state @ http://localhost:3000/_nuxt/plugins/chat-init.client.ts:15
+[    1372ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthenticated) @ http://localhost:3000/api/tenants/config?identifier=localhost:0
+[    1373ms] [ERROR] Tenant config error: FetchError: [GET] "/api/tenants/config?identifier=localhost": 401 Unauthenticated
+    at async $fetch2 (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=538327d1:332:15)
+    at async getTenantConfig (http://localhost:3000/_nuxt/composables/useTenantConfig.ts:44:24)
+    at async getCurrentTenantConfig (http://localhost:3000/_nuxt/composables/useTenantConfig.ts:65:14)
+    at async http://localhost:3000/_nuxt/plugins/tenant-config.client.ts:7:73
+    at async applyPlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:138:25)
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async applyPlugins (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:193:5)
+    at async initApp (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/entry.js?v=538327d1:58:7) @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:13
+[    1376ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[    1385ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[    1386ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[    1386ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[    1386ms] [ERROR] [nuxt] error caught during app initialization H3Error: Page not found: /dashboard
+    at createError (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/h3/dist/index.mjs?v=538327d1:71:15)
+    at createError (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/composables/error.js?v=538327d1:32:21)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:210:55
+    at fn (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:220:44)
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=538327d1:4290:18)
+    at callWithNuxt (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:226:24)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:37:41
+    at EffectScope.run (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js?v=538327d1:69:16)
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:37:31)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:210:24
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:64
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=538327d1:4290:18)
+    at runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1139:66)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:43
+    at Array.forEach (<anonymous>)
+    at triggerAfterEach (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:24)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1129:7
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:225:9
+    at async initApp (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/entry.js?v=538327d1:63:7) @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:13
+[   27062ms] [ERROR] Connecting to 'https://o110060.ingest.us.sentry.io/api/4510441333194752/envelope/?sentry_version=7&sentry_key=8a3d7b9dbfc6d1f3e907b64c9a90a1fe&sentry_client=sentry.javascript.vue%2F10.41.0' violates the following Content Security Policy directive: "default-src 'self' https://api.iconify.design". Note that 'connect-src' was not explicitly set, so 'default-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/dashboard:0
+[   27062ms] [ERROR] Fetch API cannot load https://o110060.ingest.us.sentry.io/api/4510441333194752/envelope/?sentry_version=7&sentry_key=8a3d7b9dbfc6d1f3e907b64c9a90a1fe&sentry_client=sentry.javascript.vue%2F10.41.0. Refused to connect because it violates the document's Content Security Policy. @ http://localhost:3000/dashboard:0
+[   27383ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/devtools-EWN81iOl.mjs?v=538327d1:34
+[   27521ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthenticated) @ http://localhost:3000/api/chats/sessions:0
+[   27521ms] [ERROR] [Chat Store] Failed to initialize from database: FetchError: [GET] "/api/chats/sessions": 401 Unauthenticated
+    at async $fetch2 (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=538327d1:332:15)
+    at async Proxy.initializeFromDatabase (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/stores/useChatStore.ts:92:26)
+    at async setup (http://localhost:3000/_nuxt/plugins/chat-init.client.ts:12:107)
+    at async applyPlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:138:25)
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:165:17
+    at async Promise.all (index 4)
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:160:11
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async applyPlugins (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:193:5) @ http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/stores/useChatStore.ts:118
+[   27521ms] [WARNING] [Chat Init Plugin] Chat store initialization failed, using empty state @ http://localhost:3000/_nuxt/plugins/chat-init.client.ts:15
+[   27545ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthenticated) @ http://localhost:3000/api/tenants/config?identifier=localhost:0
+[   27546ms] [ERROR] Tenant config error: FetchError: [GET] "/api/tenants/config?identifier=localhost": 401 Unauthenticated
+    at async $fetch2 (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=538327d1:332:15)
+    at async getTenantConfig (http://localhost:3000/_nuxt/composables/useTenantConfig.ts:44:24)
+    at async getCurrentTenantConfig (http://localhost:3000/_nuxt/composables/useTenantConfig.ts:65:14)
+    at async http://localhost:3000/_nuxt/plugins/tenant-config.client.ts:7:73
+    at async applyPlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:138:25)
+    at async executePlugin (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:179:9)
+    at async applyPlugins (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:193:5)
+    at async initApp (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/entry.js?v=538327d1:58:7) @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:13
+[   27546ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[   27552ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[   27552ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[   27552ms] [WARNING] [Vue Router warn]: No match found for location with path "/dashboard" @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:20
+[   27553ms] [ERROR] [nuxt] error caught during app initialization H3Error: Page not found: /dashboard
+    at createError (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/h3/dist/index.mjs?v=538327d1:71:15)
+    at createError (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/composables/error.js?v=538327d1:32:21)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:210:55
+    at fn (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:220:44)
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=538327d1:4290:18)
+    at callWithNuxt (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:226:24)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:37:41
+    at EffectScope.run (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js?v=538327d1:69:16)
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/nuxt.js?v=538327d1:37:31)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:210:24
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:64
+    at Object.runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js?v=538327d1:4290:18)
+    at runWithContext (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1139:66)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:43
+    at Array.forEach (<anonymous>)
+    at triggerAfterEach (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1181:24)
+    at http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/vue-router/dist/vue-router.mjs?v=538327d1:1129:7
+    at async http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/pages/runtime/plugins/router.js?v=538327d1:225:9
+    at async initApp (http://localhost:3000/_nuxt/@fs/Users/ccy/Documents/KEY/keyreply-next/node_modules/nuxt/dist/app/entry.js?v=538327d1:63:7) @ http://localhost:3000/_nuxt/plugins/suppress-icon-errors.client.ts:13

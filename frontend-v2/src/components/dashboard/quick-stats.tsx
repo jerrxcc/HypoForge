@@ -19,15 +19,15 @@ export function QuickStats({ totalRuns, totalPapers, totalEvidence, totalHypothe
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {stats.map((stat) => (
-        <Card key={stat.label} className="p-4">
-          <div className="flex items-center gap-3">
-            <div className={`rounded-lg p-2 ${stat.color}`}>
-              <stat.icon className="h-5 w-5" />
+        <Card key={stat.label} className="p-5">
+          <div className="flex items-center gap-4">
+            <div className={`rounded-xl p-3 ${stat.color}`}>
+              <stat.icon className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+              <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
               <p className="text-sm text-gray-500">{stat.label}</p>
             </div>
           </div>
