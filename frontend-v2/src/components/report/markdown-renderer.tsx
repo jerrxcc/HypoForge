@@ -1,9 +1,9 @@
 'use client';
 
+import ReactMarkdown from 'react-markdown';
 import { useReport } from '@/hooks/use-report';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, FileText, Download } from 'lucide-react';
 import { Card, ScrollArea, Button } from '@/components/primitives';
-import { Download } from 'lucide-react';
 
 interface MarkdownRendererProps {
   runId: string;
@@ -61,9 +61,7 @@ export function MarkdownRenderer({ runId }: MarkdownRendererProps) {
       <Card className="overflow-hidden">
         <ScrollArea className="h-[700px]">
           <div className="prose prose-sm max-w-none p-6">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-700">
-              {markdown}
-            </pre>
+            <ReactMarkdown>{markdown}</ReactMarkdown>
           </div>
         </ScrollArea>
       </Card>

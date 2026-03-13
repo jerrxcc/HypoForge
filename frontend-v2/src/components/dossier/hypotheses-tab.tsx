@@ -1,6 +1,6 @@
 'use client';
 
-import { Trophy, Lightbulb } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { Card, Badge, Progress } from '@/components/primitives';
 import { cn } from '@/lib/utils';
 import type { Hypothesis, EvidenceCard } from '@/types';
@@ -115,6 +115,41 @@ export function HypothesesTab({ hypotheses, evidence }: HypothesesTabProps) {
                       )}
                     </div>
                   </div>
+
+                  {/* Minimal Experiment */}
+                  {hypothesis.minimal_experiment && (
+                    <div className="mt-4 rounded-lg bg-gray-50 p-4">
+                      <h5 className="text-sm font-medium text-gray-700">Minimal Experiment</h5>
+                      <div className="mt-2 space-y-2 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium text-gray-700">System: </span>
+                          {hypothesis.minimal_experiment.system}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Design: </span>
+                          {hypothesis.minimal_experiment.design}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Control: </span>
+                          {hypothesis.minimal_experiment.control}
+                        </div>
+                        {hypothesis.minimal_experiment.readouts.length > 0 && (
+                          <div>
+                            <span className="font-medium text-gray-700">Readouts: </span>
+                            {hypothesis.minimal_experiment.readouts.join(', ')}
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-medium text-gray-700">Success Criteria: </span>
+                          {hypothesis.minimal_experiment.success_criteria}
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-700">Failure Interpretation: </span>
+                          {hypothesis.minimal_experiment.failure_interpretation}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Risks */}
                   {hypothesis.risks.length > 0 && (

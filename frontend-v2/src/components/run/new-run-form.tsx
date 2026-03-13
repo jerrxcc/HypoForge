@@ -8,7 +8,8 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
 import { Button, Input, Card } from '@/components/primitives';
 import { launchRun } from '@/lib/api-client';
-import { defaultConstraints } from '@/types';
+import { defaultConstraints, type RunConstraints } from '@/types';
+import { ConstraintPanel } from './constraint-panel';
 
 const formSchema = z.object({
   topic: z.string().min(3, 'Topic must be at least 3 characters'),
@@ -24,6 +25,7 @@ export function NewRunForm({ initialTopic = '' }: NewRunFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [constraints, setConstraints] = useState<RunConstraints>(defaultConstraints);
 
   const {
     register,
@@ -41,7 +43,7 @@ export function NewRunForm({ initialTopic = '' }: NewRunFormProps) {
     try {
       const result = await launchRun({
         topic: data.topic,
-        constraints: defaultConstraints as unknown as Record<string, unknown>,
+        constraints: constraints as unknown as Record<string, unknown>,
       });
 
       // Navigate to the run detail page
@@ -72,6 +74,8 @@ export function NewRunForm({ initialTopic = '' }: NewRunFormProps) {
             <p className="mt-1 text-sm text-rose-600">{error}</p>
           )}
         </div>
+
+        <ConstraintPanel constraints={constraints} onChange={setConstraints} />
 
         <div className="flex items-center gap-4">
           <Button type="submit" size="lg" disabled={isSubmitting}>

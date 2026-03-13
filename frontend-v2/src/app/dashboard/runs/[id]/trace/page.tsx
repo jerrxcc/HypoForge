@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { TracePanel } from '@/components/trace/trace-panel';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -47,5 +48,3 @@ function TracePageContent({ params }: { params: Promise<{ id: string }> }) {
     </div>
   );
 }
-
-import React from 'react';
