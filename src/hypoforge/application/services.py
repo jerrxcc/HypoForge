@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from hashlib import sha256
 import logging
@@ -12,11 +13,12 @@ from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.reflection import ReflectionAgent
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
+from hypoforge.agents.validation_base import ValidationAgentRegistry
 from hypoforge.application.budget import RunBudgetTracker, ToolStepBudgetExceededError
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.application.stage_graph import StageNavigator
-from hypoforge.config import ReflectionSettings, Settings
+from hypoforge.config import ReflectionSettings, Settings, ValidationSettings
 from hypoforge.domain.schemas import (
     ConflictCluster,
     CriticSummary,
@@ -362,6 +364,41 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             },
         )
 
+    # Create validation agents if enabled
+    validation_registry: ValidationAgentRegistry | None = None
+    if settings.validation_settings.enable_validation_agents:
+        from hypoforge.agents.validation_base import ValidationAgentRegistry
+        from hypoforge.agents.evidence_validator import EvidenceValidator
+        from hypoforge.agents.conflict_detector import ConflictDetector
+        from hypoforge.agents.quality_assessor import QualityAssessor
+
+        validation_registry = ValidationAgentRegistry()
+
+        # Register validators for each stage
+        validation_registry.register(EvidenceValidator(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+        validation_registry.register(ConflictDetector(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+        validation_registry.register(QualityAssessor(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+
+        logger.info(
+            "Validation agents enabled",
+            extra={
+                "min_valid_evidence": settings.validation_settings.min_valid_evidence,
+                "min_quality_score": settings.validation_settings.min_quality_score,
+            },
+        )
+
     coordinator = RunCoordinator(
         repository=repository,
         retrieval_agent=retrieval_agent,
@@ -372,6 +409,8 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         reflection_agent=reflection_agent,
         reflection_settings=settings.reflection_settings,
         stage_navigator=stage_navigator,
+        validation_registry=validation_registry,
+        validation_settings=settings.validation_settings,
     )
     return ServiceContainer(coordinator=coordinator)
 
@@ -513,6 +552,114 @@ def _review_papers_in_batches(
     )
     if budget_exceeded:
         coverage_summary += "; tool step budget exceeded and review stopped early"
+    if failed_paper_ids:
+        coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
+
+    return ReviewSummary(
+        papers_processed=papers_processed,
+        evidence_cards_created=evidence_cards_created,
+        coverage_summary=coverage_summary,
+        dominant_axes=dominant_axes,
+        low_confidence_paper_ids=low_confidence_paper_ids,
+        failed_paper_ids=failed_paper_ids,
+    )
+
+
+async def _review_papers_in_batches_parallel(
+    *,
+    selected_papers: list[PaperDetail],
+    batch_size: int,
+    review_batch: Callable[[list[PaperDetail]], ReviewSummary],
+    max_concurrent: int = 3,
+) -> ReviewSummary:
+    """Process papers in parallel batches for improved efficiency.
+
+    This is an async version that processes multiple batches concurrently,
+    improving throughput for large paper sets.
+
+    Args:
+        selected_papers: Papers to review
+        batch_size: Number of papers per batch
+        review_batch: Function to process a single batch
+        max_concurrent: Maximum concurrent batch operations
+
+    Returns:
+        Combined ReviewSummary from all batches
+    """
+    import asyncio
+
+    if not selected_papers:
+        return ReviewSummary(
+            papers_processed=0,
+            evidence_cards_created=0,
+            coverage_summary="no selected papers to review",
+            dominant_axes=[],
+            low_confidence_paper_ids=[],
+            failed_paper_ids=[],
+        )
+
+    # Create batches
+    batches = [
+        selected_papers[i:i + batch_size]
+        for i in range(0, len(selected_papers), batch_size)
+    ]
+    total_batches = len(batches)
+
+    # Process batches with semaphore for concurrency control
+    semaphore = asyncio.Semaphore(max_concurrent)
+    successful_summaries: list[ReviewSummary] = []
+    failed_paper_ids: list[str] = []
+    errors: list[Exception] = []
+
+    async def process_batch(batch: list[PaperDetail], batch_idx: int) -> ReviewSummary | None:
+        async with semaphore:
+            try:
+                # Run sync function in executor
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(None, review_batch, batch)
+            except ToolStepBudgetExceededError as exc:
+                errors.append(exc)
+                failed_paper_ids.extend(p.paper_id for p in batch)
+                return None
+            except Exception as exc:
+                errors.append(exc)
+                failed_paper_ids.extend(p.paper_id for p in batch)
+                return None
+
+    # Create tasks for all batches
+    tasks = [process_batch(batch, i) for i, batch in enumerate(batches)]
+
+    # Wait for all tasks to complete
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Collect successful results
+    for result in results:
+        if isinstance(result, ReviewSummary):
+            successful_summaries.append(result)
+        elif isinstance(result, Exception):
+            errors.append(result)
+
+    # Check if all failed
+    if not successful_summaries and errors:
+        raise errors[0]
+
+    # Aggregate results
+    papers_processed = sum(s.papers_processed for s in successful_summaries)
+    evidence_cards_created = sum(s.evidence_cards_created for s in successful_summaries)
+    dominant_axes = list(
+        dict.fromkeys(axis for s in successful_summaries for axis in s.dominant_axes)
+    )
+    low_confidence_paper_ids = list(
+        dict.fromkeys(
+            pid for s in successful_summaries for pid in s.low_confidence_paper_ids
+        )
+    )
+
+    failed_batches = ceil(len(failed_paper_ids) / batch_size) if failed_paper_ids else 0
+    coverage_summary = (
+        f"processed {papers_processed}/{len(selected_papers)} selected papers "
+        f"across {total_batches} batches (parallel)"
+    )
     if failed_paper_ids:
         coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from hypoforge.domain.schemas import (
     CriticSummary,
@@ -20,12 +21,19 @@ from hypoforge.domain.schemas import (
     StageName,
     StageStatus,
 )
+from hypoforge.domain.validation import (
+    FeedbackPool,
+    SynthesizedFeedback,
+    ValidationContext,
+    ValidationResult,
+)
 from hypoforge.application.report_renderer import ReportRenderer
-from hypoforge.config import ReflectionSettings
+from hypoforge.config import ReflectionSettings, ValidationSettings
 from hypoforge.infrastructure.db.repository import RunRepository
 
 if TYPE_CHECKING:
     from hypoforge.agents.reflection import ReflectionAgent
+    from hypoforge.agents.validation_base import ValidationAgentRegistry
     from hypoforge.application.correction_loop import CorrectionLoopController
     from hypoforge.application.stage_graph import StageNavigator
 
@@ -41,6 +49,12 @@ class RunCoordinator:
     - Quality evaluation after each stage
     - Iterative re-execution when quality is below threshold
     - Cross-stage backtracking for upstream improvements
+
+    With validation agents enabled, the coordinator supports:
+    - Evidence validation after review stage
+    - Conflict detection enhancement after critic stage
+    - Quality assessment after planner stage
+    - Feedback synthesis for iterative improvement
     """
 
     def __init__(
@@ -55,6 +69,8 @@ class RunCoordinator:
         reflection_agent: ReflectionAgent | None = None,
         reflection_settings: ReflectionSettings | None = None,
         stage_navigator: StageNavigator | None = None,
+        validation_registry: ValidationAgentRegistry | None = None,
+        validation_settings: ValidationSettings | None = None,
     ) -> None:
         self._repository = repository
         self._retrieval_agent = retrieval_agent
@@ -65,6 +81,8 @@ class RunCoordinator:
         self._reflection_agent = reflection_agent
         self._reflection_settings = reflection_settings or ReflectionSettings()
         self._stage_navigator = stage_navigator
+        self._validation_registry = validation_registry
+        self._validation_settings = validation_settings or ValidationSettings()
         self._logger = logging.getLogger(__name__)
 
         # Agent mapping for dynamic dispatch
@@ -74,6 +92,9 @@ class RunCoordinator:
             "critic": critic_agent,
             "planner": planner_agent,
         }
+
+        # Feedback pools per run
+        self._feedback_pools: dict[str, FeedbackPool] = {}
 
     def run_topic(self, topic: str, constraints: RunConstraints | None = None) -> RunResult:
         run = self.launch_run(topic, constraints)
@@ -106,7 +127,15 @@ class RunCoordinator:
             and self._repository.is_reflection_enabled(run_id)
         )
 
-        if reflection_enabled:
+        # Check if validation agents are enabled
+        validation_enabled = (
+            self._validation_settings.enable_validation_agents
+            and self._validation_registry is not None
+        )
+
+        if reflection_enabled and validation_enabled:
+            return self._execute_with_validation(run_id, request, raise_on_failure)
+        elif reflection_enabled:
             return self._execute_with_reflection(run_id, request, raise_on_failure)
         else:
             return self._execute_linear(run_id, request, raise_on_failure)
@@ -182,6 +211,230 @@ class RunCoordinator:
                 raise RuntimeError(f"run failed: {run_id}") from exc
 
         return self._repository.build_final_result(run_id)
+
+    def _execute_with_validation(
+        self,
+        run_id: str,
+        request: RunRequest,
+        raise_on_failure: bool,
+    ) -> RunResult:
+        """Execute pipeline with validation agents and feedback synthesis."""
+        iteration_state = self._repository.load_iteration_state(run_id)
+        if iteration_state is None:
+            iteration_state = RunIterationState(
+                run_id=run_id,
+                max_cross_stage_iterations=self._reflection_settings.max_cross_stage_iterations,
+                reflection_enabled=True,
+            )
+
+        # Initialize feedback pool
+        if run_id not in self._feedback_pools:
+            self._feedback_pools[run_id] = FeedbackPool(run_id=run_id)
+
+        feedback_pool = self._feedback_pools[run_id]
+        stage_order: list[StageName] = ["retrieval", "review", "critic", "planner"]
+        current_stage: StageName | None = "retrieval"
+        total_backtracks = 0
+
+        try:
+            while current_stage is not None:
+                # Execute stage
+                summary = self._execute_stage_with_validation(
+                    run_id=run_id,
+                    stage_name=current_stage,
+                    request=request,
+                    feedback_pool=feedback_pool,
+                )
+
+                # Run validation agents for this stage
+                validation_results = asyncio.run(self._run_validation_agents(
+                    run_id=run_id,
+                    stage_name=current_stage,
+                    request=request,
+                    feedback_pool=feedback_pool,
+                ))
+
+                # Check for backtracking from validation
+                backtrack_recommendation = self._get_backtrack_recommendation(validation_results)
+
+                if backtrack_recommendation and total_backtracks < self._validation_settings.max_total_backtrack:
+                    target_stage = backtrack_recommendation.target_stage
+                    self._logger.info(
+                        "Validation-triggered backtrack from %s to %s",
+                        current_stage,
+                        target_stage,
+                        extra={"run_id": run_id, "reason": backtrack_recommendation.reason},
+                    )
+
+                    # Synthesize feedback for target stage
+                    if self._validation_registry:
+                        from hypoforge.agents.feedback_synthesizer import FeedbackSynthesizer
+                        synthesizer = FeedbackSynthesizer(
+                            repository=self._repository,
+                            settings=self._validation_settings,
+                        )
+                        stage_feedback = synthesizer.create_feedback_for_stage(
+                            target_stage=target_stage,
+                            validation_results=validation_results,
+                            context=self._build_validation_context(run_id, current_stage, request),
+                        )
+                        feedback_pool.add_feedback(stage_feedback)
+
+                    # Clear downstream data
+                    self._repository.clear_downstream_data(run_id, target_stage)
+                    total_backtracks += 1
+                    current_stage = target_stage
+                    continue
+
+                # Move to next stage
+                current_stage = self._get_next_stage(current_stage)
+
+            # Save final state
+            self._repository.save_iteration_state(run_id, iteration_state)
+            self._repository.update_run_status(run_id, "done", error_message=None)
+
+        except Exception as exc:
+            self._repository.update_run_status(run_id, "failed", error_message=str(exc))
+            self._render_partial_report(run_id)
+            self._logger.exception("run failed with validation", extra={"run_id": run_id})
+            if raise_on_failure:
+                raise RuntimeError(f"run failed: {run_id}") from exc
+        finally:
+            # Clean up feedback pool to prevent memory leak
+            if run_id in self._feedback_pools:
+                del self._feedback_pools[run_id]
+
+        return self._repository.build_final_result(run_id)
+
+    def _execute_stage_with_validation(
+        self,
+        run_id: str,
+        stage_name: StageName,
+        request: RunRequest,
+        feedback_pool: FeedbackPool,
+    ) -> RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary:
+        """Execute a single stage with validation-aware context."""
+        # Map status to run status
+        status_map = {
+            "retrieval": "retrieving",
+            "review": "reviewing",
+            "critic": "criticizing",
+            "planner": "planning",
+        }
+        self._repository.update_run_status(run_id, status_map[stage_name])
+        self._repository.start_stage(run_id, stage_name)
+
+        self._logger.info(
+            f"{stage_name} stage started (with validation)",
+            extra={"run_id": run_id},
+        )
+
+        # Build context with feedback
+        context: dict = {"run_id": run_id}
+        if stage_name == "retrieval":
+            context["topic"] = request.topic
+            context["constraints"] = request.constraints.model_dump()
+
+        # Inject accumulated feedback
+        latest_feedback = feedback_pool.get_latest_feedback()
+        if latest_feedback:
+            context["validation_feedback"] = {
+                "avoid_patterns": latest_feedback.avoid_patterns,
+                "focus_areas": latest_feedback.focus_areas,
+                "priority_issues": [i.description for i in latest_feedback.priority_issues[:3]],
+            }
+
+        # Execute agent
+        agent_fn = self._agents[stage_name]
+        try:
+            if stage_name == "retrieval":
+                summary = agent_fn(run_id, request.topic, request.constraints)
+            else:
+                summary = agent_fn(run_id)
+        except Exception as exc:
+            degraded_summary = self._create_degraded_summary(stage_name, str(exc))
+            self._repository.finish_stage(
+                run_id, stage_name, summary=degraded_summary, status="degraded", error_message=str(exc)
+            )
+            raise
+
+        self._finish_stage(run_id, stage_name, summary)
+        return summary
+
+    async def _run_validation_agents(
+        self,
+        run_id: str,
+        stage_name: StageName,
+        request: RunRequest,
+        feedback_pool: FeedbackPool,
+    ) -> list[ValidationResult]:
+        """Run validation agents for a stage."""
+        if not self._validation_registry:
+            return []
+
+        context = self._build_validation_context(run_id, stage_name, request)
+        validators = self._validation_registry.get_validators(stage_name)
+
+        results = []
+        for validator in validators:
+            try:
+                result = await validator.validate(context)
+                results.append(result)
+                self._logger.info(
+                    f"Validation {validator.validation_type} completed",
+                    extra={
+                        "run_id": run_id,
+                        "stage": stage_name,
+                        "valid": result.valid,
+                        "score": result.score,
+                    },
+                )
+            except Exception as exc:
+                self._logger.warning(
+                    f"Validation {validator.validation_type} failed: {exc}",
+                    extra={"run_id": run_id, "stage": stage_name},
+                )
+                # Create degraded result
+                results.append(ValidationResult(
+                    valid=True,  # Don't block on validator failure
+                    score=0.5,
+                    issues=[],
+                    validation_type=validator.validation_type,
+                    validated_count=0,
+                    passed_count=0,
+                ))
+
+        return results
+
+    def _build_validation_context(
+        self,
+        run_id: str,
+        current_stage: StageName,
+        request: RunRequest,
+    ) -> ValidationContext:
+        """Build validation context for a stage."""
+        run = self._repository.get_run(run_id)
+        feedback_pool = self._feedback_pools.get(run_id)
+
+        return ValidationContext(
+            run_id=run_id,
+            topic=request.topic,
+            current_stage=current_stage,
+            previous_feedback=feedback_pool.feedback_history if feedback_pool else [],
+            selected_paper_ids=run.selected_paper_ids,
+            evidence_ids=run.evidence_ids,
+            conflict_cluster_ids=run.conflict_cluster_ids,
+            hypothesis_ids=run.hypothesis_ids,
+        )
+
+    def _get_backtrack_recommendation(
+        self,
+        validation_results: list[ValidationResult],
+    ) -> Any:
+        """Get the highest priority backtrack recommendation from validation results."""
+        if not self._validation_registry:
+            return None
+        return self._validation_registry.get_backtrack_recommendation(validation_results)
 
     def _execute_stage_with_reflection(
         self,
