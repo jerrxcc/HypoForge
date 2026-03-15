@@ -7,6 +7,7 @@ after the Critic stage, identifying implicit conflicts and evidence gaps.
 from __future__ import annotations
 
 import logging
+import math
 from typing import TYPE_CHECKING, Any
 
 from hypoforge.agents.validation_base import ValidationAgent
@@ -443,7 +444,7 @@ class ConflictDetector(ValidationAgent):
         for count in directions.values():
             if count > 0:
                 p = count / total
-                direction_entropy -= p * (p and __import__("math").log2(p))
+                direction_entropy -= p * math.log2(p)
 
         # Normalize entropy (max entropy for 5 directions is log2(5) ≈ 2.32)
         max_entropy = 2.32

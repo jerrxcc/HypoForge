@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from hypoforge.domain.validation import (
     BacktrackRecommendation,
-    FeedbackPool,
     SynthesizedFeedback,
     ValidationContext,
     ValidationResult,
@@ -156,7 +155,6 @@ class ValidationAgentRegistry:
     def __init__(self) -> None:
         """Initialize the registry."""
         self._validators: dict[StageName, list[ValidationAgent]] = {}
-        self._feedback_pool: dict[str, FeedbackPool] = {}
         self._logger = logging.getLogger(__name__)
 
     def register(self, agent: ValidationAgent) -> None:
@@ -183,28 +181,6 @@ class ValidationAgentRegistry:
             List of validation agents for the stage
         """
         return self._validators.get(stage, [])
-
-    def get_feedback_pool(self, run_id: str) -> FeedbackPool:
-        """Get or create a feedback pool for a run.
-
-        Args:
-            run_id: The run identifier
-
-        Returns:
-            The feedback pool for the run
-        """
-        if run_id not in self._feedback_pool:
-            self._feedback_pool[run_id] = FeedbackPool(run_id=run_id)
-        return self._feedback_pool[run_id]
-
-    def clear_feedback_pool(self, run_id: str) -> None:
-        """Clear the feedback pool for a run.
-
-        Args:
-            run_id: The run identifier
-        """
-        if run_id in self._feedback_pool:
-            del self._feedback_pool[run_id]
 
     async def validate_stage(
         self,

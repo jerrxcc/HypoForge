@@ -217,26 +217,6 @@ class TestValidationAgentRegistry:
         validators = registry.get_validators("review")
         assert len(validators) == 1
 
-    def test_feedback_pool_management(self):
-        """Test feedback pool management."""
-        registry = ValidationAgentRegistry()
-
-        pool = registry.get_feedback_pool("run-1")
-        assert pool.run_id == "run-1"
-
-        # Same pool returned for same run
-        pool2 = registry.get_feedback_pool("run-1")
-        assert pool is pool2
-
-        # Different pool for different run
-        pool3 = registry.get_feedback_pool("run-2")
-        assert pool is not pool3
-
-        # Clear pool
-        registry.clear_feedback_pool("run-1")
-        pool4 = registry.get_feedback_pool("run-1")
-        assert pool4.iteration_count == 0  # New pool
-
     def test_get_backtrack_recommendation(self):
         """Test backtrack recommendation selection."""
         from hypoforge.domain.validation import BacktrackRecommendation
