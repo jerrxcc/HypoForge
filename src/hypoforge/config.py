@@ -62,6 +62,138 @@ class ReflectionSettings(BaseSettings):
     )
 
 
+class ValidationSettings(BaseSettings):
+    """Configuration for the validation agents system."""
+
+    enable_validation_agents: bool = Field(
+        default=True,
+        description="Globally enable/disable validation agents",
+    )
+    max_backtrack_per_stage: int = Field(
+        default=2,
+        ge=1,
+        le=4,
+        description="Maximum backtracks allowed per stage",
+    )
+    max_total_backtrack: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Maximum total backtracks allowed per run",
+    )
+    backtrack_depth: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+        description="Maximum stages to backtrack",
+    )
+
+    # Thresholds for validation decisions
+    min_valid_evidence: int = Field(
+        default=10,
+        ge=3,
+        le=20,
+        description="Minimum valid evidence cards required",
+    )
+    min_conflict_coverage: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Minimum conflict coverage ratio",
+    )
+    min_quality_score: float = Field(
+        default=0.65,
+        ge=0.0,
+        le=1.0,
+        description="Minimum quality score for hypotheses",
+    )
+
+    # Evidence validation thresholds
+    evidence_completeness_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum evidence completeness score",
+    )
+    evidence_accuracy_threshold: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Minimum evidence accuracy score",
+    )
+    evidence_relevance_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum evidence relevance score",
+    )
+
+    # Conflict detection thresholds
+    conflict_intensity_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum conflict intensity for reporting",
+    )
+    max_homogeneity_score: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Maximum allowed evidence homogeneity",
+    )
+
+    # Quality assessment thresholds
+    novelty_weight: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=1.0,
+        description="Weight for novelty dimension",
+    )
+    feasibility_weight: float = Field(
+        default=0.25,
+        ge=0.0,
+        le=1.0,
+        description="Weight for feasibility dimension",
+    )
+    evidence_support_weight: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Weight for evidence support dimension",
+    )
+    conflict_utilization_weight: float = Field(
+        default=0.2,
+        ge=0.0,
+        le=1.0,
+        description="Weight for conflict utilization dimension",
+    )
+
+    # Model configuration for validators
+    model_evidence_validator: str = Field(
+        default="gpt-5-mini",
+        description="Model for evidence validation",
+    )
+    model_conflict_detector: str = Field(
+        default="gpt-5.4",
+        description="Model for conflict detection",
+    )
+    model_quality_assessor: str = Field(
+        default="gpt-5.4",
+        description="Model for quality assessment",
+    )
+    model_feedback_synthesizer: str = Field(
+        default="gpt-5-mini",
+        description="Model for feedback synthesis",
+    )
+
+    model_config = SettingsConfigDict(
+        env_prefix="VALIDATION_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
 class Settings(BaseSettings):
     app_env: str = "dev"
     app_host: str = "0.0.0.0"
@@ -96,6 +228,11 @@ class Settings(BaseSettings):
     reflection_settings: ReflectionSettings = Field(
         default_factory=ReflectionSettings,
         description="Reflection-correction loop configuration",
+    )
+
+    validation_settings: ValidationSettings = Field(
+        default_factory=ValidationSettings,
+        description="Validation agents configuration",
     )
 
     model_config = SettingsConfigDict(
