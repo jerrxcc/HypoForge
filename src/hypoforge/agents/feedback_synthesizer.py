@@ -17,7 +17,7 @@ from hypoforge.domain.validation import (
     ValidationContext,
     ValidationResult,
 )
-from hypoforge.domain.schemas import StageName, Severity
+from hypoforge.domain.schemas import StageName, Severity, SEVERITY_PRIORITY
 
 if TYPE_CHECKING:
     from hypoforge.config import ValidationSettings
@@ -262,12 +262,10 @@ class FeedbackSynthesizer(ValidationAgent):
             Sorted list of issues by priority
         """
         # Sort by priority (critical first) then by actionability
-        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-
         sorted_issues = sorted(
             issues,
             key=lambda i: (
-                priority_order.get(i.priority, 3),
+                SEVERITY_PRIORITY.get(i.priority, 3),
                 0 if i.actionable else 1,
                 0 if i.related_stage else 1,
             ),

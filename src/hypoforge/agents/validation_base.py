@@ -17,7 +17,7 @@ from hypoforge.domain.validation import (
     ValidationContext,
     ValidationResult,
 )
-from hypoforge.domain.schemas import StageName
+from hypoforge.domain.schemas import StageName, SEVERITY_PRIORITY
 
 if TYPE_CHECKING:
     from hypoforge.infrastructure.db.repository import RunRepository
@@ -286,9 +286,8 @@ class ValidationAgentRegistry:
             return None
 
         # Sort by priority and estimated impact
-        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         recommendations.sort(
-            key=lambda r: (priority_order.get(r.priority, 3), -r.estimated_impact)
+            key=lambda r: (SEVERITY_PRIORITY.get(r.priority, 3), -r.estimated_impact)
         )
 
         return recommendations[0]

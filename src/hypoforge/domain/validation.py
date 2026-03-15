@@ -32,7 +32,7 @@ class BacktrackRecommendation(BaseModel):
     target_stage: StageName
     reason: str
     feedback: SynthesizedFeedback | None = None
-    priority: Literal["low", "medium", "high", "critical"] = "medium"
+    priority: Severity = "medium"
     estimated_impact: float = Field(default=0.5, ge=0.0, le=1.0, description="Expected quality improvement")
 
 
@@ -140,7 +140,7 @@ class Issue(BaseModel):
     issue_id: str = Field(default_factory=lambda: f"issue_{uuid4().hex[:12]}")
     source: str = Field(description="Which validator identified this issue")
     description: str
-    priority: Literal["critical", "high", "medium", "low"]
+    priority: Severity
     actionable: bool = Field(default=True)
     related_stage: StageName | None = None
 
