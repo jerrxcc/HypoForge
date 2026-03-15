@@ -615,7 +615,7 @@ async def _review_papers_in_batches_parallel(
         async with semaphore:
             try:
                 # Run sync function in executor
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, review_batch, batch)
             except ToolStepBudgetExceededError as exc:
                 errors.append(exc)

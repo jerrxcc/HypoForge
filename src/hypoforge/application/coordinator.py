@@ -299,6 +299,10 @@ class RunCoordinator:
             self._logger.exception("run failed with validation", extra={"run_id": run_id})
             if raise_on_failure:
                 raise RuntimeError(f"run failed: {run_id}") from exc
+        finally:
+            # Clean up feedback pool to prevent memory leak
+            if run_id in self._feedback_pools:
+                del self._feedback_pools[run_id]
 
         return self._repository.build_final_result(run_id)
 
