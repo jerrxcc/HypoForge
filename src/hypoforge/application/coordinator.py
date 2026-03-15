@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from hypoforge.domain.schemas import (
     CriticSummary,
