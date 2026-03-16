@@ -12,6 +12,15 @@ def test_openai_provider_passes_api_key_and_base_url() -> None:
     client_cls.assert_called_once_with(api_key="test-key", base_url="https://example.com/v1")
 
 
+def test_openai_provider_passes_timeout_to_client() -> None:
+    with patch("openai.OpenAI") as client_cls:
+        provider = OpenAIResponsesProvider(timeout_seconds=45)
+
+        provider._client_or_default()
+
+    client_cls.assert_called_once_with(timeout=45)
+
+
 def test_openai_provider_builds_json_schema_response_format() -> None:
     from hypoforge.domain.schemas import RetrievalSummary
 

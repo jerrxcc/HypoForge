@@ -24,8 +24,13 @@ class SemanticScholarConnector:
         ]
     )
 
-    def __init__(self, client: httpx.Client | None = None) -> None:
+    def __init__(
+        self,
+        client: httpx.Client | None = None,
+        api_key: str | None = None,
+    ) -> None:
         self._client = client or httpx.Client(timeout=30.0)
+        self._api_key = api_key or None
 
     def search_papers(
         self,
@@ -43,6 +48,7 @@ class SemanticScholarConnector:
                 "limit": limit,
                 "fields": self.PAPER_FIELDS,
             },
+            headers=self._headers(),
         )
         response.raise_for_status()
         payload = response.json()
@@ -54,6 +60,7 @@ class SemanticScholarConnector:
             f"{self.BASE_URL}/paper/recommendations",
             json={"positivePaperIds": paper_ids, "limit": limit},
             params={"fields": self.PAPER_FIELDS},
+            headers=self._headers(),
         )
         response.raise_for_status()
         payload = response.json()
@@ -65,10 +72,16 @@ class SemanticScholarConnector:
             f"{self.BASE_URL}/paper/batch",
             params={"fields": self.PAPER_FIELDS},
             json={"ids": normalized_ids},
+            headers=self._headers(),
         )
         response.raise_for_status()
         payload = response.json()
         return [self._normalize_paper(item) for item in payload]
+
+    def _headers(self) -> dict[str, str] | None:
+        if not self._api_key:
+            return None
+        return {"x-api-key": self._api_key}
 
     def _normalize_paper(self, paper: dict) -> PaperDetail:
         external_ids = paper.get("externalIds") or {}
@@ -95,4 +108,3 @@ class SemanticScholarConnector:
             source_urls={"semantic_scholar": paper.get("url", "")},
             provenance=["semantic_scholar"],
         )
-

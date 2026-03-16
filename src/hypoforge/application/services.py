@@ -61,11 +61,12 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     provider = OpenAIResponsesProvider(
         api_key=settings.openai_api_key or None,
         base_url=settings.openai_base_url or None,
+        timeout_seconds=settings.request_timeout_seconds,
     )
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)
     openalex_base = OpenAlexConnector(api_key=settings.openalex_api_key or None)
-    semantic_scholar_base = SemanticScholarConnector()
+    semantic_scholar_base = SemanticScholarConnector(api_key=settings.semantic_scholar_api_key or None)
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
 

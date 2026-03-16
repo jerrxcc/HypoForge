@@ -352,6 +352,21 @@ class RunCoordinator:
             else:
                 summary = agent_fn(run_id)
         except Exception as exc:
+            if stage_name == "review":
+                partial_review = self._build_partial_review_summary(run_id, str(exc))
+                if partial_review is not None:
+                    self._repository.finish_stage(
+                        run_id,
+                        stage_name,
+                        summary=partial_review.model_dump(),
+                        status="degraded",
+                        error_message=str(exc),
+                    )
+                    self._logger.warning(
+                        "review stage degraded (with validation)",
+                        extra={"run_id": run_id},
+                    )
+                    return partial_review
             degraded_summary = self._create_degraded_summary(stage_name, str(exc))
             self._repository.finish_stage(
                 run_id, stage_name, summary=degraded_summary, status="degraded", error_message=str(exc)
@@ -768,3 +783,21 @@ class RunCoordinator:
                 "planner_notes": [f"Stage degraded: {error_message}"],
             }
         return {}
+
+    def _build_partial_review_summary(
+        self,
+        run_id: str,
+        error_message: str,
+    ) -> ReviewSummary | None:
+        evidence_cards = self._repository.load_evidence_cards(run_id)
+        if not evidence_cards:
+            return None
+        papers_processed = len({card.paper_id for card in evidence_cards})
+        return ReviewSummary(
+            papers_processed=papers_processed,
+            evidence_cards_created=len(evidence_cards),
+            coverage_summary="partial review results retained after stage degradation",
+            dominant_axes=[],
+            low_confidence_paper_ids=[],
+            failed_paper_ids=[],
+        )

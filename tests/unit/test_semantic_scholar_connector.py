@@ -3,6 +3,17 @@ import httpx
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 
 
+def test_semantic_scholar_search_sends_api_key_header() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["x-api-key"] == "s2-secret"
+        return httpx.Response(200, json={"data": []})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    connector = SemanticScholarConnector(client=client, api_key="s2-secret")
+
+    connector.search_papers("solid-state battery", 2018, 2026, 5)
+
+
 def test_semantic_scholar_search_normalizes_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -33,4 +44,3 @@ def test_semantic_scholar_search_normalizes_response() -> None:
     assert len(papers) == 1
     assert papers[0].paper_id == "S2:abc123"
     assert papers[0].doi == "10.1/example"
-

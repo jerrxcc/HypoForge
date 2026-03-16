@@ -1,5 +1,6 @@
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
+from hypoforge.config import ReflectionSettings, ValidationSettings
 from hypoforge.domain.schemas import (
     CriticSummary,
     EvidenceCard,
@@ -11,6 +12,7 @@ from hypoforge.domain.schemas import (
     ReviewSummary,
 )
 from hypoforge.infrastructure.db.repository import RunRepository
+from tests.helpers.reflection_helpers import ScriptedReflectionAgent
 
 
 def test_coordinator_continues_when_critic_fails(tmp_path) -> None:
@@ -238,6 +240,96 @@ def test_coordinator_can_rerun_planner_after_failure(tmp_path) -> None:
     assert repo.get_run(rerun_result.run_id).error_message is None
     planner_summary = {summary.stage_name: summary for summary in rerun_result.stage_summaries}["planner"]
     assert planner_summary.status == "completed"
+
+
+def test_validation_pipeline_continues_when_review_retains_partial_evidence(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+
+    class NoopValidationRegistry:
+        def get_validators(self, stage_name):
+            del stage_name
+            return []
+
+        def get_backtrack_recommendation(self, validation_results):
+            del validation_results
+            return None
+
+    reflection_agent = ScriptedReflectionAgent(
+        repository=repo,
+        quality_scores_by_stage={
+            "retrieval": [0.9],
+            "review": [0.9],
+            "critic": [0.9],
+            "planner": [0.9],
+        },
+    )
+
+    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+        del constraints
+        repo.save_selected_papers(
+            run_id,
+            [PaperDetail(paper_id="p1", title=topic, abstract="Abstract", year=2024, authors=["A"])],
+            "seed",
+        )
+        return RetrievalSummary(
+            canonical_topic=topic,
+            query_variants_used=[topic],
+            search_notes=[],
+            selected_paper_ids=["p1"],
+            excluded_paper_ids=[],
+            coverage_assessment="good",
+            needs_broader_search=False,
+        )
+
+    def review(run_id: str) -> ReviewSummary:
+        repo.save_evidence_cards(
+            run_id,
+            [
+                EvidenceCard(
+                    evidence_id="e1",
+                    paper_id="p1",
+                    title="Paper",
+                    claim_text="Claim",
+                    system_or_material="System",
+                    intervention="Intervention",
+                    outcome="Outcome",
+                    direction="positive",
+                    confidence=0.9,
+                )
+            ],
+        )
+        raise RuntimeError("review timed out after partial extraction")
+
+    def critic(run_id: str) -> CriticSummary:
+        del run_id
+        return CriticSummary(clusters_created=0, top_axes=[], critic_notes=["skipped"])
+
+    def planner(run_id: str) -> PlannerSummary:
+        repo.save_hypotheses(run_id, [_hypothesis(1), _hypothesis(2), _hypothesis(3)])
+        repo.save_report_markdown(run_id, "# Report")
+        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+
+    coordinator = RunCoordinator(
+        repository=repo,
+        retrieval_agent=retrieval,
+        review_agent=review,
+        critic_agent=critic,
+        planner_agent=planner,
+        report_renderer=ReportRenderer(),
+        reflection_agent=reflection_agent,
+        reflection_settings=ReflectionSettings(enable_reflection=True),
+        validation_registry=NoopValidationRegistry(),
+        validation_settings=ValidationSettings(enable_validation_agents=True),
+    )
+
+    result = coordinator.run_topic("protein binder design")
+
+    assert result.status == "done"
+    assert len(result.evidence_cards) == 1
+    summaries = {summary.stage_name: summary for summary in result.stage_summaries}
+    assert summaries["review"].status == "degraded"
+    assert summaries["critic"].status == "completed"
+    assert summaries["planner"].status == "completed"
 
 
 def _hypothesis(rank: int) -> Hypothesis:
