@@ -30,9 +30,14 @@ from hypoforge.domain.schemas import (
     RetrievalSummary,
     ReviewSummary,
 )
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
-from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
-from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
+from hypoforge.infrastructure.connectors.cached import (
+    CachedAlphaXivConnector,
+    CachedOpenAlexConnector,
+    CachedSemanticScholarConnector,
+)
+from hypoforge.infrastructure.connectors.dedupe import dedupe_papers, merge_paper_details, paper_identity_key
 from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
@@ -67,6 +72,15 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     logger = logging.getLogger(__name__)
     openalex_base = OpenAlexConnector(api_key=settings.openalex_api_key or None)
     semantic_scholar_base = SemanticScholarConnector(api_key=settings.semantic_scholar_api_key or None)
+    alphaxiv_enabled = bool(settings.alphaxiv_access_token.strip())
+    alphaxiv_base = (
+        AlphaXivConnector(
+            endpoint=settings.alphaxiv_mcp_endpoint,
+            access_token=settings.alphaxiv_access_token or None,
+        )
+        if alphaxiv_enabled
+        else None
+    )
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
 
@@ -84,6 +98,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             RunBudgetTracker(
                 max_openalex_calls=settings.max_openalex_calls_per_run,
                 max_semantic_scholar_calls=settings.max_s2_calls_per_run,
+                max_alphaxiv_calls=settings.max_alphaxiv_calls_per_run,
             ),
         )
         openalex = CachedOpenAlexConnector(
@@ -99,6 +114,16 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             normalized_ttl_seconds=settings.normalized_paper_cache_ttl_seconds,
             on_external_call=budget_tracker.register_semantic_scholar_call,
         )
+        alphaxiv = (
+            CachedAlphaXivConnector(
+                alphaxiv_base,
+                cache_repository,
+                ttl_seconds=settings.raw_response_cache_ttl_seconds,
+                on_external_call=budget_tracker.register_alphaxiv_call,
+            )
+            if alphaxiv_base is not None
+            else None
+        )
 
         def update_candidate_pool(result: dict) -> dict:
             for paper_payload in result.get("papers", []):
@@ -113,8 +138,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         scholarly_tools = ScholarlyTools(
             openalex=openalex,
             semantic_scholar=semantic_scholar,
+            alphaxiv=alphaxiv,
             repository=repository,
-            paper_lookup=lambda paper_ids: [candidate_pool[paper_id] for paper_id in paper_ids if paper_id in candidate_pool],
+            paper_lookup=lambda paper_ids: _lookup_candidate_papers(candidate_pool, paper_ids),
         )
         workspace_tools = WorkspaceTools(
             repository=repository,
@@ -136,6 +162,23 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             "save_hypotheses": lambda payload: workspace_tools.save_hypotheses(run_id, payload),
             "render_markdown_report": lambda payload: render_tools.render_markdown_report(run_id, payload),
         }
+        if alphaxiv is not None:
+            registry.update(
+                {
+                    "search_alphaxiv_embedding_similarity": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_embedding_similarity(payload)
+                    ),
+                    "search_alphaxiv_full_text_papers": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_full_text_papers(payload)
+                    ),
+                    "search_alphaxiv_agentic_paper_retrieval": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_agentic_paper_retrieval(payload)
+                    ),
+                    "get_alphaxiv_paper_content": lambda payload: scholarly_tools.get_alphaxiv_paper_content(payload),
+                    "answer_alphaxiv_pdf_queries": lambda payload: scholarly_tools.answer_alphaxiv_pdf_queries(payload),
+                    "read_alphaxiv_github_repository": lambda payload: scholarly_tools.read_alphaxiv_github_repository(payload),
+                }
+            )
 
         def invoke(tool_name: str, payload: dict, trace_context: dict):
             started_at = perf_counter()
@@ -189,6 +232,21 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 max_tool_steps=settings.max_tool_steps_retrieval,
                 repair_output=_repair_retrieval_output,
             )
+            retrieval_tool_names = [
+                "search_openalex_works",
+                "search_semantic_scholar_papers",
+                "recommend_semantic_scholar_papers",
+                "get_paper_details",
+                "save_selected_papers",
+            ]
+            if alphaxiv_enabled:
+                retrieval_tool_names.extend(
+                    [
+                        "search_alphaxiv_embedding_similarity",
+                        "search_alphaxiv_full_text_papers",
+                        "search_alphaxiv_agentic_paper_retrieval",
+                    ]
+                )
             summary = runner.execute(
                 instructions=prompt_for("retrieval"),
                 context={
@@ -196,13 +254,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     "constraints": attempt_constraints.model_dump(),
                     "retrieval_mode": "broadened" if broadened else "default",
                 },
-                tool_names=[
-                    "search_openalex_works",
-                    "search_semantic_scholar_papers",
-                    "recommend_semantic_scholar_papers",
-                    "get_paper_details",
-                    "save_selected_papers",
-                ],
+                tool_names=retrieval_tool_names,
             )
             return summary, len(repository.load_selected_papers(run_id))
 
@@ -277,10 +329,17 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 max_tool_steps=settings.max_tool_steps_review,
                 repair_output=_repair_review_output,
             )
+            review_tool_names = ["load_selected_papers", "save_evidence_cards"]
+            if alphaxiv_enabled:
+                review_tool_names[1:1] = [
+                    "get_alphaxiv_paper_content",
+                    "answer_alphaxiv_pdf_queries",
+                    "read_alphaxiv_github_repository",
+                ]
             summary = runner.execute(
                 instructions=review_prompt,
                 context={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
-                tool_names=["load_selected_papers", "save_evidence_cards"],
+                tool_names=review_tool_names,
             )
             _save_evidence_cards_to_cache(
                 run_id=run_id,
@@ -329,10 +388,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             repair_output=_repair_planner_output,
         )
         try:
+            planner_tool_names = ["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"]
+            if alphaxiv_enabled:
+                planner_tool_names = [
+                    "load_selected_papers",
+                    "get_alphaxiv_paper_content",
+                    "answer_alphaxiv_pdf_queries",
+                    "read_alphaxiv_github_repository",
+                    *planner_tool_names,
+                ]
             return runner.execute(
                 instructions=prompt_for("planner"),
                 context={"run_id": run_id},
-                tool_names=["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"],
+                tool_names=planner_tool_names,
             )
         except ToolStepBudgetExceededError:
             return _build_planner_budget_summary(
@@ -345,6 +413,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     reflection_agent: ReflectionAgent | None = None
     stage_navigator: StageNavigator | None = None
     if settings.reflection_settings.enable_reflection:
+        retrieval_channels = [
+            "openalex.search",
+            "semantic_scholar.search",
+            "semantic_scholar.recommend",
+        ]
+        if alphaxiv_enabled:
+            retrieval_channels.extend(
+                [
+                    "alphaxiv.embedding_similarity_search",
+                    "alphaxiv.full_text_papers_search",
+                    "alphaxiv.agentic_paper_retrieval",
+                ]
+            )
         reflection_agent = ReflectionAgent(
             repository=repository,
             quality_thresholds={
@@ -355,6 +436,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             },
             enable_multi_perspective=settings.reflection_settings.enable_multi_perspective,
             perspectives=settings.reflection_settings.critic_perspectives,
+            retrieval_channels=retrieval_channels,
         )
         stage_navigator = StageNavigator(repository=repository)
         logger.info(
@@ -422,6 +504,15 @@ def _summarize_tool_result(result: dict) -> dict:
         summary["paper_count"] = len(result["papers"])
         summary["result_count"] = len(result["papers"])
         summary["paper_ids"] = [paper.get("paper_id") for paper in result["papers"][:5]]
+    if "paper_content" in result:
+        summary["result_count"] = 1
+        summary["content_length"] = len(result["paper_content"])
+    if "answer" in result:
+        summary["result_count"] = 1
+        summary["answer_length"] = len(result["answer"])
+    if "repository_content" in result:
+        summary["result_count"] = 1
+        summary["content_length"] = len(str(result["repository_content"]))
     if "evidence_cards" in result:
         summary["result_count"] = len(result["evidence_cards"])
     if "evidence_ids" in result:
@@ -443,6 +534,24 @@ def _summarize_tool_result(result: dict) -> dict:
     if not summary:
         summary = result
     return summary
+
+
+def _lookup_candidate_papers(candidate_pool: dict[str, PaperDetail], paper_ids: list[str]) -> list[PaperDetail]:
+    papers: list[PaperDetail] = []
+    all_candidates = list(candidate_pool.values())
+    for paper_id in paper_ids:
+        candidate = candidate_pool.get(paper_id)
+        if candidate is None:
+            continue
+        key = paper_identity_key(candidate)
+        duplicates = [paper for paper in all_candidates if paper_identity_key(paper) == key]
+        merged = candidate
+        for duplicate in duplicates:
+            if duplicate.paper_id == merged.paper_id:
+                continue
+            merged = merge_paper_details(merged, duplicate)
+        papers.append(merged)
+    return papers
 
 
 def _evidence_cache_key(paper_id: str, model_name: str, prompt_version: str) -> str:

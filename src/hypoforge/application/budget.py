@@ -24,14 +24,16 @@ class ToolStepBudgetExceededError(RuntimeError):
 class RunBudgetTracker:
     """Tracks and enforces per-run limits for external API calls.
 
-    Keeps separate counters for OpenAlex and Semantic Scholar calls and
+    Keeps separate counters for OpenAlex, Semantic Scholar, and alphaXiv calls and
     raises :class:`BudgetExceededError` when either limit is reached.
     """
 
     max_openalex_calls: int
     max_semantic_scholar_calls: int
+    max_alphaxiv_calls: int = 0
     openalex_calls: int = 0
     semantic_scholar_calls: int = 0
+    alphaxiv_calls: int = 0
 
     def register_openalex_call(self) -> None:
         if self.openalex_calls >= self.max_openalex_calls:
@@ -48,3 +50,11 @@ class RunBudgetTracker:
                 message="budget exceeded for semantic scholar calls",
             )
         self.semantic_scholar_calls += 1
+
+    def register_alphaxiv_call(self) -> None:
+        if self.alphaxiv_calls >= self.max_alphaxiv_calls:
+            raise BudgetExceededError(
+                source="alphaxiv",
+                message="budget exceeded for alphaXiv calls",
+            )
+        self.alphaxiv_calls += 1

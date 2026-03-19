@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 import httpx
 
 from hypoforge.application.budget import BudgetExceededError
 from hypoforge.domain.schemas import PaperDetail
-from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
+from hypoforge.infrastructure.connectors.cached import (
+    CachedAlphaXivConnector,
+    CachedOpenAlexConnector,
+    CachedSemanticScholarConnector,
+)
 from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
 from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.db.repository import RunRepository
-from hypoforge.tools.schemas import GetPaperDetailsArgs, RecommendPapersArgs, SaveSelectedPapersArgs, SearchPapersArgs
+from hypoforge.tools.schemas import (
+    AnswerAlphaXivPdfQueriesArgs,
+    GetAlphaXivPaperContentArgs,
+    GetPaperDetailsArgs,
+    ReadAlphaXivGithubRepositoryArgs,
+    RecommendPapersArgs,
+    SaveSelectedPapersArgs,
+    SearchPapersArgs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +41,12 @@ class ScholarlyTools:
         openalex: CachedOpenAlexConnector,
         semantic_scholar: CachedSemanticScholarConnector,
         repository: RunRepository,
+        alphaxiv: CachedAlphaXivConnector | None = None,
         paper_lookup: Callable[[list[str]], list[dict | PaperDetail]] | None = None,
     ) -> None:
         self._openalex = openalex
         self._semantic_scholar = semantic_scholar
+        self._alphaxiv = alphaxiv
         self._repository = repository
         self._paper_lookup = paper_lookup
 
@@ -62,12 +76,78 @@ class ScholarlyTools:
             source=self._semantic_scholar,
         )
 
+    def search_alphaxiv_embedding_similarity(self, payload: dict) -> dict:
+        args = SearchPapersArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_source_call(
+            lambda: connector.search_embedding_similarity(
+                args.query,
+                args.year_from,
+                args.year_to,
+                args.limit,
+            ),
+            source=connector,
+        )
+
+    def search_alphaxiv_full_text_papers(self, payload: dict) -> dict:
+        args = SearchPapersArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_source_call(
+            lambda: connector.search_full_text_papers(
+                args.query,
+                args.year_from,
+                args.year_to,
+                args.limit,
+            ),
+            source=connector,
+        )
+
+    def search_alphaxiv_agentic_paper_retrieval(self, payload: dict) -> dict:
+        args = SearchPapersArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_source_call(
+            lambda: connector.search_agentic_paper_retrieval(
+                args.query,
+                args.year_from,
+                args.year_to,
+                args.limit,
+            ),
+            source=connector,
+        )
+
     def get_paper_details(self, payload: dict) -> dict:
         args = GetPaperDetailsArgs.model_validate(payload)
         semantic_ids = [paper_id for paper_id in args.paper_ids if paper_id.startswith("S2:")]
         return self._run_source_call(
             lambda: self._semantic_scholar.get_paper_details(semantic_ids) if semantic_ids else [],
             source=self._semantic_scholar,
+        )
+
+    def get_alphaxiv_paper_content(self, payload: dict) -> dict:
+        args = GetAlphaXivPaperContentArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_payload_call(
+            lambda: connector.get_paper_content(args.url, full_text=args.full_text),
+            result_key="paper_content",
+            source=connector,
+        )
+
+    def answer_alphaxiv_pdf_queries(self, payload: dict) -> dict:
+        args = AnswerAlphaXivPdfQueriesArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_payload_call(
+            lambda: connector.answer_pdf_queries(args.url, args.query),
+            result_key="answer",
+            source=connector,
+        )
+
+    def read_alphaxiv_github_repository(self, payload: dict) -> dict:
+        args = ReadAlphaXivGithubRepositoryArgs.model_validate(payload)
+        connector = self._require_alphaxiv()
+        return self._run_payload_call(
+            lambda: connector.read_files_from_github_repository(args.github_url, args.path),
+            result_key="repository_content",
+            source=connector,
         )
 
     def merge_candidates(self, papers: list[PaperDetail]) -> list[PaperDetail]:
@@ -90,17 +170,30 @@ class ScholarlyTools:
         self._repository.save_selected_papers(run_id, papers, args.selection_reason)
         return {"paper_ids": [paper.paper_id for paper in papers], "selection_reason": args.selection_reason}
 
+    def _require_alphaxiv(self) -> CachedAlphaXivConnector:
+        if self._alphaxiv is None:
+            raise ValueError("alphaXiv tools are not configured")
+        return self._alphaxiv
+
     def _run_source_call(self, fn: Callable[[], list[PaperDetail]], *, source: object = None) -> dict:
+        return self._run_payload_call(fn, result_key="papers", source=source)
+
+    def _run_payload_call(
+        self,
+        fn: Callable[[], Any],
+        *,
+        result_key: str,
+        source: object = None,
+    ) -> dict:
         try:
-            papers = fn()
-            return {
-                "papers": [paper.model_dump() for paper in papers],
-                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
-            }
+            value = fn()
+            if result_key == "papers":
+                value = [paper.model_dump() for paper in value]
+            return {result_key: value, "cache_hit": bool(getattr(source, "last_cache_hit", False))}
         except httpx.HTTPStatusError as exc:
             logger.warning("HTTP %d from source call: %s", exc.response.status_code, exc)
             return {
-                "papers": [],
+                result_key: [] if result_key == "papers" else "",
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
                 "error": {
                     "type": "http_status_error",
@@ -111,7 +204,7 @@ class ScholarlyTools:
         except BudgetExceededError as exc:
             logger.warning("Budget exceeded for %s: %s", exc.source, exc)
             return {
-                "papers": [],
+                result_key: [] if result_key == "papers" else "",
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
                 "error": {
                     "type": "budget_exceeded",
@@ -122,7 +215,7 @@ class ScholarlyTools:
         except httpx.HTTPError as exc:
             logger.warning("HTTP error from source call: %s", exc)
             return {
-                "papers": [],
+                result_key: [] if result_key == "papers" else "",
                 "cache_hit": bool(getattr(source, "last_cache_hit", False)),
                 "error": {
                     "type": "http_error",

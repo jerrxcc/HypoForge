@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import logging
 from hashlib import sha256
-from typing import Callable
+from typing import Any, Callable
 
 from hypoforge.domain.schemas import PaperDetail
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
@@ -165,3 +166,117 @@ class CachedSemanticScholarConnector:
         if cache_normalized:
             self._cache_papers(papers)
         return papers
+
+
+class CachedAlphaXivConnector:
+    """Caching wrapper for AlphaXivConnector."""
+
+    def __init__(
+        self,
+        connector: AlphaXivConnector,
+        cache: CacheRepository,
+        *,
+        ttl_seconds: int,
+        on_external_call: Callable[[], None] | None = None,
+    ) -> None:
+        self._connector = connector
+        self._cache = cache
+        self._ttl_seconds = ttl_seconds
+        self._on_external_call = on_external_call
+        self.last_cache_hit = False
+
+    def search_embedding_similarity(
+        self,
+        query: str,
+        year_from: int,
+        year_to: int,
+        limit: int,
+    ) -> list[PaperDetail]:
+        return self._cached_papers(
+            "alphaxiv_embedding_similarity",
+            {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
+            lambda: self._connector.search_embedding_similarity(query, year_from, year_to, limit),
+        )
+
+    def search_full_text_papers(
+        self,
+        query: str,
+        year_from: int,
+        year_to: int,
+        limit: int,
+    ) -> list[PaperDetail]:
+        return self._cached_papers(
+            "alphaxiv_full_text_papers",
+            {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
+            lambda: self._connector.search_full_text_papers(query, year_from, year_to, limit),
+        )
+
+    def search_agentic_paper_retrieval(
+        self,
+        query: str,
+        year_from: int,
+        year_to: int,
+        limit: int,
+    ) -> list[PaperDetail]:
+        return self._cached_papers(
+            "alphaxiv_agentic_paper_retrieval",
+            {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
+            lambda: self._connector.search_agentic_paper_retrieval(query, year_from, year_to, limit),
+        )
+
+    def get_paper_content(self, url: str, full_text: bool = False) -> str:
+        return self._cached_payload(
+            "alphaxiv_get_paper_content",
+            {"url": url, "full_text": full_text},
+            lambda: self._connector.get_paper_content(url, full_text),
+        )
+
+    def answer_pdf_queries(self, url: str, query: str) -> str:
+        return self._cached_payload(
+            "alphaxiv_answer_pdf_queries",
+            {"url": url, "query": query},
+            lambda: self._connector.answer_pdf_queries(url, query),
+        )
+
+    def read_files_from_github_repository(self, github_url: str, path: str) -> dict[str, Any] | str:
+        return self._cached_payload(
+            "alphaxiv_read_files_from_github_repository",
+            {"github_url": github_url, "path": path},
+            lambda: self._connector.read_files_from_github_repository(github_url, path),
+        )
+
+    def _cached_papers(
+        self,
+        cache_source: str,
+        cache_payload: dict[str, Any],
+        fetch: Callable[[], list[PaperDetail]],
+    ) -> list[PaperDetail]:
+        payload = self._cached_payload(
+            cache_source,
+            cache_payload,
+            lambda: [paper.model_dump() for paper in fetch()],
+        )
+        return [PaperDetail.model_validate(paper) for paper in payload]
+
+    def _cached_payload(
+        self,
+        cache_source: str,
+        cache_payload: dict[str, Any],
+        fetch: Callable[[], Any],
+    ) -> Any:
+        cache_key = _args_key(cache_source, cache_payload)
+        cached = self._cache.get("raw_response", cache_key)
+        if cached is not None and "result" in cached:
+            self.last_cache_hit = True
+            return cached["result"]
+        self.last_cache_hit = False
+        if self._on_external_call is not None:
+            self._on_external_call()
+        result = fetch()
+        self._cache.set(
+            "raw_response",
+            cache_key,
+            {"result": result},
+            ttl_seconds=self._ttl_seconds,
+        )
+        return result

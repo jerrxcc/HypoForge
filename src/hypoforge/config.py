@@ -210,6 +210,8 @@ class Settings(BaseSettings):
 
     openalex_api_key: str = ""
     semantic_scholar_api_key: str = ""
+    alphaxiv_mcp_endpoint: str = "https://api.alphaxiv.org/mcp/v1"
+    alphaxiv_access_token: str = ""
     database_url: str = "sqlite:///./hypoforge.db"
     raw_response_cache_ttl_seconds: int = 604800
     normalized_paper_cache_ttl_seconds: int = 2592000
@@ -223,6 +225,7 @@ class Settings(BaseSettings):
     max_tool_steps_planner: int = 4
     max_openalex_calls_per_run: int = 20
     max_s2_calls_per_run: int = 20
+    max_alphaxiv_calls_per_run: int = 20
     request_timeout_seconds: int = 30
 
     reflection_settings: ReflectionSettings = Field(

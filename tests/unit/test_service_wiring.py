@@ -63,3 +63,26 @@ def test_build_default_services_passes_request_timeout_to_provider(tmp_path, mon
     services.build_default_services(settings)
 
     assert seen["timeout_seconds"] == 45
+
+
+def test_build_default_services_passes_alphaxiv_config_to_connector(tmp_path, monkeypatch) -> None:
+    seen: dict[str, str | None] = {"endpoint": None, "access_token": None}
+
+    class FakeAlphaXivConnector:
+        def __init__(self, client=None, endpoint: str | None = None, access_token: str | None = None, http_client=None) -> None:
+            del client, http_client
+            seen["endpoint"] = endpoint
+            seen["access_token"] = access_token
+
+    monkeypatch.setattr(services, "AlphaXivConnector", FakeAlphaXivConnector)
+
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'app.db'}",
+        alphaxiv_mcp_endpoint="https://api.alphaxiv.org/mcp/v1",
+        alphaxiv_access_token="jwt.token.value",
+    )
+
+    services.build_default_services(settings)
+
+    assert seen["endpoint"] == "https://api.alphaxiv.org/mcp/v1"
+    assert seen["access_token"] == "jwt.token.value"

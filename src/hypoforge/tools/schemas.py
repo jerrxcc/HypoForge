@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from hypoforge.domain.schemas import ConflictCluster, EvidenceCard, Hypothesis, PaperDetail
 
@@ -25,6 +25,32 @@ class SaveSelectedPapersArgs(BaseModel):
     paper_ids: list[str] = Field(default_factory=list)
     papers: list[PaperDetail] = Field(default_factory=list)
     selection_reason: str
+
+
+class GetAlphaXivPaperContentArgs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    url: str
+    full_text: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("fullText", "full_text"),
+        serialization_alias="fullText",
+    )
+
+
+class AnswerAlphaXivPdfQueriesArgs(BaseModel):
+    url: str
+    query: str
+
+
+class ReadAlphaXivGithubRepositoryArgs(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    github_url: str = Field(
+        validation_alias=AliasChoices("githubUrl", "github_url"),
+        serialization_alias="githubUrl",
+    )
+    path: str
 
 
 class SaveEvidenceCardsArgs(BaseModel):
@@ -60,7 +86,13 @@ TOOL_ARG_MODELS = {
     "search_openalex_works": SearchPapersArgs,
     "search_semantic_scholar_papers": SearchPapersArgs,
     "recommend_semantic_scholar_papers": RecommendPapersArgs,
+    "search_alphaxiv_embedding_similarity": SearchPapersArgs,
+    "search_alphaxiv_full_text_papers": SearchPapersArgs,
+    "search_alphaxiv_agentic_paper_retrieval": SearchPapersArgs,
     "get_paper_details": GetPaperDetailsArgs,
+    "get_alphaxiv_paper_content": GetAlphaXivPaperContentArgs,
+    "answer_alphaxiv_pdf_queries": AnswerAlphaXivPdfQueriesArgs,
+    "read_alphaxiv_github_repository": ReadAlphaXivGithubRepositoryArgs,
     "save_selected_papers": SaveSelectedPapersArgs,
     "load_selected_papers": LoadSelectedPapersArgs,
     "save_evidence_cards": SaveEvidenceCardsArgs,

@@ -49,6 +49,7 @@ class ReflectionAgent:
         quality_thresholds: dict[StageName, float] | None = None,
         enable_multi_perspective: bool = True,
         perspectives: list[str] | None = None,
+        retrieval_channels: list[str] | None = None,
     ) -> None:
         self._repository = repository
         self._quality_thresholds = quality_thresholds or {
@@ -59,6 +60,11 @@ class ReflectionAgent:
         }
         self._enable_multi_perspective = enable_multi_perspective
         self._perspectives = perspectives or ["methodological", "statistical", "domain"]
+        self._retrieval_channels = retrieval_channels or [
+            "openalex.search",
+            "semantic_scholar.search",
+            "semantic_scholar.recommend",
+        ]
         self._logger = logging.getLogger(__name__)
 
     def evaluate_stage(
@@ -290,13 +296,15 @@ class ReflectionAgent:
         years = []
         for paper in papers:
             for prov in paper.provenance:
-                sources.add(prov)
+                normalized = self._normalize_retrieval_channel(prov)
+                if normalized is not None:
+                    sources.add(normalized)
             if paper.venue:
                 venues.add(paper.venue)
             if paper.year:
                 years.append(paper.year)
 
-        source_coverage = len(sources) / 3.0 if papers else 0  # OpenAlex, S2, recommendations
+        source_coverage = len(sources) / max(1, len(self._retrieval_channels)) if papers else 0
         venue_diversity = min(1.0, len(venues) / max(1, len(papers)) * 5)
         year_range = (max(years) - min(years)) if years else 0
         recency_score = min(1.0, year_range / 10) if years else 0
@@ -586,7 +594,8 @@ class ReflectionAgent:
                 suggestions.append("Broaden search queries to include more papers")
                 suggestions.append("Extend year range to capture more literature")
             if "diversity" in str(issues).lower():
-                suggestions.append("Search additional databases (OpenAlex, Semantic Scholar)")
+                channel_labels = ", ".join(self._channel_label(channel) for channel in self._retrieval_channels)
+                suggestions.append(f"Search additional databases and channels ({channel_labels})")
                 suggestions.append("Include papers from diverse venues")
 
         elif stage_name == "review":
@@ -612,6 +621,28 @@ class ReflectionAgent:
                 suggestions.append("Design more practical experimental approaches")
 
         return suggestions
+
+    def _normalize_retrieval_channel(self, provenance: str) -> str | None:
+        if provenance in self._retrieval_channels:
+            return provenance
+        legacy_map = {
+            "openalex": "openalex.search",
+            "semantic_scholar": "semantic_scholar.search",
+        }
+        if provenance in legacy_map:
+            return legacy_map[provenance]
+        return None
+
+    def _channel_label(self, channel: str) -> str:
+        labels = {
+            "openalex.search": "OpenAlex",
+            "semantic_scholar.search": "Semantic Scholar",
+            "semantic_scholar.recommend": "Semantic Scholar recommendations",
+            "alphaxiv.embedding_similarity_search": "alphaXiv embedding search",
+            "alphaxiv.full_text_papers_search": "alphaXiv full-text search",
+            "alphaxiv.agentic_paper_retrieval": "alphaXiv agentic retrieval",
+        }
+        return labels.get(channel, channel)
 
     def _determine_backtrack(
         self,

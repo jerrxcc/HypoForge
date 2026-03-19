@@ -163,6 +163,6 @@ def _render_paper_appendix(result: RunResult) -> list[str]:
     if not result.selected_papers:
         return ["- No selected papers recorded."]
     return [
-        f"- `{paper.paper_id}` {paper.year or 'n.d.'} — {paper.title} | venue: {paper.venue or 'Unknown'} | source: {paper.source or 'unknown'} | authors: {_join_list(paper.authors) or 'Unknown'}"
+        f"- `{paper.paper_id}` {paper.year or 'n.d.'} — {paper.title} | venue: {paper.venue or 'Unknown'} | source: {paper.source or 'unknown'} | provenance: {_join_list(paper.provenance) or 'Unknown'} | authors: {_join_list(paper.authors) or 'Unknown'}"
         for paper in result.selected_papers
     ]

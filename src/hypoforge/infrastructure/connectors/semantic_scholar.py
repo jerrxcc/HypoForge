@@ -52,7 +52,7 @@ class SemanticScholarConnector:
         )
         response.raise_for_status()
         payload = response.json()
-        return [self._normalize_paper(item) for item in payload.get("data", [])]
+        return [self._normalize_paper(item, provenance="semantic_scholar.search") for item in payload.get("data", [])]
 
     def recommend_papers(self, positive_paper_ids: list[str], limit: int) -> list[PaperDetail]:
         paper_ids = [paper_id.removeprefix("S2:") for paper_id in positive_paper_ids]
@@ -64,7 +64,10 @@ class SemanticScholarConnector:
         )
         response.raise_for_status()
         payload = response.json()
-        return [self._normalize_paper(item) for item in payload.get("recommendedPapers", [])]
+        return [
+            self._normalize_paper(item, provenance="semantic_scholar.recommend")
+            for item in payload.get("recommendedPapers", [])
+        ]
 
     def get_paper_details(self, paper_ids: list[str]) -> list[PaperDetail]:
         normalized_ids = [paper_id.removeprefix("S2:") for paper_id in paper_ids]
@@ -76,17 +79,21 @@ class SemanticScholarConnector:
         )
         response.raise_for_status()
         payload = response.json()
-        return [self._normalize_paper(item) for item in payload]
+        return [self._normalize_paper(item, provenance="semantic_scholar.detail") for item in payload]
 
     def _headers(self) -> dict[str, str] | None:
         if not self._api_key:
             return None
         return {"x-api-key": self._api_key}
 
-    def _normalize_paper(self, paper: dict) -> PaperDetail:
+    def _normalize_paper(self, paper: dict, *, provenance: str) -> PaperDetail:
         external_ids = paper.get("externalIds") or {}
         doi = external_ids.get("DOI")
         publication_types = paper.get("publicationTypes") or []
+        source_urls = {"semantic_scholar": paper.get("url", "")}
+        arxiv_id = external_ids.get("ArXiv") or external_ids.get("ARXIV")
+        if arxiv_id:
+            source_urls["arxiv"] = f"https://arxiv.org/abs/{arxiv_id}"
         return PaperDetail(
             paper_id=f"S2:{paper.get('paperId', '')}",
             doi=doi,
@@ -105,6 +112,6 @@ class SemanticScholarConnector:
             fields_of_study=paper.get("fieldsOfStudy") or [],
             source="semantic_scholar",
             url=paper.get("url"),
-            source_urls={"semantic_scholar": paper.get("url", "")},
-            provenance=["semantic_scholar"],
+            source_urls=source_urls,
+            provenance=[provenance],
         )

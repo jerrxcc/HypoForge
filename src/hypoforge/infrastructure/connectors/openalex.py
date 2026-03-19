@@ -65,5 +65,5 @@ class OpenAlexConnector:
             source="openalex",
             url=primary_location.get("landing_page_url"),
             source_urls={"openalex": work.get("id", "")},
-            provenance=["openalex"],
+            provenance=["openalex.search"],
         )
