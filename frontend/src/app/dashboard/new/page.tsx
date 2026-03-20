@@ -8,6 +8,7 @@ import { Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { topicSchema, type TopicFormValues } from '@/lib/schemas';
 import { useLaunchRun } from '@/hooks/use-launch-run';
+import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { UseFormReturn } from 'react-hook-form';
 import type { ConstraintFormValues } from '@/components/run/constraint-drawer';
 
 function FieldLabel({ children }: { readonly children: React.ReactNode }) {

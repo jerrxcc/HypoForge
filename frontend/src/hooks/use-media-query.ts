@@ -23,18 +23,8 @@ export function useMediaQuery(query: string): boolean {
       setMatches(event.matches);
     };
 
-    // Use addEventListener when available (modern browsers), fall back to addListener
-    if (mediaQueryList.addEventListener) {
-      mediaQueryList.addEventListener('change', handleChange);
-      return () => mediaQueryList.removeEventListener('change', handleChange);
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (mediaQueryList as any).addListener(handleChange);
-      return () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mediaQueryList as any).removeListener(handleChange);
-      };
-    }
+    mediaQueryList.addEventListener('change', handleChange);
+    return () => mediaQueryList.removeEventListener('change', handleChange);
   }, [query]);
 
   return matches;

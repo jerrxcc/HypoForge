@@ -32,10 +32,10 @@ export function ResearchInput({ externalTopic }: ResearchInputProps) {
       year_to: 2026,
       max_selected_papers: 36,
       open_access_only: false,
-      lab_mode: 'either',
+      lab_mode: 'either' as const,
       novelty_weight: 0.5,
       feasibility_weight: 0.5,
-    },
+    } satisfies ConstraintFormValues,
   });
 
   // Sync external topic into form
