@@ -58,6 +58,10 @@ class AgentRunner:
                     agent_name=self._agent_name,
                     max_steps=self._max_tool_steps,
                 )
+            if not turn.tool_calls:
+                raise RuntimeError(
+                    f"{self._agent_name} provider returned neither tool calls nor final output"
+                )
             tool_outputs = []
             for call in turn.tool_calls:
                 if call.name not in tool_names:

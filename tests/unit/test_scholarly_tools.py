@@ -1,4 +1,4 @@
-from hypoforge.domain.schemas import RunRequest
+from hypoforge.domain.schemas import PaperDetail, RunRequest
 from hypoforge.application.budget import BudgetExceededError
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.scholarly_tools import ScholarlyTools
@@ -19,6 +19,37 @@ class FakeSemanticScholarConnector:
 
     def get_paper_details(self, paper_ids: list[str]):
         return []
+
+
+class FakeAlphaXivConnector:
+    last_cache_hit = False
+
+    def search_embedding_similarity(self, query: str, year_from: int, year_to: int, limit: int):
+        del year_from, year_to, limit
+        return [
+            PaperDetail(
+                paper_id="ax:2401.12345",
+                title=query,
+                abstract="Abstract A",
+                authors=["Ada"],
+                year=2024,
+            )
+        ]
+
+    def search_full_text_papers(self, query: str, year_from: int, year_to: int, limit: int):
+        return self.search_embedding_similarity(query, year_from, year_to, limit)
+
+    def search_agentic_paper_retrieval(self, query: str, year_from: int, year_to: int, limit: int):
+        return self.search_embedding_similarity(query, year_from, year_to, limit)
+
+    def get_paper_content(self, url: str, full_text: bool = False):
+        return f"{url}:{full_text}"
+
+    def answer_pdf_queries(self, url: str, query: str):
+        return f"{url}:{query}"
+
+    def read_files_from_github_repository(self, github_url: str, path: str):
+        return {"github_url": github_url, "path": path}
 
 
 class FailingSemanticScholarConnector:
@@ -179,3 +210,41 @@ def test_search_openalex_returns_budget_exceeded_payload(tmp_path) -> None:
     assert result["papers"] == []
     assert result["error"]["type"] == "budget_exceeded"
     assert result["error"]["source"] == "openalex"
+
+
+def test_get_alphaxiv_paper_content_returns_payload(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    tools = ScholarlyTools(
+        openalex=FakeOpenAlexConnector(),
+        semantic_scholar=FakeSemanticScholarConnector(),
+        alphaxiv=FakeAlphaXivConnector(),
+        repository=repo,
+    )
+
+    result = tools.get_alphaxiv_paper_content(
+        {
+            "url": "https://arxiv.org/abs/2401.12345",
+            "fullText": True,
+        }
+    )
+
+    assert result["paper_content"] == "https://arxiv.org/abs/2401.12345:True"
+
+
+def test_read_alphaxiv_github_repository_returns_structured_payload(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    tools = ScholarlyTools(
+        openalex=FakeOpenAlexConnector(),
+        semantic_scholar=FakeSemanticScholarConnector(),
+        alphaxiv=FakeAlphaXivConnector(),
+        repository=repo,
+    )
+
+    result = tools.read_alphaxiv_github_repository(
+        {
+            "githubUrl": "https://github.com/example/repo",
+            "path": "/",
+        }
+    )
+
+    assert result["repository_content"]["github_url"] == "https://github.com/example/repo"

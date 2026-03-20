@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from hashlib import sha256
 import logging
@@ -12,11 +13,12 @@ from hypoforge.agents.prompts import prompt_for
 from hypoforge.agents.reflection import ReflectionAgent
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
+from hypoforge.agents.validation_base import ValidationAgentRegistry
 from hypoforge.application.budget import RunBudgetTracker, ToolStepBudgetExceededError
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.application.stage_graph import StageNavigator
-from hypoforge.config import ReflectionSettings, Settings
+from hypoforge.config import ReflectionSettings, Settings, ValidationSettings
 from hypoforge.domain.schemas import (
     ConflictCluster,
     CriticSummary,
@@ -28,9 +30,14 @@ from hypoforge.domain.schemas import (
     RetrievalSummary,
     ReviewSummary,
 )
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
-from hypoforge.infrastructure.connectors.cached import CachedOpenAlexConnector, CachedSemanticScholarConnector
-from hypoforge.infrastructure.connectors.dedupe import dedupe_papers
+from hypoforge.infrastructure.connectors.cached import (
+    CachedAlphaXivConnector,
+    CachedOpenAlexConnector,
+    CachedSemanticScholarConnector,
+)
+from hypoforge.infrastructure.connectors.dedupe import dedupe_papers, merge_paper_details, paper_identity_key
 from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
@@ -59,11 +66,21 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     provider = OpenAIResponsesProvider(
         api_key=settings.openai_api_key or None,
         base_url=settings.openai_base_url or None,
+        timeout_seconds=settings.request_timeout_seconds,
     )
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)
     openalex_base = OpenAlexConnector(api_key=settings.openalex_api_key or None)
-    semantic_scholar_base = SemanticScholarConnector()
+    semantic_scholar_base = SemanticScholarConnector(api_key=settings.semantic_scholar_api_key or None)
+    alphaxiv_enabled = bool(settings.alphaxiv_access_token.strip())
+    alphaxiv_base = (
+        AlphaXivConnector(
+            endpoint=settings.alphaxiv_mcp_endpoint,
+            access_token=settings.alphaxiv_access_token or None,
+        )
+        if alphaxiv_enabled
+        else None
+    )
     review_prompt = prompt_for("review")
     review_prompt_version = sha256(review_prompt.encode("utf-8")).hexdigest()[:12]
 
@@ -81,6 +98,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             RunBudgetTracker(
                 max_openalex_calls=settings.max_openalex_calls_per_run,
                 max_semantic_scholar_calls=settings.max_s2_calls_per_run,
+                max_alphaxiv_calls=settings.max_alphaxiv_calls_per_run,
             ),
         )
         openalex = CachedOpenAlexConnector(
@@ -96,6 +114,16 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             normalized_ttl_seconds=settings.normalized_paper_cache_ttl_seconds,
             on_external_call=budget_tracker.register_semantic_scholar_call,
         )
+        alphaxiv = (
+            CachedAlphaXivConnector(
+                alphaxiv_base,
+                cache_repository,
+                ttl_seconds=settings.raw_response_cache_ttl_seconds,
+                on_external_call=budget_tracker.register_alphaxiv_call,
+            )
+            if alphaxiv_base is not None
+            else None
+        )
 
         def update_candidate_pool(result: dict) -> dict:
             for paper_payload in result.get("papers", []):
@@ -110,8 +138,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         scholarly_tools = ScholarlyTools(
             openalex=openalex,
             semantic_scholar=semantic_scholar,
+            alphaxiv=alphaxiv,
             repository=repository,
-            paper_lookup=lambda paper_ids: [candidate_pool[paper_id] for paper_id in paper_ids if paper_id in candidate_pool],
+            paper_lookup=lambda paper_ids: _lookup_candidate_papers(candidate_pool, paper_ids),
         )
         workspace_tools = WorkspaceTools(
             repository=repository,
@@ -133,6 +162,23 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             "save_hypotheses": lambda payload: workspace_tools.save_hypotheses(run_id, payload),
             "render_markdown_report": lambda payload: render_tools.render_markdown_report(run_id, payload),
         }
+        if alphaxiv is not None:
+            registry.update(
+                {
+                    "search_alphaxiv_embedding_similarity": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_embedding_similarity(payload)
+                    ),
+                    "search_alphaxiv_full_text_papers": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_full_text_papers(payload)
+                    ),
+                    "search_alphaxiv_agentic_paper_retrieval": lambda payload: update_candidate_pool(
+                        scholarly_tools.search_alphaxiv_agentic_paper_retrieval(payload)
+                    ),
+                    "get_alphaxiv_paper_content": lambda payload: scholarly_tools.get_alphaxiv_paper_content(payload),
+                    "answer_alphaxiv_pdf_queries": lambda payload: scholarly_tools.answer_alphaxiv_pdf_queries(payload),
+                    "read_alphaxiv_github_repository": lambda payload: scholarly_tools.read_alphaxiv_github_repository(payload),
+                }
+            )
 
         def invoke(tool_name: str, payload: dict, trace_context: dict):
             started_at = perf_counter()
@@ -186,6 +232,21 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 max_tool_steps=settings.max_tool_steps_retrieval,
                 repair_output=_repair_retrieval_output,
             )
+            retrieval_tool_names = [
+                "search_openalex_works",
+                "search_semantic_scholar_papers",
+                "recommend_semantic_scholar_papers",
+                "get_paper_details",
+                "save_selected_papers",
+            ]
+            if alphaxiv_enabled:
+                retrieval_tool_names.extend(
+                    [
+                        "search_alphaxiv_embedding_similarity",
+                        "search_alphaxiv_full_text_papers",
+                        "search_alphaxiv_agentic_paper_retrieval",
+                    ]
+                )
             summary = runner.execute(
                 instructions=prompt_for("retrieval"),
                 context={
@@ -193,13 +254,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     "constraints": attempt_constraints.model_dump(),
                     "retrieval_mode": "broadened" if broadened else "default",
                 },
-                tool_names=[
-                    "search_openalex_works",
-                    "search_semantic_scholar_papers",
-                    "recommend_semantic_scholar_papers",
-                    "get_paper_details",
-                    "save_selected_papers",
-                ],
+                tool_names=retrieval_tool_names,
             )
             return summary, len(repository.load_selected_papers(run_id))
 
@@ -274,10 +329,17 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 max_tool_steps=settings.max_tool_steps_review,
                 repair_output=_repair_review_output,
             )
+            review_tool_names = ["load_selected_papers", "save_evidence_cards"]
+            if alphaxiv_enabled:
+                review_tool_names[1:1] = [
+                    "get_alphaxiv_paper_content",
+                    "answer_alphaxiv_pdf_queries",
+                    "read_alphaxiv_github_repository",
+                ]
             summary = runner.execute(
                 instructions=review_prompt,
                 context={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
-                tool_names=["load_selected_papers", "save_evidence_cards"],
+                tool_names=review_tool_names,
             )
             _save_evidence_cards_to_cache(
                 run_id=run_id,
@@ -326,10 +388,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             repair_output=_repair_planner_output,
         )
         try:
+            planner_tool_names = ["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"]
+            if alphaxiv_enabled:
+                planner_tool_names = [
+                    "load_selected_papers",
+                    "get_alphaxiv_paper_content",
+                    "answer_alphaxiv_pdf_queries",
+                    "read_alphaxiv_github_repository",
+                    *planner_tool_names,
+                ]
             return runner.execute(
                 instructions=prompt_for("planner"),
                 context={"run_id": run_id},
-                tool_names=["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"],
+                tool_names=planner_tool_names,
             )
         except ToolStepBudgetExceededError:
             return _build_planner_budget_summary(
@@ -342,6 +413,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     reflection_agent: ReflectionAgent | None = None
     stage_navigator: StageNavigator | None = None
     if settings.reflection_settings.enable_reflection:
+        retrieval_channels = [
+            "openalex.search",
+            "semantic_scholar.search",
+            "semantic_scholar.recommend",
+        ]
+        if alphaxiv_enabled:
+            retrieval_channels.extend(
+                [
+                    "alphaxiv.embedding_similarity_search",
+                    "alphaxiv.full_text_papers_search",
+                    "alphaxiv.agentic_paper_retrieval",
+                ]
+            )
         reflection_agent = ReflectionAgent(
             repository=repository,
             quality_thresholds={
@@ -352,6 +436,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             },
             enable_multi_perspective=settings.reflection_settings.enable_multi_perspective,
             perspectives=settings.reflection_settings.critic_perspectives,
+            retrieval_channels=retrieval_channels,
         )
         stage_navigator = StageNavigator(repository=repository)
         logger.info(
@@ -359,6 +444,41 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             extra={
                 "max_stage_iterations": settings.reflection_settings.max_stage_iterations,
                 "max_cross_stage_iterations": settings.reflection_settings.max_cross_stage_iterations,
+            },
+        )
+
+    # Create validation agents if enabled
+    validation_registry: ValidationAgentRegistry | None = None
+    if settings.validation_settings.enable_validation_agents:
+        from hypoforge.agents.validation_base import ValidationAgentRegistry
+        from hypoforge.agents.evidence_validator import EvidenceValidator
+        from hypoforge.agents.conflict_detector import ConflictDetector
+        from hypoforge.agents.quality_assessor import QualityAssessor
+
+        validation_registry = ValidationAgentRegistry()
+
+        # Register validators for each stage
+        validation_registry.register(EvidenceValidator(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+        validation_registry.register(ConflictDetector(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+        validation_registry.register(QualityAssessor(
+            repository=repository,
+            settings=settings.validation_settings,
+            provider=provider,
+        ))
+
+        logger.info(
+            "Validation agents enabled",
+            extra={
+                "min_valid_evidence": settings.validation_settings.min_valid_evidence,
+                "min_quality_score": settings.validation_settings.min_quality_score,
             },
         )
 
@@ -372,6 +492,8 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         reflection_agent=reflection_agent,
         reflection_settings=settings.reflection_settings,
         stage_navigator=stage_navigator,
+        validation_registry=validation_registry,
+        validation_settings=settings.validation_settings,
     )
     return ServiceContainer(coordinator=coordinator)
 
@@ -382,6 +504,15 @@ def _summarize_tool_result(result: dict) -> dict:
         summary["paper_count"] = len(result["papers"])
         summary["result_count"] = len(result["papers"])
         summary["paper_ids"] = [paper.get("paper_id") for paper in result["papers"][:5]]
+    if "paper_content" in result:
+        summary["result_count"] = 1
+        summary["content_length"] = len(result["paper_content"])
+    if "answer" in result:
+        summary["result_count"] = 1
+        summary["answer_length"] = len(result["answer"])
+    if "repository_content" in result:
+        summary["result_count"] = 1
+        summary["content_length"] = len(str(result["repository_content"]))
     if "evidence_cards" in result:
         summary["result_count"] = len(result["evidence_cards"])
     if "evidence_ids" in result:
@@ -403,6 +534,24 @@ def _summarize_tool_result(result: dict) -> dict:
     if not summary:
         summary = result
     return summary
+
+
+def _lookup_candidate_papers(candidate_pool: dict[str, PaperDetail], paper_ids: list[str]) -> list[PaperDetail]:
+    papers: list[PaperDetail] = []
+    all_candidates = list(candidate_pool.values())
+    for paper_id in paper_ids:
+        candidate = candidate_pool.get(paper_id)
+        if candidate is None:
+            continue
+        key = paper_identity_key(candidate)
+        duplicates = [paper for paper in all_candidates if paper_identity_key(paper) == key]
+        merged = candidate
+        for duplicate in duplicates:
+            if duplicate.paper_id == merged.paper_id:
+                continue
+            merged = merge_paper_details(merged, duplicate)
+        papers.append(merged)
+    return papers
 
 
 def _evidence_cache_key(paper_id: str, model_name: str, prompt_version: str) -> str:
@@ -513,6 +662,114 @@ def _review_papers_in_batches(
     )
     if budget_exceeded:
         coverage_summary += "; tool step budget exceeded and review stopped early"
+    if failed_paper_ids:
+        coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
+
+    return ReviewSummary(
+        papers_processed=papers_processed,
+        evidence_cards_created=evidence_cards_created,
+        coverage_summary=coverage_summary,
+        dominant_axes=dominant_axes,
+        low_confidence_paper_ids=low_confidence_paper_ids,
+        failed_paper_ids=failed_paper_ids,
+    )
+
+
+async def _review_papers_in_batches_parallel(
+    *,
+    selected_papers: list[PaperDetail],
+    batch_size: int,
+    review_batch: Callable[[list[PaperDetail]], ReviewSummary],
+    max_concurrent: int = 3,
+) -> ReviewSummary:
+    """Process papers in parallel batches for improved efficiency.
+
+    This is an async version that processes multiple batches concurrently,
+    improving throughput for large paper sets.
+
+    Args:
+        selected_papers: Papers to review
+        batch_size: Number of papers per batch
+        review_batch: Function to process a single batch
+        max_concurrent: Maximum concurrent batch operations
+
+    Returns:
+        Combined ReviewSummary from all batches
+    """
+    import asyncio
+
+    if not selected_papers:
+        return ReviewSummary(
+            papers_processed=0,
+            evidence_cards_created=0,
+            coverage_summary="no selected papers to review",
+            dominant_axes=[],
+            low_confidence_paper_ids=[],
+            failed_paper_ids=[],
+        )
+
+    # Create batches
+    batches = [
+        selected_papers[i:i + batch_size]
+        for i in range(0, len(selected_papers), batch_size)
+    ]
+    total_batches = len(batches)
+
+    # Process batches with semaphore for concurrency control
+    semaphore = asyncio.Semaphore(max_concurrent)
+    successful_summaries: list[ReviewSummary] = []
+    failed_paper_ids: list[str] = []
+    errors: list[Exception] = []
+
+    async def process_batch(batch: list[PaperDetail], batch_idx: int) -> ReviewSummary | None:
+        async with semaphore:
+            try:
+                # Run sync function in executor
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(None, review_batch, batch)
+            except ToolStepBudgetExceededError as exc:
+                errors.append(exc)
+                failed_paper_ids.extend(p.paper_id for p in batch)
+                return None
+            except Exception as exc:
+                errors.append(exc)
+                failed_paper_ids.extend(p.paper_id for p in batch)
+                return None
+
+    # Create tasks for all batches
+    tasks = [process_batch(batch, i) for i, batch in enumerate(batches)]
+
+    # Wait for all tasks to complete
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Collect successful results
+    for result in results:
+        if isinstance(result, ReviewSummary):
+            successful_summaries.append(result)
+        elif isinstance(result, Exception):
+            errors.append(result)
+
+    # Check if all failed
+    if not successful_summaries and errors:
+        raise errors[0]
+
+    # Aggregate results
+    papers_processed = sum(s.papers_processed for s in successful_summaries)
+    evidence_cards_created = sum(s.evidence_cards_created for s in successful_summaries)
+    dominant_axes = list(
+        dict.fromkeys(axis for s in successful_summaries for axis in s.dominant_axes)
+    )
+    low_confidence_paper_ids = list(
+        dict.fromkeys(
+            pid for s in successful_summaries for pid in s.low_confidence_paper_ids
+        )
+    )
+
+    failed_batches = ceil(len(failed_paper_ids) / batch_size) if failed_paper_ids else 0
+    coverage_summary = (
+        f"processed {papers_processed}/{len(selected_papers)} selected papers "
+        f"across {total_batches} batches (parallel)"
+    )
     if failed_paper_ids:
         coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
 

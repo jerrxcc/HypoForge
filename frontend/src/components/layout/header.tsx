@@ -1,28 +1,23 @@
-import React from 'react';
-import { SidebarTrigger } from '../ui/sidebar';
-import { Separator } from '../ui/separator';
-import { Breadcrumbs } from '../breadcrumbs';
-import SearchInput from '../search-input';
-import { ThemeModeToggle } from '../themes/theme-mode-toggle';
-import { Badge } from '../ui/badge';
+'use client';
 
-export default function Header() {
+import { Bell, User } from 'lucide-react';
+import { Button } from '@/components/primitives';
+
+export function Header() {
   return (
-    <header className='bg-background/92 supports-[backdrop-filter]:bg-background/75 sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-2 border-b backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12'>
-      <div className='flex items-center gap-2 px-4'>
-        <SidebarTrigger className='-ml-1' />
-        <Separator orientation='vertical' className='mr-2 h-4' />
-        <Breadcrumbs />
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
+      <div className="flex items-center gap-4">
+        {/* Page title will be set by each page */}
       </div>
 
-      <div className='flex items-center gap-2 px-4'>
-        <Badge variant='outline' className='hidden md:inline-flex'>
-          Academic editorial desk
-        </Badge>
-        <div className='hidden md:flex'>
-          <SearchInput />
-        </div>
-        <ThemeModeToggle />
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-600" />
+        </Button>
+        <Button variant="ghost" size="icon">
+          <User className="h-5 w-5" />
+        </Button>
       </div>
     </header>
   );

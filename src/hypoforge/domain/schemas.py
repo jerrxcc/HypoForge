@@ -22,6 +22,9 @@ StageStatus = Literal["started", "completed", "degraded", "failed"]
 IterationStatus = Literal["pending", "in_progress", "completed", "max_iterations_reached", "quality_threshold_met", "backtracked"]
 Severity = Literal["low", "medium", "high", "critical"]
 
+# Priority ordering for severity levels (lower = higher priority)
+SEVERITY_PRIORITY: dict[Severity, int] = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
 Direction = Literal["positive", "negative", "mixed", "null", "unclear"]
 EvidenceKind = Literal[
     "review",

@@ -1,5 +1,8 @@
+import pytest
+
 from hypoforge.agents.providers import ProviderToolCall, ScriptedProvider, ScriptedProviderTurn
 from hypoforge.agents.runner import AgentRunner
+from hypoforge.application.budget import ToolStepBudgetExceededError
 from hypoforge.domain.schemas import RetrievalSummary
 import json
 
@@ -243,3 +246,97 @@ def test_agent_runner_uses_repair_output_after_retry_still_invalid() -> None:
     )
 
     assert summary.coverage_assessment == "medium"
+
+
+def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> None:
+    provider = ScriptedProvider(
+        [
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_1",
+                        name="search_openalex_works",
+                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_2",
+                        name="search_openalex_works",
+                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_3",
+                        name="search_openalex_works",
+                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                    )
+                ]
+            ),
+        ]
+    )
+
+    runner = AgentRunner(
+        provider=provider,
+        tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
+        output_model=RetrievalSummary,
+        agent_name="retrieval",
+        model_name="gpt-5.4",
+        max_tool_steps=2,
+    )
+
+    with pytest.raises(ToolStepBudgetExceededError, match="retrieval exceeded tool step budget"):
+        runner.execute(
+            instructions="Retrieve papers",
+            context={"topic": "x"},
+            tool_names=["search_openalex_works"],
+        )
+
+
+def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
+    class NoProgressProvider:
+        def __init__(self) -> None:
+            self.continue_calls = 0
+
+        def start(self, *, instructions, context, tool_names, model_name, output_schema=None):
+            del instructions, context, tool_names, model_name, output_schema
+            from hypoforge.agents.providers import ProviderTurn
+
+            return ProviderTurn(response_id="stalled", tool_calls=[], final_output=None)
+
+        def continue_with_tool_outputs(
+            self,
+            *,
+            response_id,
+            tool_outputs,
+            tool_names,
+            model_name,
+            output_schema=None,
+        ):
+            del response_id, tool_outputs, tool_names, model_name, output_schema
+            self.continue_calls += 1
+            raise AssertionError("provider should not be called again for a stalled turn")
+
+    provider = NoProgressProvider()
+    runner = AgentRunner(
+        provider=provider,
+        tool_invoker=lambda tool_name, payload, trace_context: {},
+        output_model=RetrievalSummary,
+        agent_name="retrieval",
+        model_name="gpt-5.4",
+        max_tool_steps=2,
+    )
+
+    with pytest.raises(RuntimeError, match="returned neither tool calls nor final output"):
+        runner.execute(
+            instructions="Retrieve papers",
+            context={"topic": "x"},
+            tool_names=["search_openalex_works"],
+        )
+
+    assert provider.continue_calls == 0

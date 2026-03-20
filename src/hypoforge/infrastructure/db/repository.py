@@ -503,7 +503,7 @@ class RunRepository:
         with self._session_factory() as session:
             self._require_run(session, run_id)
             row = ReflectionFeedbackRow(
-                id=f"{run_id}_fb_{feedback.iteration_number}_{feedback.target_stage}",
+                id=f"{run_id}_{feedback.feedback_id}",
                 run_id=run_id,
                 feedback_id=feedback.feedback_id,
                 target_stage=feedback.target_stage,

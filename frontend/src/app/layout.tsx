@@ -1,74 +1,39 @@
-import Providers from '@/components/layout/providers';
-import { Toaster } from '@/components/ui/sonner';
-import { fontVariables } from '@/components/themes/font.config';
-import { DEFAULT_THEME } from '@/components/themes/theme.config';
-import ThemeProvider from '@/components/themes/theme-provider';
-import { cn } from '@/lib/utils';
-import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
-import NextTopLoader from 'nextjs-toploader';
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
-import '../styles/globals.css';
+import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+import { QueryProvider } from "@/components/query-provider";
+import { TooltipProvider } from "@/components/primitives";
 
-const META_THEME_COLORS = {
-  light: '#f6f2ea',
-  dark: '#12181b'
-};
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: 'HypoForge',
-  description: 'Scientific hypothesis generation workbench'
+  title: "HypoForge - AI-Powered Scientific Hypothesis Generator",
+  description: "Generate research hypotheses from scientific literature using multi-agent AI",
 };
 
-export const viewport: Viewport = {
-  themeColor: META_THEME_COLORS.light
-};
-
-export default async function RootLayout({
-  children
-}: {
+export default function RootLayout({
+  children,
+}: Readonly<{
   children: React.ReactNode;
-}) {
-  const cookieStore = await cookies();
-  const activeThemeValue = cookieStore.get('active_theme')?.value;
-  const themeToApply = activeThemeValue || DEFAULT_THEME;
-
+}>) {
   return (
-    <html lang='en' suppressHydrationWarning data-theme={themeToApply}>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.theme === 'dark' || ((!('theme' in localStorage) || localStorage.theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '${META_THEME_COLORS.dark}')
-                }
-              } catch (_) {}
-            `
-          }}
-        />
-      </head>
+    <html lang="en">
       <body
-        className={cn(
-          'bg-background overflow-x-hidden overscroll-none font-sans antialiased',
-          fontVariables
-        )}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <NextTopLoader color='var(--primary)' showSpinner={false} />
-        <NuqsAdapter>
-          <ThemeProvider
-            attribute='class'
-            defaultTheme='system'
-            enableSystem
-            disableTransitionOnChange
-            enableColorScheme
-          >
-            <Providers activeThemeValue={themeToApply}>
-              <Toaster />
-              {children}
-            </Providers>
-          </ThemeProvider>
-        </NuqsAdapter>
+        <QueryProvider>
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </QueryProvider>
       </body>
     </html>
   );
