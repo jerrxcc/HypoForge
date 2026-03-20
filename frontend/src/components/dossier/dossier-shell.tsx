@@ -44,7 +44,7 @@ export function DossierShell({ run }: DossierShellProps) {
             <ArrowLeft aria-hidden="true" className="size-4" />
             Back
           </Button>
-          <div className="min-h-[300px] md:min-h-[500px]">
+          <div className="min-h-[300px]">
             <DetailPanel run={run} />
           </div>
         </div>
@@ -52,7 +52,7 @@ export function DossierShell({ run }: DossierShellProps) {
     }
 
     return (
-      <div className="min-h-[300px] md:min-h-[500px]">
+      <div className="min-h-[300px]">
         <MasterPanel run={run} />
       </div>
     );

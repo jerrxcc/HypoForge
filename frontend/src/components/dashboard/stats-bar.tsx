@@ -26,8 +26,8 @@ function StatSkeleton() {
   return (
     <Card className="flex-1 min-w-[120px]">
       <CardContent className="flex flex-col items-center gap-2 py-4">
-        <Skeleton className="h-7 w-12 bg-muted/60" />
-        <Skeleton className="h-3 w-16 bg-muted/60" />
+        <Skeleton className="h-7 w-12" />
+        <Skeleton className="h-3 w-16" />
       </CardContent>
     </Card>
   );

@@ -66,7 +66,7 @@ export function RecentRunsStrip() {
             href={`/dashboard/runs/${run.run_id}`}
             className="block min-w-[200px] shrink-0 snap-start"
           >
-            <Card className="transition-colors hover:border-primary/50">
+            <Card className="transition-colors hover:border-primary/30 dark:hover:border-primary/40">
               <CardContent className="flex flex-col gap-2 py-3">
                 <span className="text-sm font-medium">{truncate(run.topic, 30)}</span>
                 <Badge variant={statusVariant(run.status)}>{run.status}</Badge>

@@ -73,17 +73,18 @@ function RunDetailSkeleton() {
   return (
     <div className="flex flex-col gap-4">
       <Skeleton className="h-4 w-48" />
-      <Skeleton className="h-7 w-96" />
+      <Skeleton className="h-7 w-full max-w-sm" />
       <div className="flex gap-2">
         <Skeleton className="h-9 w-20" />
         <Skeleton className="h-9 w-20" />
         <Skeleton className="h-9 w-32" />
       </div>
       <Skeleton className="h-12 w-full" />
-      <div className="flex gap-4">
-        <Skeleton className="h-[500px] w-[320px]" />
-        <Skeleton className="h-[500px] flex-1" />
+      <div className="hidden gap-4 md:flex">
+        <Skeleton className="h-[400px] w-[320px]" />
+        <Skeleton className="h-[400px] flex-1" />
       </div>
+      <Skeleton className="h-[300px] w-full md:hidden" />
     </div>
   );
 }
