@@ -58,18 +58,18 @@ function deriveVisualState(
 function StageIcon({ state }: { readonly state: VisualState }) {
   switch (state) {
     case 'completed':
-      return <CheckCircle2 className="size-6 text-[var(--color-success)]" />;
+      return <CheckCircle2 aria-hidden="true" className="size-6 text-success" />;
     case 'active':
-      return <Circle className="size-6 animate-pulse text-primary" />;
+      return <Circle aria-hidden="true" className="size-6 animate-pulse text-primary" />;
     case 'reflecting':
-      return <Loader2 className="size-6 animate-spin text-primary" />;
+      return <Loader2 aria-hidden="true" className="size-6 animate-spin text-primary" />;
     case 'failed':
-      return <XCircle className="size-6 text-destructive" />;
+      return <XCircle aria-hidden="true" className="size-6 text-destructive" />;
     case 'degraded':
-      return <AlertTriangle className="size-6 text-[var(--color-warning)]" />;
+      return <AlertTriangle aria-hidden="true" className="size-6 text-warning" />;
     case 'pending':
     default:
-      return <Circle className="size-6 text-muted-foreground/40" />;
+      return <Circle aria-hidden="true" className="size-6 text-muted-foreground/40" />;
   }
 }
 
@@ -103,7 +103,7 @@ export function StageProgress({ status, stageSummaries }: StageProgressProps) {
                 {stage.label}
               </span>
               {visualState === 'reflecting' && (
-                <span className="animate-pulse text-[10px] text-primary">
+                <span className="animate-pulse text-xs text-primary">
                   reflecting...
                 </span>
               )}
@@ -115,7 +115,7 @@ export function StageProgress({ status, stageSummaries }: StageProgressProps) {
                 <div
                   className={cn(
                     'h-px w-full transition-colors duration-300',
-                    lineCompleted ? 'bg-[var(--color-success)]' : 'bg-border',
+                    lineCompleted ? 'bg-success' : 'bg-border',
                   )}
                 />
               </div>

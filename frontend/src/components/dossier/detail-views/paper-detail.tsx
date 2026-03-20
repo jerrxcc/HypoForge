@@ -62,7 +62,8 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              DOI <ExternalLink className="size-3" />
+              DOI <ExternalLink aria-hidden="true" className="size-3" />
+              <span className="sr-only">(opens in new tab)</span>
             </a>
           )}
           {paper.url && (
@@ -72,7 +73,8 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              Source <ExternalLink className="size-3" />
+              Source <ExternalLink aria-hidden="true" className="size-3" />
+              <span className="sr-only">(opens in new tab)</span>
             </a>
           )}
           {Object.entries(paper.source_urls).map(([name, url]) => (
@@ -83,7 +85,8 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
             >
-              {name} <ExternalLink className="size-3" />
+              {name} <ExternalLink aria-hidden="true" className="size-3" />
+              <span className="sr-only">(opens in new tab)</span>
             </a>
           ))}
         </div>

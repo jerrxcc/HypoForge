@@ -104,7 +104,7 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
                 setValue('lab_mode', value, { shouldValidate: true })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Lab mode">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -134,6 +134,7 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
               <span className="text-sm text-muted-foreground">{noveltyWeight.toFixed(2)}</span>
             </div>
             <Slider
+              aria-label="Novelty weight"
               value={[noveltyWeight]}
               onValueChange={handleNoveltyChange}
               min={0}
@@ -151,6 +152,7 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
               </span>
             </div>
             <Slider
+              aria-label="Feasibility weight (auto-calculated)"
               value={[watch('feasibility_weight')]}
               min={0}
               max={1}

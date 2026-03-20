@@ -42,13 +42,21 @@ const SCORE_COLOR: Record<string, string> = {
 
 function ScoreBar({ label, score }: { readonly label: string; readonly score: number }) {
   const variant = scoreVariant(score);
+  const pct = Math.round(score * 100);
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
-      <div className="h-1.5 flex-1 rounded-full bg-muted">
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="h-1.5 flex-1 rounded-full bg-muted"
+      >
         <div
           className={`h-full rounded-full transition-all ${SCORE_COLOR[variant]}`}
-          style={{ width: `${Math.round(score * 100)}%` }}
+          style={{ width: `${pct}%` }}
         />
       </div>
       <span className="w-8 shrink-0 tabular-nums text-right font-medium">{score.toFixed(2)}</span>

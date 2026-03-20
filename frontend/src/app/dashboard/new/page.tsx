@@ -22,8 +22,8 @@ import {
 } from '@/components/ui/select';
 import type { ConstraintFormValues } from '@/components/run/constraint-drawer';
 
-function FieldLabel({ children }: { readonly children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-foreground">{children}</label>;
+function FieldLabel({ children, htmlFor }: { readonly children: React.ReactNode; readonly htmlFor?: string }) {
+  return <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">{children}</label>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,16 +42,16 @@ function ConstraintFields({ form }: { readonly form: UseFormReturn<ConstraintFor
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-1.5">
-        <FieldLabel>Year from</FieldLabel>
-        <Input type="number" {...register('year_from', { valueAsNumber: true })} />
+        <FieldLabel htmlFor="new-year-from">Year from</FieldLabel>
+        <Input id="new-year-from" type="number" {...register('year_from', { valueAsNumber: true })} />
       </div>
       <div className="flex flex-col gap-1.5">
-        <FieldLabel>Year to</FieldLabel>
-        <Input type="number" {...register('year_to', { valueAsNumber: true })} />
+        <FieldLabel htmlFor="new-year-to">Year to</FieldLabel>
+        <Input id="new-year-to" type="number" {...register('year_to', { valueAsNumber: true })} />
       </div>
       <div className="flex flex-col gap-1.5">
-        <FieldLabel>Max papers</FieldLabel>
-        <Input type="number" {...register('max_selected_papers', { valueAsNumber: true })} />
+        <FieldLabel htmlFor="new-max-papers">Max papers</FieldLabel>
+        <Input id="new-max-papers" type="number" {...register('max_selected_papers', { valueAsNumber: true })} />
       </div>
       <div className="flex flex-col gap-1.5">
         <FieldLabel>Lab mode</FieldLabel>
@@ -61,7 +61,7 @@ function ConstraintFields({ form }: { readonly form: UseFormReturn<ConstraintFor
             setValue('lab_mode', value, { shouldValidate: true })
           }
         >
-          <SelectTrigger>
+          <SelectTrigger aria-label="Lab mode">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -73,12 +73,13 @@ function ConstraintFields({ form }: { readonly form: UseFormReturn<ConstraintFor
       </div>
       <div className="flex items-center gap-3 sm:col-span-2">
         <Switch
+          id="new-open-access"
           checked={watch('open_access_only')}
           onCheckedChange={(checked: boolean) =>
             setValue('open_access_only', checked, { shouldValidate: true })
           }
         />
-        <FieldLabel>Open access only</FieldLabel>
+        <FieldLabel htmlFor="new-open-access">Open access only</FieldLabel>
       </div>
       <div className="flex flex-col gap-2 sm:col-span-2">
         <div className="flex items-center justify-between">
@@ -86,6 +87,7 @@ function ConstraintFields({ form }: { readonly form: UseFormReturn<ConstraintFor
           <span className="text-sm text-muted-foreground">{noveltyWeight.toFixed(2)}</span>
         </div>
         <Slider
+          aria-label="Novelty weight"
           value={[noveltyWeight]}
           onValueChange={handleNoveltyChange}
           min={0}
@@ -101,6 +103,7 @@ function ConstraintFields({ form }: { readonly form: UseFormReturn<ConstraintFor
           </span>
         </div>
         <Slider
+          aria-label="Feasibility weight (auto-calculated)"
           value={[watch('feasibility_weight')]}
           min={0}
           max={1}

@@ -19,8 +19,9 @@ export function EvidenceLink({ evidenceId }: { readonly evidenceId: string }) {
     <Badge
       role="button"
       tabIndex={0}
+      aria-label={`View evidence ${evidenceId}`}
       variant="outline"
-      className="cursor-pointer font-mono text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+      className="cursor-pointer font-mono text-xs hover:bg-primary/10 hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       onClick={() => {
         expandGroup('evidence');
         select('evidence', evidenceId);
@@ -48,8 +49,9 @@ export function PaperLink({ paperId }: { readonly paperId: string }) {
     <Badge
       role="button"
       tabIndex={0}
+      aria-label={`View paper ${paperId}`}
       variant="outline"
-      className="cursor-pointer font-mono text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+      className="cursor-pointer font-mono text-xs hover:bg-primary/10 hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       onClick={() => {
         expandGroup('papers');
         select('paper', paperId);

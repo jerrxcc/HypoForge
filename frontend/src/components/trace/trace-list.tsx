@@ -32,6 +32,7 @@ export function TraceList({ traces, selectedId, onSelect }: TraceListProps) {
             key={trace.id}
             role="button"
             tabIndex={0}
+            aria-pressed={selectedId === trace.id}
             onClick={() => onSelect(trace.id)}
             onKeyDown={(e) => handleKeyDown(e, trace.id)}
             className={cn(
@@ -41,9 +42,9 @@ export function TraceList({ traces, selectedId, onSelect }: TraceListProps) {
           >
             {/* Status icon */}
             {trace.success ? (
-              <CheckCircle2 className="size-4 shrink-0 text-success" />
+              <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-success" />
             ) : (
-              <XCircle className="size-4 shrink-0 text-destructive" />
+              <XCircle aria-hidden="true" className="size-4 shrink-0 text-destructive" />
             )}
 
             {/* Tool name */}

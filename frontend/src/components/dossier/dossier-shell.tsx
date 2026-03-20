@@ -41,7 +41,7 @@ export function DossierShell({ run }: DossierShellProps) {
             className="mb-2 w-fit"
             onClick={clearSelection}
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft aria-hidden="true" className="size-4" />
             Back
           </Button>
           <div className="min-h-[300px] md:min-h-[500px]">

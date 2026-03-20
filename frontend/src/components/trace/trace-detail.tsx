@@ -49,12 +49,12 @@ export function TraceDetail({ trace }: TraceDetailProps) {
           <Row label="Status">
             {trace.success ? (
               <span className="flex items-center gap-1 text-success">
-                <CheckCircle2 className="size-4" />
+                <CheckCircle2 aria-hidden="true" className="size-4" />
                 Success
               </span>
             ) : (
               <span className="flex items-center gap-1 text-destructive">
-                <XCircle className="size-4" />
+                <XCircle aria-hidden="true" className="size-4" />
                 Error
               </span>
             )}

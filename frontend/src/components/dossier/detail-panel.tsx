@@ -13,7 +13,7 @@ import type { RunResult } from '@/types';
 const TYPE_ACCENT: Record<ItemType, string> = {
   hypothesis: 'border-t-2 border-t-primary',
   conflict: 'border-t-2 border-t-warning',
-  evidence: 'border-t-2 border-t-blue-500',
+  evidence: 'border-t-2 border-t-[var(--color-success)]',
   paper: 'border-t-2 border-t-muted-foreground/30',
 };
 
@@ -28,7 +28,7 @@ export function DetailPanel({ run }: DetailPanelProps) {
   if (!selectedType || !selectedId) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <FileText className="size-10 opacity-40" />
+        <FileText aria-hidden="true" className="size-10 opacity-40" />
         <p className="text-sm">Pick a hypothesis, conflict, or evidence card to explore</p>
       </div>
     );
@@ -60,7 +60,7 @@ export function DetailPanel({ run }: DetailPanelProps) {
   if (!content) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
-        <FileText className="size-10 opacity-40" />
+        <FileText aria-hidden="true" className="size-10 opacity-40" />
         <p className="text-sm">Item not found</p>
       </div>
     );

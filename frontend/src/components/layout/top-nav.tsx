@@ -26,6 +26,7 @@ export function TopNav() {
           <ThemeToggle />
           <div
             className="size-8 rounded-full bg-muted"
+            aria-hidden="true"
           />
         </div>
 

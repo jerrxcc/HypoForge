@@ -51,8 +51,10 @@ export default function RunsPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <label htmlFor="runs-search" className="sr-only">Search runs by topic</label>
         <Input
+          id="runs-search"
           placeholder="Search by topic..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

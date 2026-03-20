@@ -18,8 +18,10 @@ export function SearchFilter() {
 
   return (
     <div className="relative">
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <label htmlFor="dossier-filter" className="sr-only">Filter items</label>
       <Input
+        id="dossier-filter"
         placeholder="Filter items..."
         value={searchQuery}
         onChange={handleChange}
