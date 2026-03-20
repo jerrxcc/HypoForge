@@ -1,0 +1,115 @@
+'use client';
+
+import { ExternalLink } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import type { PaperDetail as PaperDetailType } from '@/types';
+
+function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
+      {children}
+    </div>
+  );
+}
+
+interface PaperDetailProps {
+  readonly paper: PaperDetailType;
+}
+
+export function PaperDetailView({ paper }: PaperDetailProps) {
+  return (
+    <div className="flex flex-col gap-5 p-4">
+      {/* Title */}
+      <h3 className="text-lg font-semibold leading-snug">{paper.title}</h3>
+
+      {/* Metadata row */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        {paper.authors.length > 0 && (
+          <span>{paper.authors.join(', ')}</span>
+        )}
+        {paper.year && <span>{paper.year}</span>}
+        {paper.venue && <span>{paper.venue}</span>}
+        {paper.citation_count != null && (
+          <span>{paper.citation_count} citations</span>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Abstract */}
+      <Section title="Abstract">
+        <p className="text-sm leading-relaxed">
+          {paper.abstract ?? 'No abstract available'}
+        </p>
+      </Section>
+
+      {/* Fields of study */}
+      {paper.fields_of_study.length > 0 && (
+        <Section title="Fields of Study">
+          <div className="flex flex-wrap gap-1.5">
+            {paper.fields_of_study.map((field, i) => (
+              <Badge key={i} variant="secondary" className="text-xs">
+                {field}
+              </Badge>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      <Separator />
+
+      {/* Links */}
+      <Section title="Links">
+        <div className="flex flex-wrap gap-2">
+          {paper.doi && (
+            <a
+              href={`https://doi.org/${paper.doi}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              DOI <ExternalLink className="size-3" />
+            </a>
+          )}
+          {paper.url && (
+            <a
+              href={paper.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              Source <ExternalLink className="size-3" />
+            </a>
+          )}
+          {Object.entries(paper.source_urls).map(([name, url]) => (
+            <a
+              key={name}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              {name} <ExternalLink className="size-3" />
+            </a>
+          ))}
+        </div>
+        {!paper.doi && !paper.url && Object.keys(paper.source_urls).length === 0 && (
+          <p className="text-sm text-muted-foreground">No links available</p>
+        )}
+      </Section>
+
+      {/* Provenance */}
+      {paper.provenance.length > 0 && (
+        <Section title="Provenance">
+          <ul className="list-disc pl-4 text-sm space-y-1">
+            {paper.provenance.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </div>
+  );
+}
