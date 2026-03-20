@@ -28,13 +28,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb */}
-      <p className="text-sm text-muted-foreground">
-        <Link href="/dashboard/runs" className="hover:text-foreground transition-colors">
-          Runs
-        </Link>
-        {' / '}
-        {run.topic}
-      </p>
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+        <ol className="flex items-center gap-1.5">
+          <li><Link href="/dashboard/runs" className="hover:text-foreground transition-colors">Runs</Link></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="truncate max-w-xs">{run.topic}</li>
+        </ol>
+      </nav>
 
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">

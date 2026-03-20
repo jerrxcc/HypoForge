@@ -78,9 +78,18 @@ interface StageProgressProps {
   readonly stageSummaries: StageSummary[];
 }
 
+const STATE_LABEL: Record<VisualState, string> = {
+  completed: 'completed',
+  active: 'in progress',
+  reflecting: 'reflecting',
+  failed: 'failed',
+  degraded: 'completed with issues',
+  pending: 'pending',
+};
+
 export function StageProgress({ status, stageSummaries }: StageProgressProps) {
   return (
-    <div className="flex items-start justify-between gap-0">
+    <ol aria-label="Pipeline stages" className="flex items-start justify-between gap-0">
       {STAGES.map((stage, index) => {
         const visualState = deriveVisualState(stage.id, status, stageSummaries);
         const isLast = index === STAGES.length - 1;
@@ -88,7 +97,7 @@ export function StageProgress({ status, stageSummaries }: StageProgressProps) {
           visualState === 'completed' || visualState === 'degraded';
 
         return (
-          <div key={stage.id} className="flex flex-1 items-start">
+          <li key={stage.id} className="flex flex-1 items-start" aria-label={`${stage.label}: ${STATE_LABEL[visualState]}`}>
             {/* Stage node */}
             <div className="flex flex-col items-center gap-1.5">
               <StageIcon state={visualState} />
@@ -120,9 +129,9 @@ export function StageProgress({ status, stageSummaries }: StageProgressProps) {
                 />
               </div>
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

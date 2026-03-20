@@ -48,13 +48,13 @@ export function usePollRun(runId: string | undefined) {
     }
   }, [query.isError, query.isSuccess]);
 
-  // Invalidate ['runs'] list whenever this run reaches a terminal state
+  // Invalidate runs list whenever this run reaches a terminal state
   useEffect(() => {
     const data = query.data;
     if (data && TERMINAL_STATUSES.has(data.status)) {
-      queryClient.invalidateQueries({ queryKey: ['run', runId] });
+      queryClient.invalidateQueries({ queryKey: ['runs'] });
     }
-  }, [query.data, queryClient, runId]);
+  }, [query.data, queryClient]);
 
   return query;
 }

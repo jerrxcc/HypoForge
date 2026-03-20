@@ -23,12 +23,13 @@ export function DossierShell({ run }: DossierShellProps) {
   const hasSelection = selectedType !== null && selectedId !== null;
 
   // Auto-select first hypothesis when hypotheses first appear
+  const hypothesisCount = run.hypotheses.length;
   useEffect(() => {
-    if (run.hypotheses.length > 0 && !hasSelection) {
+    if (hypothesisCount > 0 && !hasSelection) {
       const first = [...run.hypotheses].sort((a, b) => a.rank - b.rank)[0];
       select('hypothesis', String(first.rank));
     }
-  }, [run.hypotheses, hasSelection, select]);
+  }, [hypothesisCount, hasSelection, select]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mobile layout
   if (isMobile) {

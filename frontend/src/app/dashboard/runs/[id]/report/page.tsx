@@ -19,21 +19,19 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Breadcrumb */}
-      <p className="text-sm text-muted-foreground">
-        <Link href="/dashboard/runs" className="hover:text-foreground transition-colors">
-          Runs
-        </Link>
-        {' / '}
-        <Link href={`/dashboard/runs/${id}`} className="hover:text-foreground transition-colors">
-          {topic}
-        </Link>
-        {' / '}
-        Report
-      </p>
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+        <ol className="flex items-center gap-1.5">
+          <li><Link href="/dashboard/runs" className="hover:text-foreground transition-colors">Runs</Link></li>
+          <li aria-hidden="true">/</li>
+          <li><Link href={`/dashboard/runs/${id}`} className="hover:text-foreground transition-colors truncate max-w-xs">{topic}</Link></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page">Report</li>
+        </ol>
+      </nav>
 
       {/* Header row */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Report</h1>
+        <h1 className="text-xl font-semibold">{topic}</h1>
         {content && <DownloadButton content={content} filename={filename} />}
       </div>
 

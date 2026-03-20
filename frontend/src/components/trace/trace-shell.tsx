@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { TraceList } from './trace-list';
 import { TraceDetail } from './trace-detail';
 import type { ToolTrace } from '@/types';
@@ -10,20 +13,45 @@ interface TraceShellProps {
 }
 
 export function TraceShell({ traces }: TraceShellProps) {
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const [selectedId, setSelectedId] = useState<string | null>(
     traces.length > 0 ? traces[0].id : null,
   );
 
   const selectedTrace = traces.find((t) => t.id === selectedId) ?? null;
 
+  // Mobile: master-detail toggle
+  if (isMobile) {
+    if (selectedTrace) {
+      return (
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit"
+            onClick={() => setSelectedId(null)}
+          >
+            <ArrowLeft aria-hidden="true" className="size-4" />
+            Back to list
+          </Button>
+          <TraceDetail trace={selectedTrace} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-[300px] rounded-lg border border-border overflow-hidden">
+        <TraceList traces={traces} selectedId={selectedId} onSelect={setSelectedId} />
+      </div>
+    );
+  }
+
+  // Desktop: side-by-side
   return (
-    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-164px)] min-h-[500px]">
-      {/* Left: trace list */}
+    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-164px)] min-h-[400px]">
       <div className="w-80 shrink-0 rounded-lg border border-border overflow-hidden">
         <TraceList traces={traces} selectedId={selectedId} onSelect={setSelectedId} />
       </div>
-
-      {/* Right: trace detail */}
       <div className="flex-1 min-w-0">
         {selectedTrace ? (
           <TraceDetail trace={selectedTrace} />

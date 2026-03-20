@@ -28,20 +28,18 @@ export default function TracePage({ params }: { params: Promise<{ id: string }> 
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb */}
-      <p className="text-sm text-muted-foreground">
-        <Link href="/dashboard/runs" className="hover:text-foreground transition-colors">
-          Runs
-        </Link>
-        {' / '}
-        <Link href={`/dashboard/runs/${id}`} className="hover:text-foreground transition-colors">
-          {topic}
-        </Link>
-        {' / '}
-        Trace
-      </p>
+      <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
+        <ol className="flex items-center gap-1.5">
+          <li><Link href="/dashboard/runs" className="hover:text-foreground transition-colors">Runs</Link></li>
+          <li aria-hidden="true">/</li>
+          <li><Link href={`/dashboard/runs/${id}`} className="hover:text-foreground transition-colors truncate max-w-xs">{topic}</Link></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page">Trace</li>
+        </ol>
+      </nav>
 
       {/* Header */}
-      <h1 className="text-xl font-semibold">Tool Call Trace</h1>
+      <h1 className="text-xl font-semibold">{topic}</h1>
 
       {/* Content */}
       {isLoading ? (
@@ -59,15 +57,22 @@ export default function TracePage({ params }: { params: Promise<{ id: string }> 
 
 function TraceSkeleton() {
   return (
-    <div className="flex gap-4">
-      <div className="w-80 shrink-0 flex flex-col gap-2">
-        {Array.from({ length: 8 }, (_, i) => (
+    <>
+      <div className="hidden gap-4 md:flex">
+        <div className="w-80 shrink-0 flex flex-col gap-2">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+        <div className="flex-1">
+          <Skeleton className="h-[400px] w-full" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 md:hidden">
+        {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-10 w-full" />
         ))}
       </div>
-      <div className="flex-1">
-        <Skeleton className="h-[400px] w-full" />
-      </div>
-    </div>
+    </>
   );
 }

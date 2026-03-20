@@ -27,8 +27,8 @@ function ScoreBar({ label, score }: { readonly label: string; readonly score: nu
         className="h-1.5 flex-1 rounded-full bg-muted"
       >
         <div
-          className={`h-full rounded-full transition-all ${SCORE_COLOR[variant]}`}
-          style={{ width: `${pct}%` }}
+          className={`h-full w-full origin-left rounded-full transition-transform ${SCORE_COLOR[variant]}`}
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
       <span className="w-8 shrink-0 tabular-nums text-right font-medium">{score.toFixed(2)}</span>

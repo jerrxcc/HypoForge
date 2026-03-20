@@ -53,7 +53,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
     }
   }, [selectedType, selectedId]);
 
-  const lowerQuery = searchQuery.toLowerCase();
+  const lowerQuery = useMemo(() => searchQuery.toLowerCase(), [searchQuery]);
 
   const filtered = useMemo(() => {
     const sorted = [...run.hypotheses].sort((a, b) => a.rank - b.rank);
