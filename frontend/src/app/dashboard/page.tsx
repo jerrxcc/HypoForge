@@ -18,11 +18,11 @@ export default function DashboardPage() {
       {/* Hero section */}
       <div className="max-w-2xl space-y-3 text-center">
         <h1 className="text-3xl font-semibold sm:text-4xl">
-          What do you want to research?
+          Forge your next hypothesis
         </h1>
         <p className="text-muted-foreground">
-          Enter a scientific topic and HypoForge will generate an auditable
-          dossier with papers, evidence, conflict analysis, and ranked hypotheses.
+          Describe a research question and get an auditable dossier — curated papers,
+          evidence cards, conflict analysis, and three ranked hypotheses — in minutes.
         </p>
       </div>
 
@@ -32,7 +32,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Golden topics */}
-      <GoldenTopics onSelect={handleTopicSelect} />
+      <div>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Or try one of these</h2>
+        <GoldenTopics onSelect={handleTopicSelect} />
+      </div>
 
       {/* Stats */}
       <div className="w-full max-w-2xl">

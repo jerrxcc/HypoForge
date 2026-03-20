@@ -3,27 +3,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { EvidenceLink } from '../evidence-link';
+import { Section, BulletList } from './shared';
 import type { ConflictCluster } from '@/types';
-
-function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
-      {children}
-    </div>
-  );
-}
-
-function BulletList({ items }: { readonly items: readonly string[] }) {
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">None</p>;
-  return (
-    <ul className="list-disc pl-4 text-sm space-y-1">
-      {items.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ul>
-  );
-}
 
 const CONFLICT_TYPE_LABEL: Record<string, string> = {
   direct_conflict: 'Direct Conflict',

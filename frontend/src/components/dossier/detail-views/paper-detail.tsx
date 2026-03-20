@@ -3,16 +3,8 @@
 import { ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Section } from './shared';
 import type { PaperDetail as PaperDetailType } from '@/types';
-
-function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
-      {children}
-    </div>
-  );
-}
 
 interface PaperDetailProps {
   readonly paper: PaperDetailType;

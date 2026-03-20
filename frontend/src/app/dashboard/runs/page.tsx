@@ -68,18 +68,17 @@ export default function RunsPage() {
           ))}
         </div>
       ) : filteredRuns.length === 0 ? (
-        <div className="py-16 text-center">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
           <p className="text-muted-foreground">
             {search
-              ? 'No runs match your search.'
-              : 'No runs yet. Start your first research from the '}
-            {!search && (
-              <Link href="/dashboard" className="text-primary hover:underline">
-                dashboard
-              </Link>
-            )}
-            {!search && '.'}
+              ? `No runs match "${search}". Try a different keyword or clear the search.`
+              : 'You haven\u2019t run any research yet.'}
           </p>
+          {!search && (
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Start your first run</Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

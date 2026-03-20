@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { ChevronDown } from 'lucide-react';
 import {
@@ -30,21 +30,25 @@ interface ConstraintDrawerProps {
   readonly onOpenChange: (open: boolean) => void;
 }
 
-function FieldLabel({ children }: { readonly children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-foreground">{children}</label>;
+function FieldLabel({ children, htmlFor }: { readonly children: React.ReactNode; readonly htmlFor?: string }) {
+  return <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">{children}</label>;
 }
 
 export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerProps) {
   const { register, watch, setValue } = form;
   const noveltyWeight = watch('novelty_weight');
 
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleNoveltyChange = useCallback(
     (value: number[]) => {
-      const novelty = value[0];
-      const rounded = Math.round(novelty * 100) / 100;
-      const feasibility = Math.round((1 - rounded) * 100) / 100;
-      setValue('novelty_weight', rounded, { shouldValidate: true });
-      setValue('feasibility_weight', feasibility, { shouldValidate: true });
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        const novelty = value[0];
+        const rounded = Math.round(novelty * 100) / 100;
+        const feasibility = Math.round((1 - rounded) * 100) / 100;
+        setValue('novelty_weight', rounded, { shouldValidate: true });
+        setValue('feasibility_weight', feasibility, { shouldValidate: true });
+      }, 100);
     },
     [setValue],
   );
@@ -65,15 +69,17 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Year range */}
           <div className="flex flex-col gap-1.5">
-            <FieldLabel>Year from</FieldLabel>
+            <FieldLabel htmlFor="year-from">Year from</FieldLabel>
             <Input
+              id="year-from"
               type="number"
               {...register('year_from', { valueAsNumber: true })}
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <FieldLabel>Year to</FieldLabel>
+            <FieldLabel htmlFor="year-to">Year to</FieldLabel>
             <Input
+              id="year-to"
               type="number"
               {...register('year_to', { valueAsNumber: true })}
             />
@@ -81,8 +87,9 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
 
           {/* Max papers */}
           <div className="flex flex-col gap-1.5">
-            <FieldLabel>Max papers</FieldLabel>
+            <FieldLabel htmlFor="max-papers">Max papers</FieldLabel>
             <Input
+              id="max-papers"
               type="number"
               {...register('max_selected_papers', { valueAsNumber: true })}
             />
@@ -111,12 +118,13 @@ export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerP
           {/* Open access */}
           <div className="flex items-center gap-3 sm:col-span-2">
             <Switch
+              id="open-access"
               checked={watch('open_access_only')}
               onCheckedChange={(checked: boolean) =>
                 setValue('open_access_only', checked, { shouldValidate: true })
               }
             />
-            <FieldLabel>Open access only</FieldLabel>
+            <FieldLabel htmlFor="open-access">Open access only</FieldLabel>
           </div>
 
           {/* Novelty weight slider */}

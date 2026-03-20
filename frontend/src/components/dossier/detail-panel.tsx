@@ -7,7 +7,15 @@ import { HypothesisDetail } from './detail-views/hypothesis-detail';
 import { ConflictDetail } from './detail-views/conflict-detail';
 import { EvidenceDetail } from './detail-views/evidence-detail';
 import { PaperDetailView } from './detail-views/paper-detail';
+import type { ItemType } from '@/stores/dossier-store';
 import type { RunResult } from '@/types';
+
+const TYPE_ACCENT: Record<ItemType, string> = {
+  hypothesis: 'border-t-2 border-t-primary',
+  conflict: 'border-t-2 border-t-warning',
+  evidence: 'border-t-2 border-t-blue-500',
+  paper: 'border-t-2 border-t-muted-foreground/30',
+};
 
 interface DetailPanelProps {
   readonly run: RunResult;
@@ -21,7 +29,7 @@ export function DetailPanel({ run }: DetailPanelProps) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
         <FileText className="size-10 opacity-40" />
-        <p className="text-sm">Select an item from the left panel to view details</p>
+        <p className="text-sm">Pick a hypothesis, conflict, or evidence card to explore</p>
       </div>
     );
   }
@@ -59,7 +67,7 @@ export function DetailPanel({ run }: DetailPanelProps) {
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className={`h-full ${TYPE_ACCENT[selectedType]}`}>
       {content}
     </ScrollArea>
   );

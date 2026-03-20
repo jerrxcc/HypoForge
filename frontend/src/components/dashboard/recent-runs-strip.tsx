@@ -59,12 +59,12 @@ export function RecentRunsStrip() {
   return (
     <div className="space-y-3">
       <h2 className="text-sm font-medium text-muted-foreground">Recent runs</h2>
-      <div className="flex gap-3 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {recentRuns.map((run) => (
           <Link
             key={run.run_id}
             href={`/dashboard/runs/${run.run_id}`}
-            className="block min-w-[200px] shrink-0"
+            className="block min-w-[200px] shrink-0 snap-start"
           >
             <Card className="transition-colors hover:border-primary/50">
               <CardContent className="flex flex-col gap-2 py-3">

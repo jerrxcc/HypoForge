@@ -17,7 +17,7 @@ export function TraceShell({ traces }: TraceShellProps) {
   const selectedTrace = traces.find((t) => t.id === selectedId) ?? null;
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[500px]">
+    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-164px)] min-h-[500px]">
       {/* Left: trace list */}
       <div className="w-80 shrink-0 rounded-lg border border-border overflow-hidden">
         <TraceList traces={traces} selectedId={selectedId} onSelect={setSelectedId} />

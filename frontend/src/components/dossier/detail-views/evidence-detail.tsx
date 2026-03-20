@@ -6,31 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PaperLink } from '../evidence-link';
 import { cn } from '@/lib/utils';
-import type { EvidenceCard, Direction } from '@/types';
-
-function directionVariant(direction: Direction): 'success' | 'error' | 'warning' | 'secondary' {
-  switch (direction) {
-    case 'positive':
-      return 'success';
-    case 'negative':
-      return 'error';
-    case 'mixed':
-      return 'warning';
-    case 'null':
-    case 'unclear':
-    default:
-      return 'secondary';
-  }
-}
-
-function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
-      {children}
-    </div>
-  );
-}
+import { Section, directionVariant } from './shared';
+import type { EvidenceCard } from '@/types';
 
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   if (!value) return null;
@@ -48,6 +25,7 @@ interface EvidenceDetailProps {
 
 export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   const [groundingOpen, setGroundingOpen] = useState(false);
+  const groundingId = `grounding-notes-${evidence.evidence_id}`;
 
   return (
     <div className="flex flex-col gap-5 p-4">
@@ -123,6 +101,8 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
             <button
               type="button"
               onClick={() => setGroundingOpen((prev) => !prev)}
+              aria-expanded={groundingOpen}
+              aria-controls={groundingId}
               className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronDown
@@ -134,7 +114,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
               Grounding Notes
             </button>
             {groundingOpen && (
-              <ul className="mt-2 list-disc pl-4 text-sm space-y-1">
+              <ul id={groundingId} className="mt-2 list-disc pl-4 text-sm space-y-1">
                 {evidence.grounding_notes.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}

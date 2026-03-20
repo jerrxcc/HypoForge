@@ -69,9 +69,11 @@ export function ResearchInput({ externalTopic }: ResearchInputProps) {
   return (
     <div className="w-full space-y-4">
       <form onSubmit={topicForm.handleSubmit(onSubmit)} className="relative">
+        <label htmlFor="topic-input" className="sr-only">Research topic</label>
         <Input
           {...topicForm.register('topic')}
-          placeholder="Enter a research topic..."
+          id="topic-input"
+          placeholder="e.g., CRISPR delivery mechanisms in solid tumors"
           disabled={isSubmitting}
           className="h-14 rounded-full pl-6 pr-14 text-base shadow-md"
         />

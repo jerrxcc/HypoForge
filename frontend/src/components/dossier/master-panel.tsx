@@ -55,38 +55,32 @@ export function MasterPanel({ run }: MasterPanelProps) {
 
   const lowerQuery = searchQuery.toLowerCase();
 
-  const filteredHypotheses = useMemo(() => {
+  const filtered = useMemo(() => {
     const sorted = [...run.hypotheses].sort((a, b) => a.rank - b.rank);
-    if (!lowerQuery) return sorted;
-    return sorted.filter(
-      (h) =>
-        matchesQuery(h.title, lowerQuery) ||
-        matchesQuery(h.hypothesis_statement, lowerQuery),
-    );
-  }, [run.hypotheses, lowerQuery]);
+    const hypotheses = lowerQuery
+      ? sorted.filter(
+          (h) =>
+            matchesQuery(h.title, lowerQuery) ||
+            matchesQuery(h.hypothesis_statement, lowerQuery),
+        )
+      : sorted;
+    const conflicts = lowerQuery
+      ? run.conflict_clusters.filter((c) => matchesQuery(c.topic_axis, lowerQuery))
+      : run.conflict_clusters;
+    const evidence = lowerQuery
+      ? run.evidence_cards.filter(
+          (e) =>
+            matchesQuery(e.title, lowerQuery) ||
+            matchesQuery(e.claim_text, lowerQuery),
+        )
+      : run.evidence_cards;
+    const papers = lowerQuery
+      ? run.selected_papers.filter((p) => matchesQuery(p.title, lowerQuery))
+      : run.selected_papers;
+    return { hypotheses, conflicts, evidence, papers };
+  }, [run.hypotheses, run.conflict_clusters, run.evidence_cards, run.selected_papers, lowerQuery]);
 
-  const filteredConflicts = useMemo(() => {
-    if (!lowerQuery) return run.conflict_clusters;
-    return run.conflict_clusters.filter((c) =>
-      matchesQuery(c.topic_axis, lowerQuery),
-    );
-  }, [run.conflict_clusters, lowerQuery]);
-
-  const filteredEvidence = useMemo(() => {
-    if (!lowerQuery) return run.evidence_cards;
-    return run.evidence_cards.filter(
-      (e) =>
-        matchesQuery(e.title, lowerQuery) ||
-        matchesQuery(e.claim_text, lowerQuery),
-    );
-  }, [run.evidence_cards, lowerQuery]);
-
-  const filteredPapers = useMemo(() => {
-    if (!lowerQuery) return run.selected_papers;
-    return run.selected_papers.filter((p) =>
-      matchesQuery(p.title, lowerQuery),
-    );
-  }, [run.selected_papers, lowerQuery]);
+  const { hypotheses: filteredHypotheses, conflicts: filteredConflicts, evidence: filteredEvidence, papers: filteredPapers } = filtered;
 
   return (
     <ScrollArea className="h-full">
@@ -163,7 +157,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
           filteredEvidence.length === 0 &&
           filteredPapers.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No items match &ldquo;{searchQuery}&rdquo;
+              No hypotheses, evidence, or conflicts match &ldquo;{searchQuery}&rdquo;
             </p>
           )}
       </div>

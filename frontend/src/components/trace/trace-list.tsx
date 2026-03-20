@@ -41,7 +41,7 @@ export function TraceList({ traces, selectedId, onSelect }: TraceListProps) {
           >
             {/* Status icon */}
             {trace.success ? (
-              <CheckCircle2 className="size-4 shrink-0 text-green-500" />
+              <CheckCircle2 className="size-4 shrink-0 text-success" />
             ) : (
               <XCircle className="size-4 shrink-0 text-destructive" />
             )}

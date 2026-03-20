@@ -8,13 +8,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface StatItemProps {
   readonly label: string;
   readonly value: number;
+  readonly accent?: string;
 }
 
-function StatItem({ label, value }: StatItemProps) {
+function StatItem({ label, value, accent }: StatItemProps) {
   return (
-    <Card className="flex-1 min-w-[120px]">
+    <Card className={`flex-1 min-w-[120px] border-l-2 ${accent ?? 'border-l-muted'}`}>
       <CardContent className="flex flex-col items-center gap-1 py-4">
-        <span className="text-2xl font-semibold">{value.toLocaleString()}</span>
+        <span className="text-2xl font-semibold tabular-nums">{value.toLocaleString()}</span>
         <span className="text-xs text-muted-foreground">{label}</span>
       </CardContent>
     </Card>
@@ -25,8 +26,8 @@ function StatSkeleton() {
   return (
     <Card className="flex-1 min-w-[120px]">
       <CardContent className="flex flex-col items-center gap-2 py-4">
-        <Skeleton className="h-7 w-12" />
-        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-7 w-12 bg-muted/60" />
+        <Skeleton className="h-3 w-16 bg-muted/60" />
       </CardContent>
     </Card>
   );
@@ -46,7 +47,7 @@ export function StatsBar() {
 
   if (isLoading) {
     return (
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <StatSkeleton />
         <StatSkeleton />
         <StatSkeleton />
@@ -55,10 +56,10 @@ export function StatsBar() {
   }
 
   return (
-    <div className="flex gap-4">
-      <StatItem label="Total Runs" value={stats.totalRuns} />
-      <StatItem label="Total Papers" value={stats.totalPapers} />
-      <StatItem label="Total Hypotheses" value={stats.totalHypotheses} />
+    <div className="flex flex-wrap gap-4">
+      <StatItem label="Total Runs" value={stats.totalRuns} accent="border-l-primary" />
+      <StatItem label="Total Papers" value={stats.totalPapers} accent="border-l-muted-foreground" />
+      <StatItem label="Total Hypotheses" value={stats.totalHypotheses} accent="border-l-success" />
     </div>
   );
 }

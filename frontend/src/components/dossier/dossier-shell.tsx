@@ -28,7 +28,7 @@ export function DossierShell({ run }: DossierShellProps) {
       const first = [...run.hypotheses].sort((a, b) => a.rank - b.rank)[0];
       select('hypothesis', String(first.rank));
     }
-  }, [run.hypotheses.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [run.hypotheses, hasSelection, select]);
 
   // Mobile layout
   if (isMobile) {
@@ -44,7 +44,7 @@ export function DossierShell({ run }: DossierShellProps) {
             <ArrowLeft className="size-4" />
             Back
           </Button>
-          <div className="min-h-[500px]">
+          <div className="min-h-[300px] md:min-h-[500px]">
             <DetailPanel run={run} />
           </div>
         </div>
@@ -52,7 +52,7 @@ export function DossierShell({ run }: DossierShellProps) {
     }
 
     return (
-      <div className="min-h-[500px]">
+      <div className="min-h-[300px] md:min-h-[500px]">
         <MasterPanel run={run} />
       </div>
     );
@@ -62,12 +62,12 @@ export function DossierShell({ run }: DossierShellProps) {
   return (
     <div className="flex gap-4">
       <div className="w-[320px] shrink-0 lg:w-[380px]">
-        <div className="h-[600px] rounded-lg border">
+        <div className="h-[calc(100vh-280px)] min-h-[400px] rounded-lg border shadow-sm">
           <MasterPanel run={run} />
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="h-[600px] rounded-lg border">
+        <div className="h-[calc(100vh-280px)] min-h-[400px] rounded-lg border shadow-sm">
           <DetailPanel run={run} />
         </div>
       </div>

@@ -39,7 +39,7 @@ export function MobileNav() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="top-0 left-0 translate-x-0 translate-y-0 h-full max-w-[280px] rounded-none border-r sm:max-w-[280px]">
+        <DialogContent className="top-0 left-0 translate-x-0 translate-y-0 h-full max-w-[min(280px,85vw)] rounded-none border-r sm:max-w-[min(280px,85vw)]">
           <DialogTitle className="sr-only">Navigation</DialogTitle>
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold">Menu</span>

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useDossierStore } from '@/stores/dossier-store';
 import { EvidenceLink } from '../evidence-link';
+import { Section, BulletList, scoreVariant } from './shared';
 import type { Hypothesis } from '@/types';
 
 function CounterEvidenceLink({ evidenceId }: { readonly evidenceId: string }) {
@@ -14,9 +15,18 @@ function CounterEvidenceLink({ evidenceId }: { readonly evidenceId: string }) {
     <Badge
       variant="outline"
       className="cursor-pointer font-mono text-xs border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+      role="button"
+      tabIndex={0}
       onClick={() => {
         expandGroup('evidence');
         select('evidence', evidenceId);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          expandGroup('evidence');
+          select('evidence', evidenceId);
+        }
       }}
     >
       {evidenceId}
@@ -24,32 +34,25 @@ function CounterEvidenceLink({ evidenceId }: { readonly evidenceId: string }) {
   );
 }
 
-function ScoreBadge({ label, score }: { readonly label: string; readonly score: number }) {
-  const variant = score >= 0.7 ? 'success' : score >= 0.4 ? 'warning' : 'error';
-  return (
-    <Badge variant={variant as 'success' | 'warning' | 'error'} className="text-xs">
-      {label}: {score.toFixed(2)}
-    </Badge>
-  );
-}
+const SCORE_COLOR: Record<string, string> = {
+  success: 'bg-success',
+  warning: 'bg-warning',
+  error: 'bg-destructive',
+};
 
-function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
+function ScoreBar({ label, score }: { readonly label: string; readonly score: number }) {
+  const variant = scoreVariant(score);
   return (
-    <div className="flex flex-col gap-1.5">
-      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
-      {children}
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${SCORE_COLOR[variant]}`}
+          style={{ width: `${Math.round(score * 100)}%` }}
+        />
+      </div>
+      <span className="w-8 shrink-0 tabular-nums text-right font-medium">{score.toFixed(2)}</span>
     </div>
-  );
-}
-
-function BulletList({ items }: { readonly items: readonly string[] }) {
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">None</p>;
-  return (
-    <ul className="list-disc pl-4 text-sm space-y-1">
-      {items.map((item, i) => (
-        <li key={i}>{item}</li>
-      ))}
-    </ul>
   );
 }
 
@@ -70,10 +73,10 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
           </Badge>
           <h3 className="text-lg font-semibold">{hypothesis.title}</h3>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ScoreBadge label="Novelty" score={hypothesis.novelty_score} />
-          <ScoreBadge label="Feasibility" score={hypothesis.feasibility_score} />
-          <ScoreBadge label="Overall" score={hypothesis.overall_score} />
+        <div className="flex w-full max-w-sm flex-col gap-1.5">
+          <ScoreBar label="Novelty" score={hypothesis.novelty_score} />
+          <ScoreBar label="Feasibility" score={hypothesis.feasibility_score} />
+          <ScoreBar label="Overall" score={hypothesis.overall_score} />
         </div>
       </div>
 

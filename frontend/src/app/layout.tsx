@@ -3,6 +3,7 @@ import { DM_Sans, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body className={`${dmSans.variable} ${jetbrainsMono.variable}`}>
         <ThemeProvider>
           <QueryProvider>
-            {children}
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
             <Toaster richColors position="bottom-right" />
           </QueryProvider>
         </ThemeProvider>

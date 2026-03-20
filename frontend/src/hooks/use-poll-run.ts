@@ -52,9 +52,9 @@ export function usePollRun(runId: string | undefined) {
   useEffect(() => {
     const data = query.data;
     if (data && TERMINAL_STATUSES.has(data.status)) {
-      queryClient.invalidateQueries({ queryKey: ['runs'] });
+      queryClient.invalidateQueries({ queryKey: ['run', runId] });
     }
-  }, [query.data, queryClient]);
+  }, [query.data, queryClient, runId]);
 
   return query;
 }
