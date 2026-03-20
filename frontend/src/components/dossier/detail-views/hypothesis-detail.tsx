@@ -2,37 +2,9 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useDossierStore } from '@/stores/dossier-store';
 import { EvidenceLink } from '../evidence-link';
 import { Section, BulletList, scoreVariant } from './shared';
 import type { Hypothesis } from '@/types';
-
-function CounterEvidenceLink({ evidenceId }: { readonly evidenceId: string }) {
-  const select = useDossierStore((s) => s.select);
-  const expandGroup = useDossierStore((s) => s.expandGroup);
-
-  return (
-    <Badge
-      variant="outline"
-      className="cursor-pointer font-mono text-xs border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-      role="button"
-      tabIndex={0}
-      onClick={() => {
-        expandGroup('evidence');
-        select('evidence', evidenceId);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          expandGroup('evidence');
-          select('evidence', evidenceId);
-        }
-      }}
-    >
-      {evidenceId}
-    </Badge>
-  );
-}
 
 const SCORE_COLOR: Record<string, string> = {
   success: 'bg-success',
@@ -123,7 +95,7 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
         <div className="flex flex-wrap gap-1.5">
           {hypothesis.counterevidence_ids.length > 0
             ? hypothesis.counterevidence_ids.map((id) => (
-                <CounterEvidenceLink key={id} evidenceId={id} />
+                <EvidenceLink key={id} evidenceId={id} variant="counter" />
               ))
             : <span className="text-sm text-muted-foreground">None</span>}
         </div>
