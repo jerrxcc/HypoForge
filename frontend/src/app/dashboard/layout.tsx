@@ -5,7 +5,9 @@ export default function DashboardLayout({ children }: { readonly children: React
     <div className="min-h-screen">
       <TopNav />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {children}
+        <div className="animate-[fade-in_0.25s_ease-out]">
+          {children}
+        </div>
       </main>
     </div>
   );
