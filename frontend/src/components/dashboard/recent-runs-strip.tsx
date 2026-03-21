@@ -59,7 +59,7 @@ export function RecentRunsStrip() {
   return (
     <div className="space-y-3">
       <h2 className="text-sm font-medium text-muted-foreground">Recent runs</h2>
-      <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="relative flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] hover:[mask-image:none] focus-within:[mask-image:none]">
         {recentRuns.map((run) => (
           <Link
             key={run.run_id}
