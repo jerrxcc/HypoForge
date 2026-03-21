@@ -1,11 +1,11 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useDossierStore } from '@/stores/dossier-store';
-import { Badge } from '@/components/ui/badge';
 
 const STYLE = {
-  default: 'cursor-pointer font-mono text-xs hover:bg-primary/10 hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-  counter: 'cursor-pointer font-mono text-xs border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+  default: 'inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-xs transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+  counter: 'inline-flex items-center rounded-full border border-destructive/40 px-2 py-0.5 font-mono text-xs text-destructive transition-colors hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
 } as const;
 
 interface EvidenceLinkProps {
@@ -17,30 +17,20 @@ export function EvidenceLink({ evidenceId, variant = 'default' }: EvidenceLinkPr
   const select = useDossierStore((s) => s.select);
   const expandGroup = useDossierStore((s) => s.expandGroup);
 
-  function handleClick() {
+  const handleClick = useCallback(() => {
     expandGroup('evidence');
     select('evidence', evidenceId);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  }
+  }, [expandGroup, select, evidenceId]);
 
   return (
-    <Badge
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-label={`View evidence ${evidenceId}`}
-      variant="outline"
       className={STYLE[variant]}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
     >
       {evidenceId}
-    </Badge>
+    </button>
   );
 }
 
@@ -48,29 +38,19 @@ export function PaperLink({ paperId }: { readonly paperId: string }) {
   const select = useDossierStore((s) => s.select);
   const expandGroup = useDossierStore((s) => s.expandGroup);
 
-  function handleClick() {
+  const handleClick = useCallback(() => {
     expandGroup('papers');
     select('paper', paperId);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  }
+  }, [expandGroup, select, paperId]);
 
   return (
-    <Badge
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-label={`View paper ${paperId}`}
-      variant="outline"
       className={STYLE.default}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
     >
       {paperId}
-    </Badge>
+    </button>
   );
 }

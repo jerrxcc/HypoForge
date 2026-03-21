@@ -24,7 +24,7 @@ export function DownloadButton({ content, filename = 'report.md' }: DownloadButt
 
   return (
     <Button variant="outline" size="sm" onClick={handleDownload}>
-      <Download className="size-4 mr-1.5" />
+      <Download aria-hidden="true" className="size-4 mr-1.5" />
       Download
     </Button>
   );

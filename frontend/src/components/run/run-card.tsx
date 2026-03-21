@@ -23,7 +23,7 @@ interface RunCardProps {
 
 export function RunCard({ run }: RunCardProps) {
   return (
-    <Link href={`/dashboard/runs/${run.run_id}`}>
+    <Link href={`/dashboard/runs/${run.run_id}`} aria-label={run.topic}>
       <Card className={cn(
         'transition-all hover:border-primary/30 dark:hover:border-primary/40 hover:shadow-md',
         statusAccent(run.status),

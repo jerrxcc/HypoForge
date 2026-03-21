@@ -3,7 +3,7 @@ import type { Direction } from '@/types';
 export function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
+      <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       {children}
     </div>
   );

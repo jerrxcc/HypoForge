@@ -13,7 +13,7 @@ export function TopNav() {
         <Logo />
 
         {/* Center: Navigation links (hidden on mobile) */}
-        <nav className="ml-8 hidden items-center gap-6 md:flex">
+        <nav aria-label="Main navigation" className="ml-8 hidden items-center gap-6 md:flex">
           <NavLink href="/dashboard">Home</NavLink>
           <NavLink href="/dashboard/runs">Runs</NavLink>
         </nav>

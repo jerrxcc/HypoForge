@@ -31,7 +31,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
     <div className="flex flex-col gap-5 p-4">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-semibold">{evidence.title}</h3>
+        <h2 className="text-lg font-semibold">{evidence.title}</h2>
         <div className="flex flex-wrap gap-2">
           <Badge variant={directionVariant(evidence.direction)}>
             {evidence.direction}
@@ -103,7 +103,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
               onClick={() => setGroundingOpen((prev) => !prev)}
               aria-expanded={groundingOpen}
               aria-controls={groundingId}
-              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 rounded text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               <ChevronDown
                 className={cn(

@@ -23,7 +23,7 @@ export function ItemGroup({ groupKey, label, count, children }: ItemGroupProps) 
 
   return (
     <Collapsible open={expanded} onOpenChange={() => toggleGroup(groupKey)}>
-      <CollapsibleTrigger aria-label={`Toggle ${label} section`} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors">
+      <CollapsibleTrigger aria-label={`Toggle ${label} section`} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <ChevronRight
           className={cn(
             'size-4 shrink-0 text-muted-foreground transition-transform duration-200',

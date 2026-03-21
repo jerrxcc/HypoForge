@@ -73,6 +73,9 @@ export function ResearchInput({ externalTopic }: ResearchInputProps) {
         <Input
           {...topicForm.register('topic')}
           id="topic-input"
+          required
+          aria-invalid={!!topicForm.formState.errors.topic}
+          aria-describedby={topicForm.formState.errors.topic ? 'topic-input-error' : undefined}
           placeholder="e.g., CRISPR delivery mechanisms in solid tumors"
           disabled={isSubmitting}
           className="h-14 rounded-full pl-6 pr-14 text-base shadow-md"
@@ -90,7 +93,7 @@ export function ResearchInput({ externalTopic }: ResearchInputProps) {
           )}
         </button>
         {topicForm.formState.errors.topic && (
-          <p className="mt-2 text-sm text-destructive">
+          <p id="topic-input-error" className="mt-2 text-sm text-destructive">
             {topicForm.formState.errors.topic.message}
           </p>
         )}

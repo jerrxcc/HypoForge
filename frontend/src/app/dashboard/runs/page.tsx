@@ -43,7 +43,7 @@ export default function RunsPage() {
         <h1 className="text-2xl font-semibold">Your Runs</h1>
         <Button asChild>
           <Link href="/dashboard">
-            <Plus className="size-4" />
+            <Plus aria-hidden="true" className="size-4" />
             New Run
           </Link>
         </Button>

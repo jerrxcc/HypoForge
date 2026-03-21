@@ -8,7 +8,7 @@ interface MarkdownRendererProps {
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <ScrollArea className="h-full">
-      <article className="prose prose-neutral dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-a:text-primary p-6">
+      <article aria-label="Research report" className="prose prose-neutral dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-a:text-primary p-6">
         <ReactMarkdown>{content}</ReactMarkdown>
       </article>
     </ScrollArea>

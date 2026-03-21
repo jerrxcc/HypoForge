@@ -15,25 +15,14 @@ interface TraceRowProps {
 
 const TraceRow = memo(function TraceRow({ trace, isSelected, onSelect }: TraceRowProps) {
   const handleClick = useCallback(() => onSelect(trace.id), [onSelect, trace.id]);
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onSelect(trace.id);
-      }
-    },
-    [onSelect, trace.id],
-  );
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-pressed={isSelected}
       onClick={handleClick}
-      onKeyDown={handleKeyDown}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         isSelected && 'bg-primary/10',
       )}
     >
@@ -51,7 +40,7 @@ const TraceRow = memo(function TraceRow({ trace, isSelected, onSelect }: TraceRo
       <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
         {trace.latency_ms}ms
       </span>
-    </div>
+    </button>
   );
 });
 

@@ -77,12 +77,15 @@ export default function NewRunPage({
           <Input
             id="topic"
             {...topicForm.register('topic')}
+            required
+            aria-invalid={!!topicForm.formState.errors.topic}
+            aria-describedby={topicForm.formState.errors.topic ? 'topic-error' : undefined}
             placeholder="e.g. solid-state battery electrolyte interfaces"
             disabled={isSubmitting}
             className="h-12 text-base"
           />
           {topicForm.formState.errors.topic && (
-            <p className="text-sm text-destructive">
+            <p id="topic-error" className="text-sm text-destructive">
               {topicForm.formState.errors.topic.message}
             </p>
           )}

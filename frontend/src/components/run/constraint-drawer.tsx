@@ -23,7 +23,7 @@ interface ConstraintDrawerProps {
 export function ConstraintDrawer({ form, open, onOpenChange }: ConstraintDrawerProps) {
   return (
     <Collapsible open={open} onOpenChange={onOpenChange}>
-      <CollapsibleTrigger className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <CollapsibleTrigger className="flex items-center gap-1 rounded text-sm text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         Show advanced options
         <ChevronDown
           className={cn(

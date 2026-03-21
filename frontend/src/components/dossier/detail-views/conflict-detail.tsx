@@ -21,7 +21,7 @@ export function ConflictDetail({ conflict }: ConflictDetailProps) {
     <div className="flex flex-col gap-5 p-4">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h3 className="text-lg font-semibold">{conflict.topic_axis}</h3>
+        <h2 className="text-lg font-semibold">{conflict.topic_axis}</h2>
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">
             {CONFLICT_TYPE_LABEL[conflict.conflict_type] ?? conflict.conflict_type}

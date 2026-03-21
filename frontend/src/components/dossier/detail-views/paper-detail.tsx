@@ -14,7 +14,7 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
   return (
     <div className="flex flex-col gap-5 p-4">
       {/* Title */}
-      <h3 className="text-lg font-semibold leading-snug">{paper.title}</h3>
+      <h2 className="text-lg font-semibold leading-snug">{paper.title}</h2>
 
       {/* Metadata row */}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">

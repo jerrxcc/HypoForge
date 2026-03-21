@@ -44,7 +44,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Error banner */}
       {run.status === 'failed' && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Run failed. Check the trace for details.
         </div>
       )}
@@ -61,7 +61,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       {/* Stage progress */}
-      <StageProgress status={run.status} stageSummaries={run.stage_summaries} />
+      <div aria-live="polite">
+        <StageProgress status={run.status} stageSummaries={run.stage_summaries} />
+      </div>
 
       {/* Dossier */}
       <DossierShell run={run} />

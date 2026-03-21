@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDossierStore } from '@/stores/dossier-store';
 import { SearchFilter } from './search-filter';
@@ -19,6 +19,13 @@ const MOTION_ITEM = {
   transition: { duration: 0.15 },
 } as const;
 
+const MOTION_NONE = {
+  initial: false as const,
+  animate: {},
+  exit: {},
+  transition: { duration: 0 },
+};
+
 function matchesQuery(text: string | null | undefined, query: string): boolean {
   if (!text) return false;
   return text.toLowerCase().includes(query);
@@ -29,6 +36,8 @@ interface MasterPanelProps {
 }
 
 export function MasterPanel({ run }: MasterPanelProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const motionProps = prefersReducedMotion ? MOTION_NONE : MOTION_ITEM;
   const searchQuery = useDossierStore((s) => s.searchQuery);
   const selectedType = useDossierStore((s) => s.selectedType);
   const selectedId = useDossierStore((s) => s.selectedId);
@@ -91,7 +100,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
           <ItemGroup groupKey="hypotheses" label="Hypotheses" count={filteredHypotheses.length}>
             <AnimatePresence initial={false}>
               {filteredHypotheses.map((h) => (
-                <motion.div key={h.rank} {...MOTION_ITEM}>
+                <motion.div key={h.rank} {...motionProps}>
                   <HypothesisRow
                     ref={setRef(`hypothesis:${h.rank}`)}
                     hypothesis={h}
@@ -107,7 +116,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
           <ItemGroup groupKey="conflicts" label="Conflicts" count={filteredConflicts.length}>
             <AnimatePresence initial={false}>
               {filteredConflicts.map((c) => (
-                <motion.div key={c.cluster_id} {...MOTION_ITEM}>
+                <motion.div key={c.cluster_id} {...motionProps}>
                   <ConflictRow
                     ref={setRef(`conflict:${c.cluster_id}`)}
                     conflict={c}
@@ -123,7 +132,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
           <ItemGroup groupKey="evidence" label="Evidence" count={filteredEvidence.length}>
             <AnimatePresence initial={false}>
               {filteredEvidence.map((e) => (
-                <motion.div key={e.evidence_id} {...MOTION_ITEM}>
+                <motion.div key={e.evidence_id} {...motionProps}>
                   <EvidenceRow
                     ref={setRef(`evidence:${e.evidence_id}`)}
                     evidence={e}
@@ -139,7 +148,7 @@ export function MasterPanel({ run }: MasterPanelProps) {
           <ItemGroup groupKey="papers" label="Papers" count={filteredPapers.length}>
             <AnimatePresence initial={false}>
               {filteredPapers.map((p) => (
-                <motion.div key={p.paper_id} {...MOTION_ITEM}>
+                <motion.div key={p.paper_id} {...motionProps}>
                   <PaperRow
                     ref={setRef(`paper:${p.paper_id}`)}
                     paper={p}
@@ -151,6 +160,9 @@ export function MasterPanel({ run }: MasterPanelProps) {
           </ItemGroup>
         )}
 
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {lowerQuery && `${filteredHypotheses.length + filteredConflicts.length + filteredEvidence.length + filteredPapers.length} results`}
+        </div>
         {lowerQuery &&
           filteredHypotheses.length === 0 &&
           filteredConflicts.length === 0 &&

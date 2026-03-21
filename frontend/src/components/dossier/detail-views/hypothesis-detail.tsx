@@ -20,7 +20,7 @@ function ScoreBar({ label, score }: { readonly label: string; readonly score: nu
       <span className="w-20 shrink-0 text-muted-foreground">{label}</span>
       <div
         role="progressbar"
-        aria-label={label}
+        aria-label={`${label}: ${pct}%`}
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -51,7 +51,7 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
           <Badge variant="outline" className="font-mono text-xs">
             #{hypothesis.rank}
           </Badge>
-          <h3 className="text-lg font-semibold">{hypothesis.title}</h3>
+          <h2 className="text-lg font-semibold">{hypothesis.title}</h2>
         </div>
         <div className="flex w-full max-w-sm flex-col gap-1.5">
           <ScoreBar label="Novelty" score={hypothesis.novelty_score} />

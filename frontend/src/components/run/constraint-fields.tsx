@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -32,6 +32,7 @@ export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps)
   const noveltyWeight = watch('novelty_weight');
 
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
   const handleNoveltyChange = useCallback(
     (value: number[]) => {
       clearTimeout(timerRef.current);
@@ -65,14 +66,14 @@ export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps)
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <FieldLabel>Lab mode</FieldLabel>
+        <FieldLabel htmlFor={id('lab-mode')}>Lab mode</FieldLabel>
         <Select
           value={watch('lab_mode')}
           onValueChange={(value: 'wet' | 'dry' | 'either') =>
             setValue('lab_mode', value, { shouldValidate: true })
           }
         >
-          <SelectTrigger aria-label="Lab mode">
+          <SelectTrigger id={id('lab-mode')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
