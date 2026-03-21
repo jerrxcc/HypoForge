@@ -47,7 +47,7 @@ export function StatsBar() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-2 sm:gap-4">
         <StatSkeleton />
         <StatSkeleton />
         <StatSkeleton />
@@ -56,7 +56,7 @@ export function StatsBar() {
   }
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-2 sm:gap-4">
       <StatItem label="Total Runs" value={stats.totalRuns} accent="border-l-primary" />
       <StatItem label="Total Papers" value={stats.totalPapers} accent="border-l-muted-foreground" />
       <StatItem label="Total Hypotheses" value={stats.totalHypotheses} accent="border-l-success" />

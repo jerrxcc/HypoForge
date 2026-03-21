@@ -59,16 +59,16 @@ export function DossierShell({ run }: DossierShellProps) {
     );
   }
 
-  // Desktop layout
+  // Desktop layout — flex column fills remaining viewport height
   return (
-    <div className="flex gap-4">
-      <div className="w-[320px] shrink-0 lg:w-[380px]">
-        <div className="h-[calc(100vh-280px)] min-h-[400px] rounded-lg border shadow-sm">
+    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-120px)] min-h-[400px]">
+      <div className="md:w-[260px] lg:w-[320px] xl:w-[380px] shrink-0">
+        <div className="h-full rounded-lg border shadow-sm">
           <MasterPanel run={run} />
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="h-[calc(100vh-280px)] min-h-[400px] rounded-lg border shadow-sm">
+        <div className="h-full rounded-lg border shadow-sm">
           <DetailPanel run={run} />
         </div>
       </div>

@@ -47,9 +47,10 @@ export function TraceShell({ traces }: TraceShellProps) {
   }
 
   // Desktop: side-by-side
+  // 120px offset = main padding (24px*2) + breadcrumb (~20px) + header (~28px) + actions gap (~24px)
   return (
-    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-164px)] min-h-[400px]">
-      <div className="w-80 shrink-0 rounded-lg border border-border overflow-hidden">
+    <div className="flex gap-4 h-[calc(100dvh-var(--nav-height,56px)-120px)] min-h-[400px]">
+      <div className="md:w-[260px] lg:w-80 shrink-0 rounded-lg border border-border overflow-hidden">
         <TraceList traces={traces} selectedId={selectedId} onSelect={setSelectedId} />
       </div>
       <div className="flex-1 min-w-0">

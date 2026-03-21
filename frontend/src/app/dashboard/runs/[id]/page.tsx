@@ -83,7 +83,7 @@ function RunDetailSkeleton() {
       </div>
       <Skeleton className="h-12 w-full" />
       <div className="hidden gap-4 md:flex">
-        <Skeleton className="h-[400px] w-[320px]" />
+        <Skeleton className="h-[400px] md:w-[260px] lg:w-[320px] xl:w-[380px]" />
         <Skeleton className="h-[400px] flex-1" />
       </div>
       <Skeleton className="h-[300px] w-full md:hidden" />
