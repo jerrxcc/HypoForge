@@ -1,17 +1,32 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useDossierStore } from '@/stores/dossier-store';
 
+const DEBOUNCE_MS = 200;
+
 export function SearchFilter() {
   const searchQuery = useDossierStore((s) => s.searchQuery);
   const setSearchQuery = useDossierStore((s) => s.setSearchQuery);
+  const [localValue, setLocalValue] = useState(searchQuery);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  // Sync when store is externally reset (e.g. run change)
+  const storeResetKey = searchQuery === '' ? 0 : 1;
+  useEffect(() => {
+    setLocalValue(''); // eslint-disable-line react-hooks/set-state-in-effect -- legitimate sync from external store reset
+  }, [storeResetKey]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
+      const value = e.target.value;
+      setLocalValue(value);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setSearchQuery(value), DEBOUNCE_MS);
     },
     [setSearchQuery],
   );
@@ -23,7 +38,7 @@ export function SearchFilter() {
       <Input
         id="dossier-filter"
         placeholder="Filter items..."
-        value={searchQuery}
+        value={localValue}
         onChange={handleChange}
         className="pl-9 text-sm"
       />

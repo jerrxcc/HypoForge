@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
+import { useWatch } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -28,8 +29,11 @@ interface ConstraintFieldsProps {
 }
 
 export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps) {
-  const { register, watch, setValue } = form;
-  const noveltyWeight = watch('novelty_weight');
+  const { register, setValue, control } = form;
+  const [noveltyWeight, labMode, openAccessOnly, feasibilityWeight] = useWatch({
+    control,
+    name: ['novelty_weight', 'lab_mode', 'open_access_only', 'feasibility_weight'],
+  });
 
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timerRef.current), []);
@@ -68,7 +72,7 @@ export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps)
       <div className="flex flex-col gap-1.5">
         <FieldLabel htmlFor={id('lab-mode')}>Lab mode</FieldLabel>
         <Select
-          value={watch('lab_mode')}
+          value={labMode}
           onValueChange={(value: 'wet' | 'dry' | 'either') =>
             setValue('lab_mode', value, { shouldValidate: true })
           }
@@ -87,7 +91,7 @@ export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps)
       <div className="flex items-center gap-3 sm:col-span-2">
         <Switch
           id={id('open-access')}
-          checked={watch('open_access_only')}
+          checked={openAccessOnly}
           onCheckedChange={(checked: boolean) =>
             setValue('open_access_only', checked, { shouldValidate: true })
           }
@@ -114,12 +118,12 @@ export function ConstraintFields({ form, idPrefix = '' }: ConstraintFieldsProps)
         <div className="flex items-center justify-between">
           <FieldLabel>Feasibility weight</FieldLabel>
           <span className="text-sm text-muted-foreground">
-            {watch('feasibility_weight').toFixed(2)}
+            {feasibilityWeight.toFixed(2)}
           </span>
         </div>
         <Slider
           aria-label="Feasibility weight (auto-calculated)"
-          value={[watch('feasibility_weight')]}
+          value={[feasibilityWeight]}
           min={0}
           max={1}
           step={0.05}

@@ -19,6 +19,10 @@ export function usePollRun(runId: string | undefined) {
     queryKey: ['run', runId],
     queryFn: () => api.getRun(runId!),
     enabled: !!runId,
+    staleTime: (query) => {
+      const data = query.state.data;
+      return data && TERMINAL_STATUSES.has(data.status) ? Infinity : 0;
+    },
     refetchInterval: (query) => {
       const data = query.state.data;
       if (data && TERMINAL_STATUSES.has(data.status)) {

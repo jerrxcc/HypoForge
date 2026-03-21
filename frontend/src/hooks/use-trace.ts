@@ -11,6 +11,7 @@ export function useTrace(runId: string | undefined, active = false) {
     queryKey: ['trace', runId],
     queryFn: () => api.getTrace(runId!),
     enabled: !!runId,
+    staleTime: active ? 0 : Infinity,
     refetchInterval: active ? 3000 : false,
   });
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDossierStore } from '@/stores/dossier-store';
 import { SearchFilter } from './search-filter';
@@ -11,20 +10,6 @@ import { ConflictRow } from './master-items/conflict-row';
 import { EvidenceRow } from './master-items/evidence-row';
 import { PaperRow } from './master-items/paper-row';
 import type { RunResult } from '@/types';
-
-const MOTION_ITEM = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: 0.15 },
-} as const;
-
-const MOTION_NONE = {
-  initial: false as const,
-  animate: {},
-  exit: {},
-  transition: { duration: 0 },
-};
 
 function matchesQuery(text: string | null | undefined, query: string): boolean {
   if (!text) return false;
@@ -36,8 +21,6 @@ interface MasterPanelProps {
 }
 
 export function MasterPanel({ run }: MasterPanelProps) {
-  const prefersReducedMotion = useReducedMotion();
-  const motionProps = prefersReducedMotion ? MOTION_NONE : MOTION_ITEM;
   const searchQuery = useDossierStore((s) => s.searchQuery);
   const selectedType = useDossierStore((s) => s.selectedType);
   const selectedId = useDossierStore((s) => s.selectedId);
@@ -98,65 +81,57 @@ export function MasterPanel({ run }: MasterPanelProps) {
 
         {filteredHypotheses.length > 0 && (
           <ItemGroup groupKey="hypotheses" label="Hypotheses" count={filteredHypotheses.length}>
-            <AnimatePresence initial={false}>
-              {filteredHypotheses.map((h) => (
-                <motion.div key={h.rank} {...motionProps}>
-                  <HypothesisRow
-                    ref={setRef(`hypothesis:${h.rank}`)}
-                    hypothesis={h}
-                    isSelected={selectedType === 'hypothesis' && selectedId === String(h.rank)}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {filteredHypotheses.map((h) => (
+              <div key={h.rank} className="animate-[fade-in_0.15s_ease-out]">
+                <HypothesisRow
+                  ref={setRef(`hypothesis:${h.rank}`)}
+                  hypothesis={h}
+                  isSelected={selectedType === 'hypothesis' && selectedId === String(h.rank)}
+                />
+              </div>
+            ))}
           </ItemGroup>
         )}
 
         {filteredConflicts.length > 0 && (
           <ItemGroup groupKey="conflicts" label="Conflicts" count={filteredConflicts.length}>
-            <AnimatePresence initial={false}>
-              {filteredConflicts.map((c) => (
-                <motion.div key={c.cluster_id} {...motionProps}>
-                  <ConflictRow
-                    ref={setRef(`conflict:${c.cluster_id}`)}
-                    conflict={c}
-                    isSelected={selectedType === 'conflict' && selectedId === c.cluster_id}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {filteredConflicts.map((c) => (
+              <div key={c.cluster_id} className="animate-[fade-in_0.15s_ease-out]">
+                <ConflictRow
+                  ref={setRef(`conflict:${c.cluster_id}`)}
+                  conflict={c}
+                  isSelected={selectedType === 'conflict' && selectedId === c.cluster_id}
+                />
+              </div>
+            ))}
           </ItemGroup>
         )}
 
         {filteredEvidence.length > 0 && (
           <ItemGroup groupKey="evidence" label="Evidence" count={filteredEvidence.length}>
-            <AnimatePresence initial={false}>
-              {filteredEvidence.map((e) => (
-                <motion.div key={e.evidence_id} {...motionProps}>
-                  <EvidenceRow
-                    ref={setRef(`evidence:${e.evidence_id}`)}
-                    evidence={e}
-                    isSelected={selectedType === 'evidence' && selectedId === e.evidence_id}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {filteredEvidence.map((e) => (
+              <div key={e.evidence_id} className="animate-[fade-in_0.15s_ease-out]">
+                <EvidenceRow
+                  ref={setRef(`evidence:${e.evidence_id}`)}
+                  evidence={e}
+                  isSelected={selectedType === 'evidence' && selectedId === e.evidence_id}
+                />
+              </div>
+            ))}
           </ItemGroup>
         )}
 
         {filteredPapers.length > 0 && (
           <ItemGroup groupKey="papers" label="Papers" count={filteredPapers.length}>
-            <AnimatePresence initial={false}>
-              {filteredPapers.map((p) => (
-                <motion.div key={p.paper_id} {...motionProps}>
-                  <PaperRow
-                    ref={setRef(`paper:${p.paper_id}`)}
-                    paper={p}
-                    isSelected={selectedType === 'paper' && selectedId === p.paper_id}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {filteredPapers.map((p) => (
+              <div key={p.paper_id} className="animate-[fade-in_0.15s_ease-out]">
+                <PaperRow
+                  ref={setRef(`paper:${p.paper_id}`)}
+                  paper={p}
+                  isSelected={selectedType === 'paper' && selectedId === p.paper_id}
+                />
+              </div>
+            ))}
           </ItemGroup>
         )}
 

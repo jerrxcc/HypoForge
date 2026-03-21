@@ -6,5 +6,6 @@ export function useReport(runId: string | undefined) {
     queryKey: ['report', runId],
     queryFn: () => api.getReport(runId!),
     enabled: !!runId,
+    staleTime: Infinity,
   });
 }
