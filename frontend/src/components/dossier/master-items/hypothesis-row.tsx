@@ -30,7 +30,7 @@ export const HypothesisRow = memo(forwardRef<HTMLButtonElement, HypothesisRowPro
             : 'hover:bg-muted/50',
         )}
       >
-        <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 font-mono">
+        <Badge variant="outline" className="shrink-0 text-xs px-1.5 py-0 font-mono">
           #{hypothesis.rank}
         </Badge>
         {needsTooltip ? (
@@ -49,7 +49,7 @@ export const HypothesisRow = memo(forwardRef<HTMLButtonElement, HypothesisRowPro
             {hypothesis.title}
           </span>
         )}
-        <Badge variant={scoreVariant(hypothesis.overall_score)} className="shrink-0 text-[10px] px-1.5 py-0">
+        <Badge variant={scoreVariant(hypothesis.overall_score)} className="shrink-0 text-xs px-1.5 py-0">
           {hypothesis.overall_score.toFixed(2)}
         </Badge>
       </button>

@@ -34,7 +34,7 @@ const TraceRow = memo(function TraceRow({ trace, isSelected, onSelect }: TraceRo
       <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
         {trace.tool_name}
       </span>
-      <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 font-mono">
+      <Badge variant="outline" className="shrink-0 text-xs px-1.5 py-0 font-mono">
         {trace.agent_name}
       </Badge>
       <span className="shrink-0 text-xs text-muted-foreground tabular-nums">

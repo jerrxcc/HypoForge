@@ -51,7 +51,7 @@ export const ConflictRow = memo(forwardRef<HTMLButtonElement, ConflictRowProps>(
             {conflict.topic_axis}
           </span>
         )}
-        <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
+        <Badge variant="outline" className="shrink-0 text-xs px-1.5 py-0">
           {CONFLICT_TYPE_LABEL[conflict.conflict_type] ?? conflict.conflict_type}
         </Badge>
       </button>

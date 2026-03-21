@@ -45,12 +45,12 @@ export const PaperRow = memo(forwardRef<HTMLButtonElement, PaperRowProps>(
           </span>
         )}
         {paper.year && (
-          <span className="shrink-0 text-[10px] text-muted-foreground">
+          <span className="shrink-0 text-xs text-muted-foreground">
             {paper.year}
           </span>
         )}
         {paper.venue && (
-          <span className="hidden shrink-0 text-[10px] text-muted-foreground lg:inline">
+          <span className="hidden shrink-0 text-xs text-muted-foreground lg:inline">
             {truncate(paper.venue, 15)}
           </span>
         )}

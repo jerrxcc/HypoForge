@@ -31,7 +31,7 @@ export function ItemGroup({ groupKey, label, count, children }: ItemGroupProps) 
           )}
         />
         <span className="flex-1 text-left">{label}</span>
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+        <Badge variant="secondary" className="text-xs px-1.5 py-0">
           {count}
         </Badge>
       </CollapsibleTrigger>

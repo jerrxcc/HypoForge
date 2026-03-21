@@ -46,7 +46,7 @@ export const EvidenceRow = memo(forwardRef<HTMLButtonElement, EvidenceRowProps>(
             {evidence.title}
           </span>
         )}
-        <Badge variant={directionVariant(evidence.direction)} className="shrink-0 text-[10px] px-1.5 py-0">
+        <Badge variant={directionVariant(evidence.direction)} className="shrink-0 text-xs px-1.5 py-0">
           {evidence.direction}
         </Badge>
       </button>

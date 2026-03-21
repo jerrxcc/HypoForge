@@ -13,7 +13,7 @@ import type { RunResult } from '@/types';
 const TYPE_ACCENT: Record<ItemType, string> = {
   hypothesis: 'border-t-2 border-t-primary',
   conflict: 'border-t-2 border-t-warning',
-  evidence: 'border-t-2 border-t-[var(--color-success)]',
+  evidence: 'border-t-2 border-t-success',
   paper: 'border-t-2 border-t-muted-foreground/30',
 };
 
