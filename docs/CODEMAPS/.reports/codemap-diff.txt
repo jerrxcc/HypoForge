@@ -1,0 +1,35 @@
+Codemap Generation Report — 2026-03-22
+========================================
+
+Status: INITIAL GENERATION (no previous codemaps existed)
+
+Files scanned:
+  Backend (src/hypoforge/):  58 Python files
+  Frontend (frontend/src/):  80 TypeScript/TSX files
+  Tests (tests/):            46 Python files
+  Total:                    184 files
+
+Codemaps created:
+  docs/CODEMAPS/architecture.md   — system diagram, pipeline flow, layer boundaries
+  docs/CODEMAPS/backend.md        — API routes, orchestration chain, file sizes, tool mapping
+  docs/CODEMAPS/frontend.md       — page tree, data flow, component hierarchy, UI primitives
+  docs/CODEMAPS/data.md           — DB tables, ER diagram, domain models, type enums
+  docs/CODEMAPS/dependencies.md   — external services, Python/JS deps, caching, budgets
+
+Architecture highlights:
+  - 4-stage pipeline: retrieval → review → critic → planner
+  - 3 execution paths: linear, reflection, validation
+  - 4 validation agents: evidence, conflict, quality, feedback
+  - 10 SQLite tables (no relationship() links, FK-only)
+  - Frontend: 7 routes, 5 data hooks, 1 Zustand store, 18 Radix primitives
+
+Largest backend files (potential refactor targets):
+  1. application/services.py      1155 lines (DI + batch logic + repair)
+  2. application/coordinator.py    804 lines (3 execution paths)
+  3. agents/quality_assessor.py    779 lines
+  4. agents/reflection.py          773 lines
+
+Next scan recommended after:
+  - Adding new API routes or pipeline stages
+  - Major refactoring of services.py or coordinator.py
+  - Frontend route additions
