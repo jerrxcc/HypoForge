@@ -50,7 +50,7 @@ def test_agent_runner_executes_allowed_tool_calls() -> None:
         tool_invoker=invoke,
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
@@ -83,7 +83,7 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
                 response_id="scripted_1",
                 tool_outputs=tool_outputs,
                 tool_names=[],
-                model_name="gpt5.4-mini-high",
+                model_name="gpt-5.4-mini",
                 output_schema=None,
             )
 
@@ -117,7 +117,7 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
         tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
@@ -150,7 +150,7 @@ def test_agent_runner_retries_once_after_output_validation_failure() -> None:
                 response_id="scripted_1",
                 tool_outputs=tool_outputs,
                 tool_names=[],
-                model_name="gpt5.4-mini-high",
+                model_name="gpt-5.4-mini",
                 output_schema=None,
             )
 
@@ -185,7 +185,7 @@ def test_agent_runner_retries_once_after_output_validation_failure() -> None:
         tool_invoker=lambda tool_name, payload, trace_context: {},
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
@@ -230,7 +230,7 @@ def test_agent_runner_uses_repair_output_after_retry_still_invalid() -> None:
         tool_invoker=lambda tool_name, payload, trace_context: {},
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
         repair_output=lambda output, context: {
             **output,
@@ -286,7 +286,7 @@ def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> 
         tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
@@ -328,7 +328,7 @@ def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
         tool_invoker=lambda tool_name, payload, trace_context: {},
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 

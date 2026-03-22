@@ -42,7 +42,7 @@ class ValidationAgent(ABC):
         *,
         repository: RunRepository,
         thresholds: dict[str, float] | None = None,
-        model_name: str = "gpt5.4-mini-high",
+        model_name: str = "gpt-5.4-mini",
     ) -> None:
         """Initialize the validation agent.
 

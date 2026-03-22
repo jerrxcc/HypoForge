@@ -40,9 +40,9 @@ def test_openai_provider_builds_json_schema_response_format() -> None:
 def test_openai_provider_sanitizes_response_format_name() -> None:
     provider = OpenAIResponsesProvider()
 
-    response_format = provider._response_format("gpt5.4-mini-high_output", {"type": "object", "properties": {"x": {"type": "string"}}})
+    response_format = provider._response_format("gpt-5.4-mini_output", {"type": "object", "properties": {"x": {"type": "string"}}})
 
-    assert response_format["format"]["name"] == "gpt5_4-mini-high_output"
+    assert response_format["format"]["name"] == "gpt-5_4-mini_output"
 
 
 def test_openai_provider_keeps_usage_on_tool_call_turns() -> None:

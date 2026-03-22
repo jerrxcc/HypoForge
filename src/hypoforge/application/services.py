@@ -67,6 +67,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         api_key=settings.openai_api_key or None,
         base_url=settings.openai_base_url or None,
         timeout_seconds=settings.request_timeout_seconds,
+        reasoning_effort=settings.openai_reasoning_effort or None,
     )
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)

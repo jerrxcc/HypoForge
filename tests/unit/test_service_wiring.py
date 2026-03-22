@@ -49,8 +49,8 @@ def test_build_default_services_passes_request_timeout_to_provider(tmp_path, mon
     seen: dict[str, object | None] = {"timeout_seconds": None}
 
     class FakeProvider:
-        def __init__(self, client=None, api_key=None, base_url=None, timeout_seconds=None) -> None:
-            del client, api_key, base_url
+        def __init__(self, client=None, api_key=None, base_url=None, timeout_seconds=None, reasoning_effort=None) -> None:
+            del client, api_key, base_url, reasoning_effort
             seen["timeout_seconds"] = timeout_seconds
 
     monkeypatch.setattr(services, "OpenAIResponsesProvider", FakeProvider)

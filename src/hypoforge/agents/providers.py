@@ -98,11 +98,13 @@ class OpenAIResponsesProvider:
         api_key: str | None = None,
         base_url: str | None = None,
         timeout_seconds: float | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
         self._client = client
         self._api_key = api_key
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
+        self._reasoning_effort = reasoning_effort
 
     def _client_or_default(self):
         if self._client is not None:
@@ -135,6 +137,8 @@ class OpenAIResponsesProvider:
             "input": json.dumps(context),
             "tools": [self._tool_schema(name) for name in tool_names],
         }
+        if self._reasoning_effort is not None:
+            request["reasoning"] = {"effort": self._reasoning_effort}
         if output_schema is not None:
             request["text"] = self._response_format(f"{model_name}_output", output_schema)
         response = client.responses.create(**request)
@@ -156,6 +160,8 @@ class OpenAIResponsesProvider:
             "tools": [self._tool_schema(name) for name in tool_names],
             "input": tool_outputs,
         }
+        if self._reasoning_effort is not None:
+            request["reasoning"] = {"effort": self._reasoning_effort}
         if output_schema is not None:
             request["text"] = self._response_format(f"{model_name}_output", output_schema)
         response = client.responses.create(**request)

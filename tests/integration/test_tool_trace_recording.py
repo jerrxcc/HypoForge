@@ -41,7 +41,7 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
             args=payload,
             result_summary={"count": 1},
             latency_ms=1,
-            model_name="gpt5.4-mini-high",
+            model_name="gpt-5.4-mini",
             success=True,
             input_tokens=trace_context["input_tokens"],
             output_tokens=trace_context["output_tokens"],
@@ -53,7 +53,7 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
         tool_invoker=invoke,
         output_model=RetrievalSummary,
         agent_name="retrieval",
-        model_name="gpt5.4-mini-high",
+        model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
