@@ -31,7 +31,7 @@ def test_repository_stores_tool_trace(tmp_path) -> None:
         args={"query": "crispr delivery lipid nanoparticles"},
         result_summary={"count": 4},
         latency_ms=120,
-        model_name="gpt-5.4",
+        model_name="gpt5.4-mini-high",
         success=True,
     )
 

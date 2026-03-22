@@ -170,19 +170,19 @@ class ValidationSettings(BaseSettings):
 
     # Model configuration for validators
     model_evidence_validator: str = Field(
-        default="gpt-5-mini",
+        default="gpt5.4-mini-high",
         description="Model for evidence validation",
     )
     model_conflict_detector: str = Field(
-        default="gpt-5.4",
+        default="gpt5.4-mini-high",
         description="Model for conflict detection",
     )
     model_quality_assessor: str = Field(
-        default="gpt-5.4",
+        default="gpt5.4-mini-high",
         description="Model for quality assessment",
     )
     model_feedback_synthesizer: str = Field(
-        default="gpt-5-mini",
+        default="gpt5.4-mini-high",
         description="Model for feedback synthesis",
     )
 
@@ -203,10 +203,10 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     openai_base_url: str = ""
-    openai_model_retrieval: str = "gpt-5.4"
-    openai_model_review: str = "gpt-5-mini"
-    openai_model_critic: str = "gpt-5.4"
-    openai_model_planner: str = "gpt-5.4"
+    openai_model_retrieval: str = "gpt5.4-mini-high"
+    openai_model_review: str = "gpt5.4-mini-high"
+    openai_model_critic: str = "gpt5.4-mini-high"
+    openai_model_planner: str = "gpt5.4-mini-high"
 
     openalex_api_key: str = ""
     semantic_scholar_api_key: str = ""
