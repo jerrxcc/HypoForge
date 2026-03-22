@@ -47,7 +47,7 @@ export function RerunPlannerButton({ runId, status }: RerunPlannerButtonProps) {
         <Button
           variant="outline"
           size="sm"
-          disabled={status !== 'done'}
+          disabled={status !== 'done' && status !== 'failed'}
         >
           {mutation.isPending ? (
             <Loader2 className="size-4 animate-spin" />

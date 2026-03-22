@@ -41,9 +41,8 @@ if TYPE_CHECKING:
 class RunCoordinator:
     """Orchestrates the four-stage hypothesis generation pipeline.
 
-    Stages: retrieval → review → critic → planner. Each stage can
-    degrade gracefully when the agent encounters an error, preserving
-    partial results so that downstream stages still have data to work with.
+    Stages: retrieval → review → critic → planner. Each stage either
+    completes successfully or fails — no degraded/partial fallback paths.
 
     With reflection enabled, the coordinator supports:
     - Quality evaluation after each stage
@@ -71,6 +70,7 @@ class RunCoordinator:
         stage_navigator: StageNavigator | None = None,
         validation_registry: ValidationAgentRegistry | None = None,
         validation_settings: ValidationSettings | None = None,
+        event_bus: Any | None = None,
     ) -> None:
         self._repository = repository
         self._retrieval_agent = retrieval_agent
@@ -83,6 +83,7 @@ class RunCoordinator:
         self._stage_navigator = stage_navigator
         self._validation_registry = validation_registry
         self._validation_settings = validation_settings or ValidationSettings()
+        self._event_bus = event_bus
         self._logger = logging.getLogger(__name__)
 
         # Agent mapping for dynamic dispatch
@@ -95,6 +96,46 @@ class RunCoordinator:
 
         # Feedback pools per run
         self._feedback_pools: dict[str, FeedbackPool] = {}
+
+    # ------------------------------------------------------------------
+    # Event helpers
+    # ------------------------------------------------------------------
+
+    def _emit(self, run_id: str, event: dict) -> None:
+        if self._event_bus is not None:
+            self._event_bus.publish(run_id, event)
+
+    def _emit_stage_start(self, run_id: str, stage_name: str, attempt: int) -> None:
+        self._emit(run_id, {
+            "type": "stage_start",
+            "stage_name": stage_name,
+            "attempt": attempt,
+        })
+
+    def _emit_stage_complete(self, run_id: str, stage_name: str, attempt: int, status: str) -> None:
+        self._emit(run_id, {
+            "type": "stage_complete",
+            "stage_name": stage_name,
+            "attempt": attempt,
+            "status": status,
+        })
+
+    def _emit_run_terminal(self, run_id: str, status: str, error: str | None = None) -> None:
+        event_type = "run_complete" if status == "done" else "run_error"
+        self._emit(run_id, {
+            "type": event_type,
+            "status": status,
+            "error": error,
+        })
+
+    def _get_attempt(self, run_id: str, stage_name: str) -> int:
+        if self._event_bus is not None:
+            return self._event_bus.record_stage_attempt(run_id, stage_name)
+        return self._repository.get_max_stage_attempts(run_id).get(stage_name, 0) + 1
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def run_topic(self, topic: str, constraints: RunConstraints | None = None) -> RunResult:
         run = self.launch_run(topic, constraints)
@@ -113,6 +154,10 @@ class RunCoordinator:
                 reflection_enabled=True,
             )
             self._repository.save_iteration_state(run_state.run_id, iteration_state)
+
+        if self._event_bus is not None:
+            seed = self._repository.get_max_stage_attempts(run_state.run_id)
+            self._event_bus.init_run(run_state.run_id, seed_attempts=seed)
 
         return run_state
 
@@ -155,7 +200,6 @@ class RunCoordinator:
                 reflection_enabled=True,
             )
 
-        stage_order: list[StageName] = ["retrieval", "review", "critic", "planner"]
         current_stage: StageName | None = "retrieval"
 
         try:
@@ -202,13 +246,15 @@ class RunCoordinator:
             # Save final iteration state
             self._repository.save_iteration_state(run_id, iteration_state)
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._emit_run_terminal(run_id, "done")
 
         except Exception as exc:
             self._repository.update_run_status(run_id, "failed", error_message=str(exc))
             self._render_partial_report(run_id)
             self._logger.exception("run failed", extra={"run_id": run_id})
+            self._emit_run_terminal(run_id, "failed", error=str(exc))
             if raise_on_failure:
-                raise RuntimeError(f"run failed: {run_id}") from exc
+                raise
 
         return self._repository.build_final_result(run_id)
 
@@ -232,7 +278,6 @@ class RunCoordinator:
             self._feedback_pools[run_id] = FeedbackPool(run_id=run_id)
 
         feedback_pool = self._feedback_pools[run_id]
-        stage_order: list[StageName] = ["retrieval", "review", "critic", "planner"]
         current_stage: StageName | None = "retrieval"
         total_backtracks = 0
 
@@ -292,13 +337,15 @@ class RunCoordinator:
             # Save final state
             self._repository.save_iteration_state(run_id, iteration_state)
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._emit_run_terminal(run_id, "done")
 
         except Exception as exc:
             self._repository.update_run_status(run_id, "failed", error_message=str(exc))
             self._render_partial_report(run_id)
             self._logger.exception("run failed with validation", extra={"run_id": run_id})
+            self._emit_run_terminal(run_id, "failed", error=str(exc))
             if raise_on_failure:
-                raise RuntimeError(f"run failed: {run_id}") from exc
+                raise
         finally:
             # Clean up feedback pool to prevent memory leak
             if run_id in self._feedback_pools:
@@ -321,8 +368,10 @@ class RunCoordinator:
             "critic": "criticizing",
             "planner": "planning",
         }
+        attempt = self._get_attempt(run_id, stage_name)
         self._repository.update_run_status(run_id, status_map[stage_name])
-        self._repository.start_stage(run_id, stage_name)
+        self._repository.start_stage(run_id, stage_name, attempt)
+        self._emit_stage_start(run_id, stage_name, attempt)
 
         self._logger.info(
             f"{stage_name} stage started (with validation)",
@@ -352,28 +401,14 @@ class RunCoordinator:
             else:
                 summary = agent_fn(run_id)
         except Exception as exc:
-            if stage_name == "review":
-                partial_review = self._build_partial_review_summary(run_id, str(exc))
-                if partial_review is not None:
-                    self._repository.finish_stage(
-                        run_id,
-                        stage_name,
-                        summary=partial_review.model_dump(),
-                        status="degraded",
-                        error_message=str(exc),
-                    )
-                    self._logger.warning(
-                        "review stage degraded (with validation)",
-                        extra={"run_id": run_id},
-                    )
-                    return partial_review
-            degraded_summary = self._create_degraded_summary(stage_name, str(exc))
             self._repository.finish_stage(
-                run_id, stage_name, summary=degraded_summary, status="degraded", error_message=str(exc)
+                run_id, stage_name, attempt=attempt, summary={}, status="failed", error_message=str(exc)
             )
+            self._emit_stage_complete(run_id, stage_name, attempt, "failed")
             raise
 
-        self._finish_stage(run_id, stage_name, summary)
+        self._finish_stage(run_id, stage_name, summary, attempt=attempt)
+        self._emit_stage_complete(run_id, stage_name, attempt, "completed")
         return summary
 
     async def _run_validation_agents(
@@ -409,15 +444,7 @@ class RunCoordinator:
                     f"Validation {validator.validation_type} failed: {exc}",
                     extra={"run_id": run_id, "stage": stage_name},
                 )
-                # Create degraded result
-                results.append(ValidationResult(
-                    valid=True,  # Don't block on validator failure
-                    score=0.5,
-                    issues=[],
-                    validation_type=validator.validation_type,
-                    validated_count=0,
-                    passed_count=0,
-                ))
+                raise
 
         return results
 
@@ -469,8 +496,10 @@ class RunCoordinator:
             "critic": "criticizing",
             "planner": "planning",
         }
+        attempt = self._get_attempt(run_id, stage_name)
         self._repository.update_run_status(run_id, status_map[stage_name])
-        self._repository.start_stage(run_id, stage_name)
+        self._repository.start_stage(run_id, stage_name, attempt)
+        self._emit_stage_start(run_id, stage_name, attempt)
 
         self._logger.info(
             f"{stage_name} stage started",
@@ -500,10 +529,10 @@ class RunCoordinator:
             else:
                 summary = agent_fn(run_id)
         except Exception as exc:
-            degraded_summary = self._create_degraded_summary(stage_name, str(exc))
             self._repository.finish_stage(
-                run_id, stage_name, summary=degraded_summary, status="degraded", error_message=str(exc)
+                run_id, stage_name, attempt=attempt, summary={}, status="failed", error_message=str(exc)
             )
+            self._emit_stage_complete(run_id, stage_name, attempt, "failed")
             raise
 
         # Evaluate quality
@@ -531,9 +560,41 @@ class RunCoordinator:
                 stage_iter_state.status = "max_iterations_reached"
 
         # Finish stage
-        self._finish_stage(run_id, stage_name, summary)
+        self._finish_stage(run_id, stage_name, summary, attempt=attempt)
+        self._emit_stage_complete(run_id, stage_name, attempt, "completed")
 
         return summary, stage_iter_state
+
+    def _run_linear_stage(
+        self,
+        run_id: str,
+        stage_name: StageName,
+        agent_fn: Callable,
+        *agent_args: object,
+    ) -> None:
+        """Execute a single stage in linear mode with proper fail-fast bookkeeping."""
+        status_map = {
+            "retrieval": "retrieving",
+            "review": "reviewing",
+            "critic": "criticizing",
+            "planner": "planning",
+        }
+        attempt = self._get_attempt(run_id, stage_name)
+        self._repository.update_run_status(run_id, status_map[stage_name])
+        self._repository.start_stage(run_id, stage_name, attempt)
+        self._emit_stage_start(run_id, stage_name, attempt)
+        self._logger.info(f"{stage_name} stage started", extra={"run_id": run_id})
+        try:
+            summary = agent_fn(*agent_args)
+        except Exception as exc:
+            self._repository.finish_stage(
+                run_id, stage_name, attempt=attempt,
+                summary={}, status="failed", error_message=str(exc),
+            )
+            self._emit_stage_complete(run_id, stage_name, attempt, "failed")
+            raise
+        self._finish_stage(run_id, stage_name, summary, attempt=attempt)
+        self._emit_stage_complete(run_id, stage_name, attempt, "completed")
 
     def _execute_linear(
         self,
@@ -544,81 +605,12 @@ class RunCoordinator:
         """Execute pipeline without reflection (original linear flow)."""
         run = self._repository.get_run(run_id)
         try:
-            self._repository.update_run_status(run.run_id, "retrieving")
-            self._repository.start_stage(run.run_id, "retrieval")
-            self._logger.info("retrieval stage started", extra={"run_id": run.run_id})
-            retrieval_summary = self._retrieval_agent(run.run_id, request.topic, request.constraints)
-            self._finish_stage(run.run_id, "retrieval", retrieval_summary)
-
-            self._repository.update_run_status(run.run_id, "reviewing")
-            self._repository.start_stage(run.run_id, "review")
-            self._logger.info("review stage started", extra={"run_id": run.run_id})
-            try:
-                review_summary = self._review_agent(run.run_id)
-                self._finish_stage(run.run_id, "review", review_summary)
-            except Exception as exc:
-                if not self._repository.load_evidence_cards(run.run_id):
-                    self._repository.finish_stage(
-                        run.run_id,
-                        "review",
-                        summary={},
-                        status="failed",
-                        error_message=str(exc),
-                    )
-                    raise
-                degraded_summary = {
-                    "evidence_cards_created": len(self._repository.load_evidence_cards(run.run_id)),
-                    "coverage_summary": "partial review results retained after stage degradation",
-                }
-                self._repository.finish_stage(
-                    run.run_id,
-                    "review",
-                    summary=degraded_summary,
-                    status="degraded",
-                    error_message=str(exc),
-                )
-                self._logger.warning("review stage degraded", extra={"run_id": run.run_id})
-
-            self._repository.update_run_status(run.run_id, "criticizing")
-            self._repository.start_stage(run.run_id, "critic")
-            self._logger.info("critic stage started", extra={"run_id": run.run_id})
-            try:
-                critic_summary = self._critic_agent(run.run_id)
-                self._finish_stage(run.run_id, "critic", critic_summary)
-            except Exception as exc:
-                self._repository.finish_stage(
-                    run.run_id,
-                    "critic",
-                    summary={},
-                    status="degraded",
-                    error_message=str(exc),
-                )
-                self._logger.warning("critic stage degraded", extra={"run_id": run.run_id})
-
-            self._repository.update_run_status(run.run_id, "planning")
-            self._repository.start_stage(run.run_id, "planner")
-            self._logger.info("planner stage started", extra={"run_id": run.run_id})
-            try:
-                planner_summary = self._planner_agent(run.run_id)
-                self._finish_stage(run.run_id, "planner", planner_summary)
-            except Exception as exc:
-                self._repository.finish_stage(
-                    run.run_id,
-                    "planner",
-                    summary={},
-                    status="degraded",
-                    error_message=str(exc),
-                )
-                self._logger.warning("planner stage degraded", extra={"run_id": run.run_id})
-                self._render_partial_report(run.run_id)
-                self._repository.update_run_status(
-                    run.run_id,
-                    "failed",
-                    error_message="planner unavailable",
-                )
-                return self._repository.build_final_result(run.run_id)
-
+            self._run_linear_stage(run.run_id, "retrieval", self._retrieval_agent, run.run_id, request.topic, request.constraints)
+            self._run_linear_stage(run.run_id, "review", self._review_agent, run.run_id)
+            self._run_linear_stage(run.run_id, "critic", self._critic_agent, run.run_id)
+            self._run_linear_stage(run.run_id, "planner", self._planner_agent, run.run_id)
             self._repository.update_run_status(run.run_id, "done", error_message=None)
+            self._emit_run_terminal(run.run_id, "done")
         except Exception as exc:
             self._repository.update_run_status(
                 run.run_id,
@@ -627,8 +619,9 @@ class RunCoordinator:
             )
             self._render_partial_report(run.run_id)
             self._logger.exception("run failed", extra={"run_id": run.run_id})
+            self._emit_run_terminal(run.run_id, "failed", error=str(exc))
             if raise_on_failure:
-                raise RuntimeError(f"run failed: {run.run_id}") from exc
+                raise
         return self._repository.build_final_result(run.run_id)
 
     def get_run_result(self, run_id: str) -> RunResult:
@@ -666,28 +659,40 @@ class RunCoordinator:
         if not self._repository.load_evidence_cards(run_id):
             raise RuntimeError(f"planner rerun requires evidence cards: {run_id}")
 
+        if self._event_bus is not None:
+            seed = self._repository.get_max_stage_attempts(run_id)
+            self._event_bus.init_rerun_planner(run_id, seed_attempts=seed)
+
+        attempt = self._get_attempt(run_id, "planner")
         self._repository.update_run_status(run_id, "planning", error_message=None)
-        self._repository.start_stage(run_id, "planner")
+        self._repository.start_stage(run_id, "planner", attempt)
+        self._emit_stage_start(run_id, "planner", attempt)
         self._logger.info("planner rerun started", extra={"run_id": run_id})
         try:
             planner_summary = self._planner_agent(run_id)
-            self._finish_stage(run_id, "planner", planner_summary)
+            self._finish_stage(run_id, "planner", planner_summary, attempt=attempt)
+            self._emit_stage_complete(run_id, "planner", attempt, "completed")
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._emit_run_terminal(run_id, "done")
         except Exception as exc:
             self._repository.finish_stage(
                 run_id,
                 "planner",
+                attempt=attempt,
                 summary={},
-                status="degraded",
+                status="failed",
                 error_message=str(exc),
             )
+            self._emit_stage_complete(run_id, "planner", attempt, "failed")
             self._repository.update_run_status(
                 run_id,
                 "failed",
-                error_message="planner unavailable",
+                error_message=str(exc),
             )
             self._render_partial_report(run_id)
-            self._logger.warning("planner rerun degraded", extra={"run_id": run_id})
+            self._emit_run_terminal(run_id, "failed", error=str(exc))
+            self._logger.warning("planner rerun failed", extra={"run_id": run_id})
+            raise
         return self._repository.build_final_result(run_id)
 
     def _render_partial_report(self, run_id: str) -> None:
@@ -701,37 +706,22 @@ class RunCoordinator:
         run_id: str,
         stage_name: str,
         summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
+        *,
+        attempt: int = 1,
     ) -> None:
         payload = summary.model_dump()
         self._repository.finish_stage(
             run_id,
             stage_name,
+            attempt=attempt,
             summary=payload,
-            status=self._stage_status(summary),
+            status="completed",
         )
         self._logger.info(
             "%s stage completed",
             stage_name,
             extra={"run_id": run_id, "summary": payload},
         )
-
-    def _stage_status(
-        self,
-        summary: RetrievalSummary | ReviewSummary | CriticSummary | PlannerSummary,
-    ) -> StageStatus:
-        if isinstance(summary, RetrievalSummary):
-            if summary.coverage_assessment == "low":
-                return "degraded"
-        if isinstance(summary, ReviewSummary):
-            if summary.failed_paper_ids:
-                return "degraded"
-        if isinstance(summary, CriticSummary):
-            if any("budget exceeded" in note for note in summary.critic_notes):
-                return "degraded"
-        if isinstance(summary, PlannerSummary):
-            if any("budget exceeded" in note for note in summary.planner_notes):
-                return "degraded"
-        return "completed"
 
     def _get_next_stage(self, current_stage: StageName) -> StageName | None:
         """Get the next stage in the pipeline."""
@@ -743,61 +733,3 @@ class RunCoordinator:
         except ValueError:
             pass
         return None
-
-    def _create_degraded_summary(
-        self,
-        stage_name: StageName,
-        error_message: str,
-    ) -> dict:
-        """Create a degraded summary for a failed stage."""
-        if stage_name == "retrieval":
-            return {
-                "canonical_topic": "",
-                "query_variants_used": [],
-                "search_notes": [f"Stage degraded: {error_message}"],
-                "selected_paper_ids": [],
-                "excluded_paper_ids": [],
-                "coverage_assessment": "low",
-                "needs_broader_search": True,
-            }
-        elif stage_name == "review":
-            return {
-                "papers_processed": 0,
-                "evidence_cards_created": 0,
-                "coverage_summary": f"Stage degraded: {error_message}",
-                "dominant_axes": [],
-                "low_confidence_paper_ids": [],
-                "failed_paper_ids": [],
-            }
-        elif stage_name == "critic":
-            return {
-                "clusters_created": 0,
-                "top_axes": [],
-                "critic_notes": [f"Stage degraded: {error_message}"],
-            }
-        elif stage_name == "planner":
-            return {
-                "hypotheses_created": 0,
-                "report_rendered": False,
-                "top_axes": [],
-                "planner_notes": [f"Stage degraded: {error_message}"],
-            }
-        return {}
-
-    def _build_partial_review_summary(
-        self,
-        run_id: str,
-        error_message: str,
-    ) -> ReviewSummary | None:
-        evidence_cards = self._repository.load_evidence_cards(run_id)
-        if not evidence_cards:
-            return None
-        papers_processed = len({card.paper_id for card in evidence_cards})
-        return ReviewSummary(
-            papers_processed=papers_processed,
-            evidence_cards_created=len(evidence_cards),
-            coverage_summary="partial review results retained after stage degradation",
-            dominant_axes=[],
-            low_confidence_paper_ids=[],
-            failed_paper_ids=[],
-        )

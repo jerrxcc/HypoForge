@@ -28,6 +28,7 @@ def test_repository_stores_tool_trace(tmp_path) -> None:
         run_id=run.run_id,
         agent_name="retrieval",
         tool_name="search_openalex_works",
+        stage_name="retrieval",
         args={"query": "crispr delivery lipid nanoparticles"},
         result_summary={"count": 4},
         latency_ms=120,

@@ -112,11 +112,12 @@ class HypothesisRow(Base):
 
 class StageSummaryRow(Base):
     __tablename__ = "stage_summaries"
-    __table_args__ = (UniqueConstraint("run_id", "stage_name", name="uq_stage_summary_run_stage"),)
+    __table_args__ = (UniqueConstraint("run_id", "stage_name", "attempt", name="uq_stage_summary_run_stage_attempt"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=default_id)
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), nullable=False)
     stage_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     summary_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -137,6 +138,8 @@ class ToolTraceRow(Base):
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), nullable=False)
     agent_name: Mapped[str] = mapped_column(String(64), nullable=False)
     tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    stage_name: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     args_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     result_summary_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Circle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, XCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STAGES } from '@/lib/constants';
 import type { RunStatus, StageSummary, StageName, StageStatus } from '@/types';
@@ -13,19 +13,22 @@ const STATUS_TO_ACTIVE_STAGE: Partial<Record<RunStatus, StageName>> = {
   planning: 'planner',
 };
 
-type VisualState = 'completed' | 'active' | 'pending' | 'failed' | 'degraded' | 'reflecting';
+type VisualState = 'completed' | 'active' | 'pending' | 'failed' | 'reflecting';
 
 function deriveVisualState(
   stageId: StageName,
   runStatus: RunStatus,
   stageSummaries: readonly StageSummary[],
 ): VisualState {
-  const summary = stageSummaries.find((s) => s.stage_name === stageId);
+  // Find the latest attempt for this stage
+  const summariesForStage = stageSummaries.filter((s) => s.stage_name === stageId);
+  const summary = summariesForStage.length > 0
+    ? summariesForStage.reduce((a, b) => (a.attempt >= b.attempt ? a : b))
+    : undefined;
 
   if (summary) {
     const map: Record<StageStatus, VisualState> = {
       completed: 'completed',
-      degraded: 'degraded',
       failed: 'failed',
       started: 'active',
     };
@@ -38,11 +41,10 @@ function deriveVisualState(
     return 'active';
   }
 
-  // If reflecting, find the last active stage (latest summary that is 'started' or check run status context)
+  // If reflecting, find the last active stage
   if (runStatus === 'reflecting') {
-    // The reflecting stage is the one most recently started or the one after the last completed
     const completedIndices = stageSummaries
-      .filter((s) => s.status === 'completed' || s.status === 'degraded')
+      .filter((s) => s.status === 'completed')
       .map((s) => STAGES.findIndex((st) => st.id === s.stage_name));
     const maxCompleted = completedIndices.length > 0 ? Math.max(...completedIndices) : -1;
     const stageIndex = STAGES.findIndex((st) => st.id === stageId);
@@ -65,8 +67,6 @@ function StageIcon({ state }: { readonly state: VisualState }) {
       return <Loader2 aria-hidden="true" className="size-6 animate-spin text-primary" />;
     case 'failed':
       return <XCircle aria-hidden="true" className="size-6 text-destructive" />;
-    case 'degraded':
-      return <AlertTriangle aria-hidden="true" className="size-6 text-warning" />;
     case 'pending':
     default:
       return <Circle aria-hidden="true" className="size-6 text-muted-foreground/40" />;
@@ -83,7 +83,6 @@ const STATE_LABEL: Record<VisualState, string> = {
   active: 'in progress',
   reflecting: 'reflecting',
   failed: 'failed',
-  degraded: 'completed with issues',
   pending: 'pending',
 };
 
@@ -93,8 +92,7 @@ export function StageProgress({ status, stageSummaries }: StageProgressProps) {
       {STAGES.map((stage, index) => {
         const visualState = deriveVisualState(stage.id, status, stageSummaries);
         const isLast = index === STAGES.length - 1;
-        const lineCompleted =
-          visualState === 'completed' || visualState === 'degraded';
+        const lineCompleted = visualState === 'completed';
 
         return (
           <li key={stage.id} className="flex flex-1 items-start" aria-label={`${stage.label}: ${STATE_LABEL[visualState]}`}>

@@ -250,42 +250,61 @@ class RunRepository:
         latency_ms: int,
         model_name: str,
         success: bool,
+        stage_name: str = "unknown",
+        attempt: int = 1,
         input_tokens: int | None = None,
         output_tokens: int | None = None,
         error_message: str | None = None,
-    ) -> None:
+        on_recorded: object | None = None,
+    ) -> str:
         with self._session_factory() as session:
             self._require_run(session, run_id)
-            session.add(
-                ToolTraceRow(
-                    run_id=run_id,
-                    agent_name=agent_name,
-                    tool_name=tool_name,
-                    args_json=args,
-                    result_summary_json=result_summary,
-                    latency_ms=latency_ms,
-                    model_name=model_name,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    success=success,
-                    error_message=error_message,
-                )
+            row = ToolTraceRow(
+                run_id=run_id,
+                agent_name=agent_name,
+                tool_name=tool_name,
+                stage_name=stage_name,
+                attempt=attempt,
+                args_json=args,
+                result_summary_json=result_summary,
+                latency_ms=latency_ms,
+                model_name=model_name,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                success=success,
+                error_message=error_message,
             )
+            session.add(row)
             session.commit()
+            trace_id = row.id
+            if on_recorded is not None and callable(on_recorded):
+                on_recorded({
+                    "id": trace_id,
+                    "agent_name": agent_name,
+                    "tool_name": tool_name,
+                    "stage_name": stage_name,
+                    "attempt": attempt,
+                    "latency_ms": latency_ms,
+                    "success": success,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                })
+            return trace_id
 
-    def start_stage(self, run_id: str, stage_name: StageName) -> None:
+    def start_stage(self, run_id: str, stage_name: StageName, attempt: int = 1) -> None:
         with self._session_factory() as session:
             self._require_run(session, run_id)
             row = session.execute(
                 select(StageSummaryRow).where(
                     StageSummaryRow.run_id == run_id,
                     StageSummaryRow.stage_name == stage_name,
+                    StageSummaryRow.attempt == attempt,
                 )
             ).scalar_one_or_none()
             if row is None:
                 row = StageSummaryRow(
                     run_id=run_id,
                     stage_name=stage_name,
+                    attempt=attempt,
                     status="started",
                     summary_json={},
                     started_at=utcnow(),
@@ -304,6 +323,7 @@ class RunRepository:
         run_id: str,
         stage_name: StageName,
         *,
+        attempt: int = 1,
         summary: dict,
         status: StageStatus = "completed",
         error_message: str | None = None,
@@ -314,12 +334,14 @@ class RunRepository:
                 select(StageSummaryRow).where(
                     StageSummaryRow.run_id == run_id,
                     StageSummaryRow.stage_name == stage_name,
+                    StageSummaryRow.attempt == attempt,
                 )
             ).scalar_one_or_none()
             if row is None:
                 row = StageSummaryRow(
                     run_id=run_id,
                     stage_name=stage_name,
+                    attempt=attempt,
                     status=status,
                     summary_json=summary,
                     error_message=error_message,
@@ -335,7 +357,21 @@ class RunRepository:
                 row.completed_at = utcnow()
             session.commit()
 
+    def get_max_stage_attempts(self, run_id: str) -> dict[str, int]:
+        """Return {stage_name: max_attempt} for event_bus initialization."""
+        with self._session_factory() as session:
+            rows = session.execute(
+                select(
+                    StageSummaryRow.stage_name,
+                    func.max(StageSummaryRow.attempt),
+                )
+                .where(StageSummaryRow.run_id == run_id)
+                .group_by(StageSummaryRow.stage_name)
+            ).all()
+            return {stage_name: max_attempt for stage_name, max_attempt in rows}
+
     def list_stage_summaries(self, run_id: str) -> list[StageSummary]:
+        """Return all stage summaries (all attempts) ordered by creation time."""
         with self._session_factory() as session:
             rows = session.execute(
                 select(StageSummaryRow)
@@ -346,6 +382,7 @@ class RunRepository:
                 StageSummary(
                     stage_name=row.stage_name,
                     status=row.status,
+                    attempt=row.attempt,
                     summary=row.summary_json,
                     error_message=row.error_message,
                     started_at=row.started_at,
@@ -353,6 +390,17 @@ class RunRepository:
                 )
                 for row in rows
             ]
+
+    def list_latest_stage_summaries(self, run_id: str) -> list[StageSummary]:
+        """Return only the latest attempt per stage, ordered by pipeline stage."""
+        all_summaries = self.list_stage_summaries(run_id)
+        latest: dict[str, StageSummary] = {}
+        for s in all_summaries:
+            existing = latest.get(s.stage_name)
+            if existing is None or s.attempt > existing.attempt:
+                latest[s.stage_name] = s
+        stage_order = ["retrieval", "review", "critic", "planner"]
+        return [latest[name] for name in stage_order if name in latest]
 
     def list_tool_traces(self, run_id: str) -> list[dict]:
         with self._session_factory() as session:
@@ -366,6 +414,8 @@ class RunRepository:
                     "id": row.id,
                     "agent_name": row.agent_name,
                     "tool_name": row.tool_name,
+                    "stage_name": row.stage_name,
+                    "attempt": row.attempt,
                     "args": row.args_json,
                     "result_summary": row.result_summary_json,
                     "latency_ms": row.latency_ms,
@@ -375,6 +425,7 @@ class RunRepository:
                     "request_id": (row.result_summary_json or {}).get("request_id"),
                     "success": row.success,
                     "error_message": row.error_message,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
                 }
                 for row in rows
             ]
@@ -385,13 +436,14 @@ class RunRepository:
             run_id=run.run_id,
             topic=run.topic,
             status=run.status,
+            error_message=run.error_message,
             selected_papers=self.load_selected_papers(run_id),
             evidence_cards=self.load_evidence_cards(run_id),
             conflict_clusters=self.load_conflict_clusters(run_id),
             hypotheses=self.load_hypotheses(run_id),
             report_markdown=run.final_report_md,
             trace_url=f"/v1/runs/{run_id}/trace",
-            stage_summaries=self.list_stage_summaries(run_id),
+            stage_summaries=self.list_latest_stage_summaries(run_id),
         )
 
     def _require_run(self, session: Session, run_id: str) -> RunRow:

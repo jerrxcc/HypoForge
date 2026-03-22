@@ -38,6 +38,7 @@ def test_tool_trace_is_recorded_for_default_style_invoker(tmp_path) -> None:
             run_id=run.run_id,
             agent_name="retrieval",
             tool_name=tool_name,
+            stage_name="retrieval",
             args=payload,
             result_summary={"count": 1},
             latency_ms=1,

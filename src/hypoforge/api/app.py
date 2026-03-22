@@ -11,6 +11,12 @@ def create_app(
     services: ServiceContainer | None = None,
     settings: Settings | None = None,
 ) -> FastAPI:
+    """Create the FastAPI application.
+
+    NOTE: EventBus is process-local. SSE requires ``--workers 1``
+    (the uvicorn default). Multi-worker deployments will lose SSE
+    events for subscribers connected to a different worker.
+    """
     settings = settings or Settings()
     app = FastAPI(title="HypoForge", version="0.1.0")
     app.add_middleware(

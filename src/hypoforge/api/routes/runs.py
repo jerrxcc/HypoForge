@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import time
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from fastapi.responses import PlainTextResponse
+from starlette.responses import StreamingResponse
 
 from hypoforge.api.schemas import (
     RunLaunchResponseBody,
@@ -23,7 +28,10 @@ def list_runs(request: Request) -> list[RunSummaryBody]:
 @router.post("", response_model=RunResponseBody)
 def create_run(request_body: RunRequestBody, request: Request) -> RunResponseBody:
     coordinator = request.app.state.services.coordinator
-    result = coordinator.run_topic(request_body.topic, request_body.constraints)
+    try:
+        result = coordinator.run_topic(request_body.topic, request_body.constraints)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return RunResponseBody(**result.model_dump())
 
 
@@ -75,3 +83,61 @@ def rerun_planner(run_id: str, request: Request) -> RunResponseBody:
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return RunResponseBody(**result.model_dump())
+
+
+@router.get("/{run_id}/events")
+async def stream_events(run_id: str, request: Request) -> StreamingResponse:
+    """SSE endpoint for real-time run activity.
+
+    Returns a Server-Sent Events stream with named events:
+    - snapshot: initial state on connect
+    - stage_start / stage_complete
+    - tool_start / tool_complete
+    - run_complete / run_error
+    - keepalive (comment-only, every 15s)
+    """
+    event_bus = request.app.state.services.event_bus
+    if event_bus is None:
+        raise HTTPException(status_code=501, detail="SSE not available (event bus not configured)")
+
+    # Verify run exists
+    coordinator = request.app.state.services.coordinator
+    try:
+        coordinator.get_run_result(run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    queue = event_bus.subscribe(run_id)
+
+    async def event_generator():
+        try:
+            while True:
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    # Send keepalive comment
+                    yield ": keepalive\n\n"
+                    continue
+
+                event_type = event.get("type", "message")
+                data = json.dumps(event, default=str)
+                yield f"event: {event_type}\ndata: {data}\n\n"
+
+                # Terminal events — close stream
+                if event_type in ("run_complete", "run_error"):
+                    break
+        finally:
+            event_bus.unsubscribe(run_id, queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

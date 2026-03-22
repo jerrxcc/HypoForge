@@ -4,17 +4,12 @@ import { RunStatusBadge } from '@/components/run/run-status-badge';
 import { formatDate, cn } from '@/lib/utils';
 import type { RunSummary } from '@/types';
 
+const RUNNING_STATUSES = new Set(['retrieving', 'reviewing', 'criticizing', 'planning', 'reflecting']);
+
 function statusAccent(status: string): string {
-  switch (status) {
-    case 'failed':
-      return 'border-l-2 border-l-destructive';
-    case 'running':
-      return 'border-l-2 border-l-primary';
-    case 'degraded':
-      return 'border-l-2 border-l-warning';
-    default:
-      return '';
-  }
+  if (status === 'failed') return 'border-l-2 border-l-destructive';
+  if (RUNNING_STATUSES.has(status)) return 'border-l-2 border-l-primary';
+  return '';
 }
 
 interface RunCardProps {

@@ -15,5 +15,8 @@ def create_sqlite_engine(database_url: str) -> Engine:
 def create_session_factory(database_url: str) -> sessionmaker[Session]:
     engine = create_sqlite_engine(database_url)
     Base.metadata.create_all(engine)
+    # Run incremental migrations for existing databases
+    from hypoforge.infrastructure.db.migrations import run_all_migrations
+    with Session(engine) as session:
+        run_all_migrations(session)
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-

@@ -8,7 +8,7 @@ export type RunStatus =
   | 'done'
   | 'failed';
 
-export type StageStatus = 'started' | 'completed' | 'degraded' | 'failed';
+export type StageStatus = 'started' | 'completed' | 'failed';
 
 export type StageName = 'retrieval' | 'review' | 'critic' | 'planner';
 
@@ -46,6 +46,7 @@ export interface RunConstraints {
 export interface StageSummary {
   stage_name: StageName;
   status: StageStatus;
+  attempt: number;
   summary: Record<string, unknown>;
   error_message: string | null;
   started_at: string | null;
@@ -151,6 +152,7 @@ export interface RunResult {
   run_id: string;
   topic: string;
   status: RunStatus;
+  error_message: string | null;
   selected_papers: PaperDetail[];
   evidence_cards: EvidenceCard[];
   conflict_clusters: ConflictCluster[];
@@ -164,6 +166,8 @@ export interface ToolTrace {
   id: string;
   agent_name: string;
   tool_name: string;
+  stage_name: string;
+  attempt: number;
   args: Record<string, unknown>;
   result_summary: Record<string, unknown>;
   latency_ms: number;
@@ -173,4 +177,45 @@ export interface ToolTrace {
   request_id: string | null;
   success: boolean;
   error_message: string | null;
+  created_at: string | null;
 }
+
+/** SSE event types */
+export interface RunEventBase {
+  type: string;
+  seq: number;
+  timestamp: number;
+}
+
+export interface SnapshotEvent extends RunEventBase {
+  type: 'snapshot';
+  current_activity: Record<string, unknown> | null;
+  stage_attempts: Record<string, number>;
+}
+
+export interface StageEvent extends RunEventBase {
+  type: 'stage_start' | 'stage_complete';
+  stage_name: string;
+  attempt: number;
+  status?: string;
+}
+
+export interface ToolEvent extends RunEventBase {
+  type: 'tool_start' | 'tool_complete';
+  stage_name: string;
+  attempt: number;
+  agent_name: string;
+  tool_name: string;
+  trace_id?: string;
+  latency_ms?: number;
+  success?: boolean;
+  error?: string;
+}
+
+export interface RunTerminalEvent extends RunEventBase {
+  type: 'run_complete' | 'run_error';
+  status: string;
+  error?: string;
+}
+
+export type RunEvent = SnapshotEvent | StageEvent | ToolEvent | RunTerminalEvent;

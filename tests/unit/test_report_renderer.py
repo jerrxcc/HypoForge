@@ -29,7 +29,7 @@ def _hypothesis(rank: int) -> Hypothesis:
             failure_interpretation="Failure",
         ),
         limitations=["Low-evidence literature set"],
-        uncertainty_notes=["Critic stage degraded"],
+        uncertainty_notes=["Evidence pool is small"],
         risks=["Coverage may be incomplete"],
         novelty_score=0.7,
         feasibility_score=0.8,
@@ -50,7 +50,7 @@ def test_report_renderer_contains_three_hypotheses() -> None:
 
     assert markdown.count("## Hypothesis") == 3
     assert "- Limitations: Low-evidence literature set" in markdown
-    assert "- Uncertainty: Critic stage degraded" in markdown
+    assert "- Uncertainty: Evidence pool is small" in markdown
 
 
 def test_report_renderer_outputs_briefing_sections() -> None:

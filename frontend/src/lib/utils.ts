@@ -46,12 +46,12 @@ export function truncate(str: string, maxLength: number): string {
   return `${str.slice(0, maxLength - 1)}…`;
 }
 
-type RunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'degraded';
+type RunStatusForColor = 'pending' | 'running' | 'completed' | 'failed';
 
 /**
  * Return a Tailwind text-color class appropriate for a run status.
  */
-export function getStatusColor(status: RunStatus): string {
+export function getStatusColor(status: RunStatusForColor): string {
   switch (status) {
     case 'completed':
       return 'text-success';
@@ -61,8 +61,6 @@ export function getStatusColor(status: RunStatus): string {
       return 'text-muted-foreground';
     case 'failed':
       return 'text-destructive';
-    case 'degraded':
-      return 'text-warning';
     default:
       return 'text-muted-foreground';
   }

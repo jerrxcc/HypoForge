@@ -114,4 +114,9 @@ export const api = {
       method: 'POST',
     });
   },
+
+  /** Build the SSE events URL for a run */
+  getEventsUrl(runId: string): string {
+    return `${API_BASE_URL}/v1/runs/${runId}/events`;
+  },
 };

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from hashlib import sha256
 import logging
@@ -14,13 +13,12 @@ from hypoforge.agents.reflection import ReflectionAgent
 from hypoforge.agents.providers import OpenAIResponsesProvider
 from hypoforge.agents.runner import AgentRunner
 from hypoforge.agents.validation_base import ValidationAgentRegistry
-from hypoforge.application.budget import RunBudgetTracker, ToolStepBudgetExceededError
+from hypoforge.application.budget import RunBudgetTracker
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.application.stage_graph import StageNavigator
 from hypoforge.config import ReflectionSettings, Settings, ValidationSettings
 from hypoforge.domain.schemas import (
-    ConflictCluster,
     CriticSummary,
     EvidenceCard,
     Hypothesis,
@@ -29,6 +27,7 @@ from hypoforge.domain.schemas import (
     PlannerSummary,
     RetrievalSummary,
     ReviewSummary,
+    ConflictCluster,
 )
 from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector
 from hypoforge.infrastructure.connectors.openalex import OpenAlexConnector
@@ -37,8 +36,7 @@ from hypoforge.infrastructure.connectors.cached import (
     CachedOpenAlexConnector,
     CachedSemanticScholarConnector,
 )
-from hypoforge.infrastructure.connectors.dedupe import dedupe_papers, merge_paper_details, paper_identity_key
-from hypoforge.infrastructure.connectors.ranking import rank_papers
+from hypoforge.infrastructure.connectors.dedupe import merge_paper_details, paper_identity_key
 from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
 from hypoforge.infrastructure.db.repository import RunRepository
@@ -50,6 +48,7 @@ from hypoforge.tools.workspace_tools import WorkspaceTools
 @dataclass
 class ServiceContainer:
     coordinator: RunCoordinator
+    event_bus: object | None = None
 
 
 def build_default_services(settings: Settings | None = None) -> ServiceContainer:
@@ -90,6 +89,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         agent_name: str,
         model_name: str,
         *,
+        stage_name: str = "unknown",
         selected_paper_ids: list[str] | None = None,
         append_evidence_cards: bool = False,
     ):
@@ -182,99 +182,117 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             )
 
         def invoke(tool_name: str, payload: dict, trace_context: dict):
+            attempt = 1
+            if event_bus is not None:
+                attempt = event_bus.get_attempt(run_id, stage_name)
+                event_bus.publish(run_id, {
+                    "type": "tool_start",
+                    "stage_name": stage_name,
+                    "attempt": attempt,
+                    "agent_name": agent_name,
+                    "tool_name": tool_name,
+                })
             started_at = perf_counter()
             try:
                 result = registry[tool_name](payload)
                 summary = _summarize_tool_result(result)
                 if trace_context.get("request_id"):
                     summary["request_id"] = trace_context["request_id"]
+                latency_ms = max(1, int((perf_counter() - started_at) * 1000))
+
+                def on_recorded(trace_dict: dict) -> None:
+                    if event_bus is not None:
+                        event_bus.publish(run_id, {
+                            "type": "tool_complete",
+                            "stage_name": stage_name,
+                            "attempt": attempt,
+                            "agent_name": agent_name,
+                            "tool_name": tool_name,
+                            "trace_id": trace_dict["id"],
+                            "latency_ms": latency_ms,
+                            "success": True,
+                        })
+
                 repository.record_tool_trace(
                     run_id=run_id,
                     agent_name=agent_name,
                     tool_name=tool_name,
+                    stage_name=stage_name,
+                    attempt=attempt,
                     args=payload,
                     result_summary=summary,
-                    latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
+                    latency_ms=latency_ms,
                     model_name=model_name,
                     success=True,
                     input_tokens=trace_context.get("input_tokens"),
                     output_tokens=trace_context.get("output_tokens"),
+                    on_recorded=on_recorded,
                 )
                 return result
             except Exception as exc:
+                latency_ms = max(1, int((perf_counter() - started_at) * 1000))
                 repository.record_tool_trace(
                     run_id=run_id,
                     agent_name=agent_name,
                     tool_name=tool_name,
+                    stage_name=stage_name,
+                    attempt=attempt,
                     args=payload,
                     result_summary={"error": type(exc).__name__},
-                    latency_ms=max(1, int((perf_counter() - started_at) * 1000)),
+                    latency_ms=latency_ms,
                     model_name=model_name,
                     success=False,
                     input_tokens=trace_context.get("input_tokens"),
                     output_tokens=trace_context.get("output_tokens"),
                     error_message=str(exc),
                 )
+                if event_bus is not None:
+                    event_bus.publish(run_id, {
+                        "type": "tool_complete",
+                        "stage_name": stage_name,
+                        "attempt": attempt,
+                        "agent_name": agent_name,
+                        "tool_name": tool_name,
+                        "latency_ms": latency_ms,
+                        "success": False,
+                        "error": str(exc),
+                    })
                 raise
 
         return invoke
 
     def retrieval_agent(run_id: str, topic: str, constraints) -> RetrievalSummary:
-        def execute_attempt(
-            attempt_constraints: RunConstraints,
-            broadened: bool,
-        ) -> tuple[RetrievalSummary, int]:
-            runner = AgentRunner(
-                provider=provider,
-                tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval),
-                output_model=RetrievalSummary,
-                agent_name="retrieval",
-                model_name=settings.openai_model_retrieval,
-                max_tool_steps=settings.max_tool_steps_retrieval,
-                repair_output=_repair_retrieval_output,
-            )
-            retrieval_tool_names = [
-                "search_openalex_works",
-                "search_semantic_scholar_papers",
-                "recommend_semantic_scholar_papers",
-                "get_paper_details",
-                "save_selected_papers",
-            ]
-            if alphaxiv_enabled:
-                retrieval_tool_names.extend(
-                    [
-                        "search_alphaxiv_embedding_similarity",
-                        "search_alphaxiv_full_text_papers",
-                        "search_alphaxiv_agentic_paper_retrieval",
-                    ]
-                )
-            summary = runner.execute(
-                instructions=prompt_for("retrieval"),
-                context={
-                    "topic": topic,
-                    "constraints": attempt_constraints.model_dump(),
-                    "retrieval_mode": "broadened" if broadened else "default",
-                },
-                tool_names=retrieval_tool_names,
-            )
-            return summary, len(repository.load_selected_papers(run_id))
-
-        summary = _run_retrieval_with_recovery(
-            topic=topic,
-            constraints=constraints,
-            execute_attempt=execute_attempt,
-            on_tool_step_budget_exceeded=lambda: _build_retrieval_budget_summary(
-                topic=topic,
-                constraints=constraints,
-                selected_paper_ids=[paper.paper_id for paper in repository.load_selected_papers(run_id)],
-            ),
+        runner = AgentRunner(
+            provider=provider,
+            tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval, stage_name="retrieval"),
+            output_model=RetrievalSummary,
+            agent_name="retrieval",
+            model_name=settings.openai_model_retrieval,
+            max_tool_steps=settings.max_tool_steps_retrieval,
+            repair_output=_repair_retrieval_output,
         )
-        return _supplement_selected_papers_from_candidates(
-            repository=repository,
-            run_id=run_id,
-            summary=summary,
-            candidate_pool=candidate_pools.get(run_id, {}),
-            max_selected_papers=constraints.max_selected_papers,
+        retrieval_tool_names = [
+            "search_openalex_works",
+            "search_semantic_scholar_papers",
+            "recommend_semantic_scholar_papers",
+            "get_paper_details",
+            "save_selected_papers",
+        ]
+        if alphaxiv_enabled:
+            retrieval_tool_names.extend(
+                [
+                    "search_alphaxiv_embedding_similarity",
+                    "search_alphaxiv_full_text_papers",
+                    "search_alphaxiv_agentic_paper_retrieval",
+                ]
+            )
+        return runner.execute(
+            instructions=prompt_for("retrieval"),
+            context={
+                "topic": topic,
+                "constraints": constraints.model_dump(),
+            },
+            tool_names=retrieval_tool_names,
         )
 
     def review_agent(run_id: str) -> ReviewSummary:
@@ -293,6 +311,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     run_id=run_id,
                     agent_name="review",
                     tool_name="evidence_extraction_cache_hit",
+                    stage_name="review",
                     args={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
                     result_summary={
                         "cache_hit": True,
@@ -321,6 +340,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     run_id,
                     "review",
                     settings.openai_model_review,
+                    stage_name="review",
                     selected_paper_ids=[paper.paper_id for paper in batch],
                     append_evidence_cards=True,
                 ),
@@ -362,53 +382,43 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     def critic_agent(run_id: str) -> CriticSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "critic", settings.openai_model_critic),
+            tool_invoker=make_tool_invoker(run_id, "critic", settings.openai_model_critic, stage_name="critic"),
             output_model=CriticSummary,
             agent_name="critic",
             model_name=settings.openai_model_critic,
             max_tool_steps=settings.max_tool_steps_critic,
             repair_output=_repair_critic_output,
         )
-        try:
-            return runner.execute(
-                instructions=prompt_for("critic"),
-                context={"run_id": run_id},
-                tool_names=["load_evidence_cards", "save_conflict_clusters"],
-            )
-        except ToolStepBudgetExceededError:
-            return _build_critic_budget_summary(repository.load_conflict_clusters(run_id))
+        return runner.execute(
+            instructions=prompt_for("critic"),
+            context={"run_id": run_id},
+            tool_names=["load_evidence_cards", "save_conflict_clusters"],
+        )
 
     def planner_agent(run_id: str) -> PlannerSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "planner", settings.openai_model_planner),
+            tool_invoker=make_tool_invoker(run_id, "planner", settings.openai_model_planner, stage_name="planner"),
             output_model=PlannerSummary,
             agent_name="planner",
             model_name=settings.openai_model_planner,
             max_tool_steps=settings.max_tool_steps_planner,
             repair_output=_repair_planner_output,
         )
-        try:
-            planner_tool_names = ["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"]
-            if alphaxiv_enabled:
-                planner_tool_names = [
-                    "load_selected_papers",
-                    "get_alphaxiv_paper_content",
-                    "answer_alphaxiv_pdf_queries",
-                    "read_alphaxiv_github_repository",
-                    *planner_tool_names,
-                ]
-            return runner.execute(
-                instructions=prompt_for("planner"),
-                context={"run_id": run_id},
-                tool_names=planner_tool_names,
-            )
-        except ToolStepBudgetExceededError:
-            return _build_planner_budget_summary(
-                run_id=run_id,
-                repository=repository,
-                renderer=renderer,
-            )
+        planner_tool_names = ["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"]
+        if alphaxiv_enabled:
+            planner_tool_names = [
+                "load_selected_papers",
+                "get_alphaxiv_paper_content",
+                "answer_alphaxiv_pdf_queries",
+                "read_alphaxiv_github_repository",
+                *planner_tool_names,
+            ]
+        return runner.execute(
+            instructions=prompt_for("planner"),
+            context={"run_id": run_id},
+            tool_names=planner_tool_names,
+        )
 
     # Create reflection agent if enabled
     reflection_agent: ReflectionAgent | None = None
@@ -483,6 +493,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             },
         )
 
+    from hypoforge.application.event_bus import RunEventBus
+    event_bus = RunEventBus()
+
     coordinator = RunCoordinator(
         repository=repository,
         retrieval_agent=retrieval_agent,
@@ -495,8 +508,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         stage_navigator=stage_navigator,
         validation_registry=validation_registry,
         validation_settings=settings.validation_settings,
+        event_bus=event_bus,
     )
-    return ServiceContainer(coordinator=coordinator)
+    return ServiceContainer(coordinator=coordinator, event_bus=event_bus)
 
 
 def _summarize_tool_result(result: dict) -> dict:
@@ -623,26 +637,11 @@ def _review_papers_in_batches(
         )
 
     successful_summaries: list[ReviewSummary] = []
-    failed_paper_ids: list[str] = []
-    last_error: Exception | None = None
-    budget_exceeded = False
     total_batches = ceil(len(selected_papers) / batch_size)
 
     for index in range(0, len(selected_papers), batch_size):
         batch = selected_papers[index : index + batch_size]
-        try:
-            successful_summaries.append(review_batch(batch))
-        except ToolStepBudgetExceededError as exc:
-            failed_paper_ids.extend(paper.paper_id for paper in selected_papers[index:])
-            last_error = exc
-            budget_exceeded = True
-            break
-        except Exception as exc:
-            failed_paper_ids.extend(paper.paper_id for paper in batch)
-            last_error = exc
-
-    if not successful_summaries and last_error is not None and not budget_exceeded:
-        raise last_error
+        successful_summaries.append(review_batch(batch))
 
     papers_processed = sum(summary.papers_processed for summary in successful_summaries)
     evidence_cards_created = sum(summary.evidence_cards_created for summary in successful_summaries)
@@ -656,15 +655,10 @@ def _review_papers_in_batches(
             for paper_id in summary.low_confidence_paper_ids
         )
     )
-    failed_batches = ceil(len(failed_paper_ids) / batch_size) if failed_paper_ids else 0
     coverage_summary = (
         f"processed {papers_processed}/{len(selected_papers)} selected papers "
         f"across {total_batches} batches"
     )
-    if budget_exceeded:
-        coverage_summary += "; tool step budget exceeded and review stopped early"
-    if failed_paper_ids:
-        coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
 
     return ReviewSummary(
         papers_processed=papers_processed,
@@ -672,191 +666,10 @@ def _review_papers_in_batches(
         coverage_summary=coverage_summary,
         dominant_axes=dominant_axes,
         low_confidence_paper_ids=low_confidence_paper_ids,
-        failed_paper_ids=failed_paper_ids,
+        failed_paper_ids=[],
     )
 
 
-async def _review_papers_in_batches_parallel(
-    *,
-    selected_papers: list[PaperDetail],
-    batch_size: int,
-    review_batch: Callable[[list[PaperDetail]], ReviewSummary],
-    max_concurrent: int = 3,
-) -> ReviewSummary:
-    """Process papers in parallel batches for improved efficiency.
-
-    This is an async version that processes multiple batches concurrently,
-    improving throughput for large paper sets.
-
-    Args:
-        selected_papers: Papers to review
-        batch_size: Number of papers per batch
-        review_batch: Function to process a single batch
-        max_concurrent: Maximum concurrent batch operations
-
-    Returns:
-        Combined ReviewSummary from all batches
-    """
-    import asyncio
-
-    if not selected_papers:
-        return ReviewSummary(
-            papers_processed=0,
-            evidence_cards_created=0,
-            coverage_summary="no selected papers to review",
-            dominant_axes=[],
-            low_confidence_paper_ids=[],
-            failed_paper_ids=[],
-        )
-
-    # Create batches
-    batches = [
-        selected_papers[i:i + batch_size]
-        for i in range(0, len(selected_papers), batch_size)
-    ]
-    total_batches = len(batches)
-
-    # Process batches with semaphore for concurrency control
-    semaphore = asyncio.Semaphore(max_concurrent)
-    successful_summaries: list[ReviewSummary] = []
-    failed_paper_ids: list[str] = []
-    errors: list[Exception] = []
-
-    async def process_batch(batch: list[PaperDetail], batch_idx: int) -> ReviewSummary | None:
-        async with semaphore:
-            try:
-                # Run sync function in executor
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, review_batch, batch)
-            except ToolStepBudgetExceededError as exc:
-                errors.append(exc)
-                failed_paper_ids.extend(p.paper_id for p in batch)
-                return None
-            except Exception as exc:
-                errors.append(exc)
-                failed_paper_ids.extend(p.paper_id for p in batch)
-                return None
-
-    # Create tasks for all batches
-    tasks = [process_batch(batch, i) for i, batch in enumerate(batches)]
-
-    # Wait for all tasks to complete
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Collect successful results
-    for result in results:
-        if isinstance(result, ReviewSummary):
-            successful_summaries.append(result)
-        elif isinstance(result, Exception):
-            errors.append(result)
-
-    # Check if all failed
-    if not successful_summaries and errors:
-        raise errors[0]
-
-    # Aggregate results
-    papers_processed = sum(s.papers_processed for s in successful_summaries)
-    evidence_cards_created = sum(s.evidence_cards_created for s in successful_summaries)
-    dominant_axes = list(
-        dict.fromkeys(axis for s in successful_summaries for axis in s.dominant_axes)
-    )
-    low_confidence_paper_ids = list(
-        dict.fromkeys(
-            pid for s in successful_summaries for pid in s.low_confidence_paper_ids
-        )
-    )
-
-    failed_batches = ceil(len(failed_paper_ids) / batch_size) if failed_paper_ids else 0
-    coverage_summary = (
-        f"processed {papers_processed}/{len(selected_papers)} selected papers "
-        f"across {total_batches} batches (parallel)"
-    )
-    if failed_paper_ids:
-        coverage_summary += f"; {failed_batches} failed batches degraded to partial extraction"
-
-    return ReviewSummary(
-        papers_processed=papers_processed,
-        evidence_cards_created=evidence_cards_created,
-        coverage_summary=coverage_summary,
-        dominant_axes=dominant_axes,
-        low_confidence_paper_ids=low_confidence_paper_ids,
-        failed_paper_ids=failed_paper_ids,
-    )
-
-
-def _run_retrieval_with_recovery(
-    *,
-    topic: str,
-    constraints: RunConstraints,
-    execute_attempt: Callable[[RunConstraints, bool], tuple[RetrievalSummary, int]],
-    on_tool_step_budget_exceeded: Callable[[], RetrievalSummary] | None = None,
-) -> RetrievalSummary:
-    minimum_threshold = min(12, constraints.max_selected_papers)
-    try:
-        first_summary, first_count = execute_attempt(constraints, False)
-    except ToolStepBudgetExceededError:
-        if on_tool_step_budget_exceeded is None:
-            raise
-        return on_tool_step_budget_exceeded()
-    if first_count >= minimum_threshold:
-        return first_summary
-
-    broadened_constraints = constraints.model_copy(
-        update={"year_from": max(2000, constraints.year_from - 5)}
-    )
-    try:
-        second_summary, second_count = execute_attempt(broadened_constraints, True)
-    except ToolStepBudgetExceededError:
-        if on_tool_step_budget_exceeded is None:
-            raise
-        return on_tool_step_budget_exceeded()
-    second_summary.search_notes.append("broadened retrieval window after low recall")
-    if second_count >= minimum_threshold:
-        return second_summary
-
-    second_summary.coverage_assessment = "low"
-    second_summary.needs_broader_search = True
-    second_summary.search_notes.append(
-        f"low evidence mode activated for '{topic}' after broadened retrieval ({second_count}/{minimum_threshold} papers)"
-    )
-    return second_summary
-
-
-def _supplement_selected_papers_from_candidates(
-    *,
-    repository: RunRepository,
-    run_id: str,
-    summary: RetrievalSummary,
-    candidate_pool: dict[str, PaperDetail],
-    max_selected_papers: int,
-) -> RetrievalSummary:
-    minimum_threshold = min(12, max_selected_papers)
-    selected_papers = repository.load_selected_papers(run_id)
-    if len(selected_papers) >= minimum_threshold or not candidate_pool:
-        return summary
-
-    ranked_candidates = rank_papers(dedupe_papers(list(candidate_pool.values())))
-    selected_ids = {paper.paper_id for paper in selected_papers}
-    supplement = [paper for paper in ranked_candidates if paper.paper_id not in selected_ids]
-    supplement = supplement[: minimum_threshold - len(selected_papers)]
-    if not supplement:
-        return summary
-
-    completed_selection = selected_papers + supplement
-    repository.save_selected_papers(
-        run_id,
-        completed_selection,
-        "automatic backfill after low recall",
-    )
-
-    summary.selected_paper_ids = [paper.paper_id for paper in completed_selection]
-    summary.search_notes.append(
-        f"auto-supplemented selection from candidate pool to {len(completed_selection)}/{minimum_threshold} papers"
-    )
-    if len(completed_selection) >= minimum_threshold and summary.coverage_assessment == "low":
-        summary.coverage_assessment = "medium"
-        summary.needs_broader_search = False
-    return summary
 
 
 def _repair_retrieval_output(output: dict, context: dict) -> dict:
@@ -914,58 +727,6 @@ def _repair_planner_output(output: dict, context: dict) -> dict:
     return repaired
 
 
-def _build_retrieval_budget_summary(
-    *,
-    topic: str,
-    constraints: RunConstraints,
-    selected_paper_ids: list[str],
-) -> RetrievalSummary:
-    count = len(selected_paper_ids)
-    minimum_threshold = min(12, constraints.max_selected_papers)
-    coverage = "good" if count >= minimum_threshold else "low"
-    return RetrievalSummary(
-        canonical_topic=topic,
-        query_variants_used=[topic],
-        search_notes=["retrieval tool step budget exceeded; returning best available papers"],
-        selected_paper_ids=selected_paper_ids,
-        excluded_paper_ids=[],
-        coverage_assessment=coverage,
-        needs_broader_search=count < minimum_threshold,
-    )
-
-
-def _build_critic_budget_summary(clusters: list[ConflictCluster]) -> CriticSummary:
-    return CriticSummary(
-        clusters_created=len(clusters),
-        top_axes=_top_axes_from_clusters(clusters),
-        critic_notes=["critic tool step budget exceeded; returning saved clusters"],
-    )
-
-
-def _build_planner_budget_summary(
-    *,
-    run_id: str,
-    repository: RunRepository,
-    renderer: ReportRenderer,
-) -> PlannerSummary:
-    hypotheses = repository.load_hypotheses(run_id)
-    if len(hypotheses) != 3:
-        raise ToolStepBudgetExceededError(agent_name="planner", max_steps=0)
-
-    run_state = repository.get_run(run_id)
-    if not run_state.final_report_md:
-        repository.save_report_markdown(run_id, renderer.render(repository.build_final_result(run_id)))
-
-    return PlannerSummary(
-        hypotheses_created=3,
-        report_rendered=True,
-        top_axes=_top_axes_from_clusters(repository.load_conflict_clusters(run_id)),
-        planner_notes=["planner tool step budget exceeded; returning saved hypotheses"],
-    )
-
-
-def _top_axes_from_clusters(clusters: list[ConflictCluster]) -> list[str]:
-    return list(dict.fromkeys(cluster.topic_axis for cluster in clusters if cluster.topic_axis))
 
 
 def build_fake_services(
@@ -991,6 +752,7 @@ def build_fake_services(
             run_id=run_id,
             agent_name="retrieval",
             tool_name="search_openalex_works",
+            stage_name="retrieval",
             args={"query": topic},
             result_summary={"count": 1},
             latency_ms=1,
@@ -1059,6 +821,7 @@ def build_fake_services(
             run_id=run_id,
             agent_name="review",
             tool_name="save_evidence_cards",
+            stage_name="review",
             args={"count": len(cards)},
             result_summary={"evidence_ids": [card.evidence_id for card in cards]},
             latency_ms=1,
@@ -1092,6 +855,7 @@ def build_fake_services(
             run_id=run_id,
             agent_name="critic",
             tool_name="save_conflict_clusters",
+            stage_name="critic",
             args={"count": len(clusters)},
             result_summary={"cluster_ids": [cluster.cluster_id for cluster in clusters]},
             latency_ms=1,
@@ -1133,6 +897,7 @@ def build_fake_services(
             run_id=run_id,
             agent_name="planner",
             tool_name="render_markdown_report",
+            stage_name="planner",
             args={"include_appendix": True},
             result_summary={"length": len(markdown)},
             latency_ms=1,

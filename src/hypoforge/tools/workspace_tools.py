@@ -237,16 +237,12 @@ class WorkspaceTools:
     def _is_retrieval_low_evidence(self, summary: StageSummary | None) -> bool:
         if summary is None:
             return False
-        if summary.status == "degraded":
-            return True
         coverage = summary.summary.get("coverage_assessment")
         return coverage == "low" or bool(summary.summary.get("needs_broader_search"))
 
     def _is_review_partial(self, summary: StageSummary | None) -> bool:
         if summary is None:
             return False
-        if summary.status == "degraded":
-            return True
         return bool(summary.summary.get("failed_paper_ids"))
 
     def _is_critic_unavailable(
@@ -258,4 +254,4 @@ class WorkspaceTools:
             return True
         if summary is None:
             return False
-        return summary.status == "degraded"
+        return summary.status == "failed"

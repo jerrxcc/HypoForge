@@ -1,21 +1,33 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use, useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
 import { usePollRun } from '@/hooks/use-poll-run';
+import { useRunActivity } from '@/hooks/use-run-activity';
 import { useDossierStore } from '@/stores/dossier-store';
 import { StageProgress } from '@/components/run/stage-progress';
 import { DossierShell } from '@/components/dossier/dossier-shell';
 import { RunStatusBadge } from '@/components/run/run-status-badge';
 import { RerunPlannerButton } from '@/components/run/rerun-planner-button';
+import { ActivityDrawer } from '@/components/run/activity-drawer';
+import { ActivityToggle } from '@/components/run/activity-toggle';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import type { RunStatus } from '@/types';
+
+const ACTIVE_STATUSES = new Set<RunStatus>(['retrieving', 'reviewing', 'criticizing', 'planning', 'reflecting']);
 
 export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: run, isLoading, error } = usePollRun(id);
   const reset = useDossierStore((s) => s.reset);
+
+  const isActive = run ? ACTIVE_STATUSES.has(run.status) : false;
+  const activity = useRunActivity(id, isActive || !run);
+  // User-controlled toggle; defaults to null meaning "auto" (open when active)
+  const [userDrawerPref, setUserDrawerPref] = useState<boolean | null>(null);
+  const drawerOpen = userDrawerPref ?? isActive;
 
   // Reset dossier store when entering a new run
   useEffect(() => {
@@ -23,7 +35,28 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
   }, [id, reset]);
 
   if (isLoading) return <RunDetailSkeleton />;
-  if (error || !run) return notFound();
+
+  // Network error with no cached data — show error panel, not 404
+  if (error && !run) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-16 text-center">
+        <div role="alert" className="max-w-md rounded-lg border border-destructive/30 bg-destructive/10 p-6">
+          <h2 className="text-lg font-semibold text-destructive">Failed to load run</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!run) return notFound();
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,7 +78,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
       {/* Error banner */}
       {run.status === 'failed' && (
         <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-          Run failed. Check the trace for details.
+          {run.error_message || 'Run failed. Check the trace for details.'}
         </div>
       )}
 
@@ -57,6 +90,11 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         <Button variant="outline" size="sm" asChild>
           <Link href={`/dashboard/runs/${id}/trace`}>Trace</Link>
         </Button>
+        <ActivityToggle
+          open={drawerOpen}
+          onToggle={() => setUserDrawerPref((prev) => !(prev ?? isActive))}
+          hasActivity={activity.activeToolName !== null}
+        />
         <RerunPlannerButton runId={id} status={run.status} />
       </div>
 
@@ -67,6 +105,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Dossier */}
       <DossierShell run={run} />
+
+      {/* Activity drawer */}
+      <ActivityDrawer
+        activity={activity}
+        open={drawerOpen}
+        onClose={() => setUserDrawerPref(false)}
+      />
     </div>
   );
 }

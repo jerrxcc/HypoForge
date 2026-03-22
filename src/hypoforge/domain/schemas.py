@@ -18,7 +18,7 @@ RunStatus = Literal[
     "failed",
 ]
 StageName = Literal["retrieval", "review", "critic", "planner"]
-StageStatus = Literal["started", "completed", "degraded", "failed"]
+StageStatus = Literal["started", "completed", "failed"]
 IterationStatus = Literal["pending", "in_progress", "completed", "max_iterations_reached", "quality_threshold_met", "backtracked"]
 Severity = Literal["low", "medium", "high", "critical"]
 
@@ -229,6 +229,7 @@ class PlannerSummary(BaseModel):
 class StageSummary(BaseModel):
     stage_name: StageName
     status: StageStatus
+    attempt: int = 1
     summary: dict[str, object] = Field(default_factory=dict)
     error_message: str | None = None
     started_at: datetime | None = None
@@ -239,6 +240,7 @@ class RunResult(BaseModel):
     run_id: str
     topic: str
     status: RunStatus
+    error_message: str | None = None
     selected_papers: list[PaperDetail] = Field(default_factory=list)
     evidence_cards: list[EvidenceCard] = Field(default_factory=list)
     conflict_clusters: list[ConflictCluster] = Field(default_factory=list)
