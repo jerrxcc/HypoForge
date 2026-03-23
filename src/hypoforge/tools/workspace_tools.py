@@ -170,6 +170,14 @@ class WorkspaceTools:
             repaired.append(evidence_id)
             if len(repaired) >= 3:
                 break
+        # Last resort: if pool is tiny, allow counterevidence IDs as supporting too
+        if len(repaired) < 3:
+            for evidence_id in all_evidence_ids:
+                if evidence_id in repaired:
+                    continue
+                repaired.append(evidence_id)
+                if len(repaired) >= 3:
+                    break
         return repaired
 
     def _infer_counterevidence_ids(
