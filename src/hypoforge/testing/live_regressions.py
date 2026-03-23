@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 import hashlib
-import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,18 +14,10 @@ from hypoforge.config import Settings
 GOLDEN_TOPICS = (
     "solid-state battery electrolyte",
     "protein binder design",
-    "CRISPR delivery lipid nanoparticles",
+    "mRNA vaccine thermostability",
     "CO2 reduction catalyst selectivity",
     "diffusion model preference optimization",
 )
-
-
-def live_api_enabled() -> bool:
-    return bool(os.getenv("RUN_REAL_API_TESTS")) and bool(Settings().openai_api_key)
-
-
-def golden_topics_enabled() -> bool:
-    return live_api_enabled() and bool(os.getenv("RUN_GOLDEN_TOPIC_TESTS"))
 
 
 def run_live_topic_round_trip(
