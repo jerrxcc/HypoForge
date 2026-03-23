@@ -279,7 +279,7 @@ class ConflictDetector(ValidationAgent):
             for card in cards:
                 outcome_key = card.outcome.lower() if card.outcome else "unknown"
                 if outcome_key not in directions:
-                    directions[outcome_key] = {"positive": [], "negative": [], "mixed": [], "null": []}
+                    directions[outcome_key] = {"positive": [], "negative": [], "mixed": [], "null": [], "unclear": []}
                 directions[outcome_key][card.direction].append(card.evidence_id)
 
             # Find outcomes with conflicting directions

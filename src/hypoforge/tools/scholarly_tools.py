@@ -166,7 +166,13 @@ class ScholarlyTools:
             found_ids = {paper.paper_id for paper in papers}
             missing_ids = [paper_id for paper_id in args.paper_ids if paper_id not in found_ids]
             if missing_ids:
-                raise ValueError(f"save_selected_papers could not resolve paper_ids: {missing_ids}")
+                if not papers:
+                    raise ValueError(f"save_selected_papers could not resolve any paper_ids: {missing_ids}")
+                logger.warning(
+                    "save_selected_papers: %d/%d paper_ids unresolvable, proceeding with %d papers",
+                    len(missing_ids), len(args.paper_ids), len(papers),
+                    extra={"missing_ids": missing_ids},
+                )
         self._repository.save_selected_papers(run_id, papers, args.selection_reason)
         return {"paper_ids": [paper.paper_id for paper in papers], "selection_reason": args.selection_reason}
 
