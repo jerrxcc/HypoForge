@@ -166,6 +166,10 @@ class ScholarlyTools:
             found_ids = {paper.paper_id for paper in papers}
             missing_ids = [paper_id for paper_id in args.paper_ids if paper_id not in found_ids]
             if missing_ids:
+                papers.extend(self._resolve_missing_paper_ids(missing_ids))
+                found_ids = {paper.paper_id for paper in papers}
+                missing_ids = [paper_id for paper_id in args.paper_ids if paper_id not in found_ids]
+            if missing_ids:
                 if not papers:
                     raise ValueError(f"save_selected_papers could not resolve any paper_ids: {missing_ids}")
                 logger.warning(
@@ -175,6 +179,19 @@ class ScholarlyTools:
                 )
         self._repository.save_selected_papers(run_id, papers, args.selection_reason)
         return {"paper_ids": [paper.paper_id for paper in papers], "selection_reason": args.selection_reason}
+
+    def _resolve_missing_paper_ids(self, missing_ids: list[str]) -> list[PaperDetail]:
+        resolved: list[PaperDetail] = []
+        semantic_ids = [paper_id for paper_id in missing_ids if paper_id.startswith("S2:")]
+        if semantic_ids:
+            try:
+                resolved.extend(self._semantic_scholar.get_paper_details(semantic_ids))
+            except httpx.HTTPStatusError as exc:
+                logger.warning(
+                    "save_selected_papers could not fetch missing Semantic Scholar papers: %s",
+                    exc,
+                )
+        return resolved
 
     def _require_alphaxiv(self) -> CachedAlphaXivConnector:
         if self._alphaxiv is None:

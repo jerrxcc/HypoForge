@@ -37,6 +37,7 @@ from hypoforge.infrastructure.db.models import (
     ToolTraceRow,
     utcnow,
 )
+from hypoforge.infrastructure.connectors.dedupe import merge_paper_details
 from hypoforge.infrastructure.db.session import create_session_factory
 
 
@@ -106,10 +107,11 @@ class RunRepository:
         papers: list[PaperDetail],
         selection_reason: str,
     ) -> None:
+        unique_papers = self._coalesce_selected_papers(papers)
         with self._session_factory() as session:
             self._require_run(session, run_id)
             session.execute(delete(RunPaperRow).where(RunPaperRow.run_id == run_id))
-            for index, paper in enumerate(papers, start=1):
+            for index, paper in enumerate(unique_papers, start=1):
                 payload = paper.model_dump()
                 paper_row = session.get(PaperRow, paper.paper_id)
                 if paper_row is None:
@@ -138,6 +140,18 @@ class RunRepository:
                     )
                 )
             session.commit()
+
+    def _coalesce_selected_papers(self, papers: list[PaperDetail]) -> list[PaperDetail]:
+        ordered_ids: list[str] = []
+        by_paper_id: dict[str, PaperDetail] = {}
+        for paper in papers:
+            existing = by_paper_id.get(paper.paper_id)
+            if existing is None:
+                ordered_ids.append(paper.paper_id)
+                by_paper_id[paper.paper_id] = paper
+                continue
+            by_paper_id[paper.paper_id] = merge_paper_details(existing, paper)
+        return [by_paper_id[paper_id] for paper_id in ordered_ids]
 
     def load_selected_papers(self, run_id: str) -> list[PaperDetail]:
         with self._session_factory() as session:

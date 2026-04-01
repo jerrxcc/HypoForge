@@ -21,6 +21,20 @@ class FakeSemanticScholarConnector:
         return []
 
 
+class DetailReturningSemanticScholarConnector(FakeSemanticScholarConnector):
+    def get_paper_details(self, paper_ids: list[str]):
+        return [
+            PaperDetail(
+                paper_id=paper_id,
+                title=f"Resolved {paper_id}",
+                abstract="Abstract",
+                authors=["A"],
+                year=2024,
+            )
+            for paper_id in paper_ids
+        ]
+
+
 class FakeAlphaXivConnector:
     last_cache_hit = False
 
@@ -145,6 +159,33 @@ def test_save_selected_papers_can_resolve_ids_from_candidate_pool(tmp_path) -> N
 
     assert result["paper_ids"] == ["p1"]
     assert repo.load_selected_papers(run.run_id)[0].paper_id == "p1"
+
+
+def test_save_selected_papers_fetches_missing_semantic_scholar_details(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="protein binder design"))
+
+    def lookup(paper_ids: list[str]):
+        del paper_ids
+        return []
+
+    tools = ScholarlyTools(
+        openalex=FakeOpenAlexConnector(),
+        semantic_scholar=DetailReturningSemanticScholarConnector(),
+        repository=repo,
+        paper_lookup=lookup,
+    )
+
+    result = tools.save_selected_papers(
+        run.run_id,
+        {
+            "paper_ids": ["S2:abc123"],
+            "selection_reason": "model selection",
+        },
+    )
+
+    assert result["paper_ids"] == ["S2:abc123"]
+    assert repo.load_selected_papers(run.run_id)[0].paper_id == "S2:abc123"
 
 
 def test_search_semantic_scholar_returns_empty_payload_on_http_error(tmp_path) -> None:

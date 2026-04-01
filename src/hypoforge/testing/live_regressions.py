@@ -16,7 +16,7 @@ from hypoforge.domain.schemas import ReflectionFeedback, RunIterationState
 GOLDEN_TOPICS = (
     "solid-state battery electrolyte",
     "protein binder design",
-    "mRNA vaccine thermostability",
+    "perovskite solar cell stability degradation",
     "CO2 reduction catalyst selectivity",
     "diffusion model preference optimization",
 )

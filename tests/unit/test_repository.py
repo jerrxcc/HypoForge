@@ -182,6 +182,41 @@ def test_repository_builds_final_result(tmp_path) -> None:
     assert result.stage_summaries == []
 
 
+def test_repository_deduplicates_selected_papers_by_paper_id(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="diffusion model preference optimization"))
+
+    repo.save_selected_papers(
+        run.run_id,
+        papers=[
+            PaperDetail(
+                paper_id="S2:p1",
+                title="Paper 1",
+                abstract="Abstract 1",
+                year=2024,
+                authors=["A"],
+                provenance=["semantic_scholar.search"],
+            ),
+            PaperDetail(
+                paper_id="S2:p1",
+                title="Paper 1",
+                abstract="Abstract 1 extended",
+                year=2024,
+                authors=["A", "B"],
+                provenance=["openalex.search"],
+            ),
+        ],
+        selection_reason="seed",
+    )
+
+    selected = repo.load_selected_papers(run.run_id)
+
+    assert len(selected) == 1
+    assert selected[0].paper_id == "S2:p1"
+    assert selected[0].abstract == "Abstract 1 extended"
+    assert set(selected[0].provenance) == {"semantic_scholar.search", "openalex.search"}
+
+
 def test_repository_allows_duplicate_evidence_ids_across_runs(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     run_one = repo.create_run(RunRequest(topic="topic one"))
