@@ -297,6 +297,11 @@ class IterationState(BaseModel):
         self.feedback_history.append(feedback)
         self.learnings.extend(feedback.suggested_actions)
 
+    def prepare_for_execution(self) -> None:
+        """Mark the stage as runnable again while preserving prior learnings."""
+        if self.status in ("quality_threshold_met", "completed", "backtracked", "max_iterations_reached"):
+            self.status = "pending"
+
 
 class RunIterationState(BaseModel):
     """Complete iteration state for an entire run."""
@@ -332,6 +337,13 @@ class RunIterationState(BaseModel):
             "iteration": self.cross_stage_iterations,
             "timestamp": datetime.now(UTC).isoformat(),
         })
+
+    def clear_downstream_stage_iterations(self, from_stage: StageName) -> None:
+        """Drop iteration state for stages downstream of ``from_stage``."""
+        stage_order: list[StageName] = ["retrieval", "review", "critic", "planner"]
+        from_idx = stage_order.index(from_stage)
+        for stage_name in stage_order[from_idx + 1:]:
+            self.stage_iterations.pop(stage_name, None)
 
 
 class ReflectionSummary(BaseModel):

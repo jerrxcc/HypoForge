@@ -585,11 +585,11 @@ class TestFeedbackPool:
             priority_issues=[],
         )
 
-        pool.add_feedback(feedback)
+        pool.add_feedback("review", feedback)
 
         assert pool.iteration_count == 1
-        assert "pattern1" in pool.accumulated_avoid_patterns
-        assert "area1" in pool.accumulated_focus_areas
+        assert "pattern1" in pool.accumulated_avoid_patterns_by_stage["review"]
+        assert "area1" in pool.accumulated_focus_areas_by_stage["review"]
 
     def test_get_latest_feedback(self):
         """Test getting latest feedback."""
@@ -608,10 +608,10 @@ class TestFeedbackPool:
             priority_issues=[],
         )
 
-        pool.add_feedback(feedback1)
-        pool.add_feedback(feedback2)
+        pool.add_feedback("review", feedback1)
+        pool.add_feedback("review", feedback2)
 
-        latest = pool.get_latest_feedback()
+        latest = pool.get_latest_feedback("review")
         assert latest is not None
         assert "pattern2" in latest.avoid_patterns
 
@@ -630,7 +630,7 @@ class TestFeedbackPool:
             ],
         )
 
-        pool.add_feedback(feedback)
+        pool.add_feedback("review", feedback)
 
         critical_issues = pool.get_issues_by_priority("critical")
         assert len(critical_issues) == 2

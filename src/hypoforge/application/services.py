@@ -51,6 +51,34 @@ class ServiceContainer:
     event_bus: object | None = None
 
 
+_ALLOWED_EXECUTION_CONTEXT_KEYS = {
+    "iteration_number",
+    "is_retry",
+    "previous_iteration_feedback",
+    "accumulated_learnings",
+    "validation_feedback",
+}
+
+
+def _merge_execution_context(
+    base_context: dict[str, object],
+    execution_context: dict[str, object] | None,
+) -> dict[str, object]:
+    if execution_context is None:
+        return base_context
+
+    unknown_keys = set(execution_context) - _ALLOWED_EXECUTION_CONTEXT_KEYS
+    if unknown_keys:
+        raise ValueError(
+            f"unsupported execution context keys: {sorted(unknown_keys)}"
+        )
+
+    return {
+        **base_context,
+        **execution_context,
+    }
+
+
 def build_default_services(settings: Settings | None = None) -> ServiceContainer:
     """Build a fully-wired :class:`ServiceContainer` for production use.
 
@@ -261,7 +289,13 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
 
         return invoke
 
-    def retrieval_agent(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval_agent(
+        run_id: str,
+        topic: str,
+        constraints,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> RetrievalSummary:
         runner = AgentRunner(
             provider=provider,
             tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval, stage_name="retrieval"),
@@ -288,14 +322,21 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             )
         return runner.execute(
             instructions=prompt_for("retrieval"),
-            context={
-                "topic": topic,
-                "constraints": constraints.model_dump(),
-            },
+            context=_merge_execution_context(
+                {
+                    "topic": topic,
+                    "constraints": constraints.model_dump(),
+                },
+                execution_context,
+            ),
             tool_names=retrieval_tool_names,
         )
 
-    def review_agent(run_id: str) -> ReviewSummary:
+    def review_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> ReviewSummary:
         selected_papers = repository.load_selected_papers(run_id)
 
         def review_batch(batch: list[PaperDetail]) -> ReviewSummary:
@@ -359,7 +400,10 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 ]
             summary = runner.execute(
                 instructions=review_prompt,
-                context={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                context=_merge_execution_context(
+                    {"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                    execution_context,
+                ),
                 tool_names=review_tool_names,
             )
             _save_evidence_cards_to_cache(
@@ -379,7 +423,11 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             review_batch=review_batch,
         )
 
-    def critic_agent(run_id: str) -> CriticSummary:
+    def critic_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> CriticSummary:
         runner = AgentRunner(
             provider=provider,
             tool_invoker=make_tool_invoker(run_id, "critic", settings.openai_model_critic, stage_name="critic"),
@@ -391,11 +439,15 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         )
         return runner.execute(
             instructions=prompt_for("critic"),
-            context={"run_id": run_id},
+            context=_merge_execution_context({"run_id": run_id}, execution_context),
             tool_names=["load_evidence_cards", "save_conflict_clusters"],
         )
 
-    def planner_agent(run_id: str) -> PlannerSummary:
+    def planner_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> PlannerSummary:
         runner = AgentRunner(
             provider=provider,
             tool_invoker=make_tool_invoker(run_id, "planner", settings.openai_model_planner, stage_name="planner"),
@@ -416,7 +468,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             ]
         return runner.execute(
             instructions=prompt_for("planner"),
-            context={"run_id": run_id},
+            context=_merge_execution_context({"run_id": run_id}, execution_context),
             tool_names=planner_tool_names,
         )
 
@@ -735,8 +787,14 @@ def build_fake_services(
 ) -> ServiceContainer:
     repository = RunRepository.from_database_url(database_url)
 
-    def retrieval_agent(run_id: str, topic: str, constraints) -> RetrievalSummary:
-        del constraints
+    def retrieval_agent(
+        run_id: str,
+        topic: str,
+        constraints,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> RetrievalSummary:
+        del constraints, execution_context
         papers = [
             PaperDetail(
                 paper_id="p1",
@@ -769,7 +827,12 @@ def build_fake_services(
             needs_broader_search=False,
         )
 
-    def review_agent(run_id: str) -> ReviewSummary:
+    def review_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> ReviewSummary:
+        del execution_context
         cards = [
             EvidenceCard(
                 evidence_id=f"{run_id}_e1",
@@ -836,7 +899,12 @@ def build_fake_services(
             low_confidence_paper_ids=[],
         )
 
-    def critic_agent(run_id: str) -> CriticSummary:
+    def critic_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> CriticSummary:
+        del execution_context
         clusters = [
             ConflictCluster(
                 cluster_id=f"{run_id}_c1",
@@ -864,7 +932,12 @@ def build_fake_services(
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=["fake critic complete"])
 
-    def planner_agent(run_id: str) -> PlannerSummary:
+    def planner_agent(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> PlannerSummary:
+        del execution_context
         hypotheses = [
             Hypothesis(
                 rank=rank,

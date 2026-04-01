@@ -57,7 +57,7 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
 
     call_history: list[str] = []
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         call_history.append("retrieval")
         repo.save_selected_papers(
             run_id,
@@ -84,7 +84,7 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         call_history.append("review")
         papers = repo.load_selected_papers(run_id)
 
@@ -111,7 +111,7 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         call_history.append("critic")
         evidence = repo.load_evidence_cards(run_id)
 
@@ -135,7 +135,7 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
             critic_notes=[],
         )
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         call_history.append("planner")
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Final Report\n\nGenerated hypotheses.")
@@ -204,7 +204,7 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [
@@ -228,7 +228,7 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -254,7 +254,7 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -271,7 +271,7 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -291,9 +291,15 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
     # Verify successful completion
     assert result.status == "done"
 
-    # Verify all feedback was recorded
+    # Verify feedback was recorded for all stages, including retries
     all_feedback = repo.load_reflection_history(result.run_id)
-    assert len(all_feedback) == 4
+    assert len(all_feedback) >= 4
+    assert {feedback.target_stage for feedback in all_feedback} == {
+        "retrieval",
+        "review",
+        "critic",
+        "planner",
+    }
 
     # Verify feedback has correct quality scores
     retrieval_feedback = [f for f in all_feedback if f.target_stage == "retrieval"][0]
@@ -333,7 +339,7 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [
@@ -357,7 +363,7 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -383,7 +389,7 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -400,7 +406,7 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -447,7 +453,7 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -463,7 +469,7 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -488,7 +494,7 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -505,7 +511,7 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -556,7 +562,7 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -572,7 +578,7 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -597,7 +603,7 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -614,7 +620,7 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])

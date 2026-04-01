@@ -17,7 +17,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     stage_calls: list[str] = []
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         stage_calls.append("retrieval")
         repo.save_selected_papers(
@@ -43,7 +43,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         stage_calls.append("review")
         repo.save_evidence_cards(
             run_id,
@@ -69,7 +69,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         stage_calls.append("critic")
         repo.save_conflict_clusters(
             run_id,
@@ -87,7 +87,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         stage_calls.append("planner")
         repo.save_hypotheses(
             run_id,
@@ -186,7 +186,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
 def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -203,7 +203,7 @@ def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -228,7 +228,7 @@ def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -245,7 +245,7 @@ def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, [_make_hypothesis(1), _make_hypothesis(2), _make_hypothesis(3)])
         repo.save_report_markdown(run_id, "# HypoForge Report: legacy")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])

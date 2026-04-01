@@ -240,7 +240,7 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -256,7 +256,7 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -281,7 +281,7 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -298,7 +298,7 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -390,7 +390,7 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
 
     call_counts = {"retrieval": 0, "review": 0, "critic": 0, "planner": 0}
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         call_counts["retrieval"] += 1
         repo.save_selected_papers(
@@ -408,7 +408,7 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         call_counts["review"] += 1
         repo.save_evidence_cards(
             run_id,
@@ -434,7 +434,7 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         call_counts["critic"] += 1
         repo.save_conflict_clusters(
             run_id,
@@ -452,7 +452,7 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         call_counts["planner"] += 1
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")

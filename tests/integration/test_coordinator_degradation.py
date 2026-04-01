@@ -18,7 +18,7 @@ from hypoforge.infrastructure.db.repository import RunRepository
 def test_coordinator_fails_when_critic_fails(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -35,7 +35,7 @@ def test_coordinator_fails_when_critic_fails(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -60,11 +60,11 @@ def test_coordinator_fails_when_critic_fails(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         del run_id
         raise RuntimeError("critic unavailable")
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(
             run_id,
             [
@@ -102,7 +102,7 @@ def test_coordinator_fails_when_critic_fails(tmp_path) -> None:
 def test_coordinator_fails_when_planner_fails(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -119,7 +119,7 @@ def test_coordinator_fails_when_planner_fails(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -144,11 +144,11 @@ def test_coordinator_fails_when_planner_fails(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         del run_id
         return CriticSummary(clusters_created=0, top_axes=[], critic_notes=["skipped"])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         del run_id
         raise RuntimeError("planner unavailable")
 
@@ -169,7 +169,7 @@ def test_coordinator_can_rerun_planner_after_failure(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     planner_attempts = 0
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -186,7 +186,7 @@ def test_coordinator_can_rerun_planner_after_failure(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -211,11 +211,11 @@ def test_coordinator_can_rerun_planner_after_failure(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         del run_id
         return CriticSummary(clusters_created=0, top_axes=[], critic_notes=["skipped"])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         nonlocal planner_attempts
         planner_attempts += 1
         if planner_attempts == 1:

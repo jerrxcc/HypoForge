@@ -45,7 +45,7 @@ def test_reflection_enabled_records_iteration_state(tmp_path: Path) -> None:
     )
 
     # Create agents that save data
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -61,7 +61,7 @@ def test_reflection_enabled_records_iteration_state(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -86,7 +86,7 @@ def test_reflection_enabled_records_iteration_state(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -103,7 +103,7 @@ def test_reflection_enabled_records_iteration_state(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -148,7 +148,7 @@ def test_reflection_saves_feedback_to_database(tmp_path: Path) -> None:
 
     retrieval_call_count = 0
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         nonlocal retrieval_call_count
         retrieval_call_count += 1
         papers_count = 5 if retrieval_call_count == 1 else 10
@@ -175,7 +175,7 @@ def test_reflection_saves_feedback_to_database(tmp_path: Path) -> None:
             needs_broader_search=retrieval_call_count == 1,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         cards = [
             EvidenceCard(
                 evidence_id=f"e{i}",
@@ -199,7 +199,7 @@ def test_reflection_saves_feedback_to_database(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -216,7 +216,7 @@ def test_reflection_saves_feedback_to_database(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
@@ -290,7 +290,7 @@ def test_reflection_tracks_stage_iterations(tmp_path: Path) -> None:
 
     review_call_count = 0
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -306,7 +306,7 @@ def test_reflection_tracks_stage_iterations(tmp_path: Path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         nonlocal review_call_count
         review_call_count += 1
         # Create more evidence on later iterations
@@ -336,7 +336,7 @@ def test_reflection_tracks_stage_iterations(tmp_path: Path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         repo.save_conflict_clusters(
             run_id,
             [
@@ -353,7 +353,7 @@ def test_reflection_tracks_stage_iterations(tmp_path: Path) -> None:
         )
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])

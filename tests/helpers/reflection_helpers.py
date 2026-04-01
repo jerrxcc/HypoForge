@@ -290,8 +290,14 @@ def make_passing_stage_agents(
         ReviewSummary,
     )
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
-        del constraints
+    def retrieval(
+        run_id: str,
+        topic: str,
+        constraints,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> RetrievalSummary:
+        del constraints, execution_context
         repo.save_selected_papers(
             run_id,
             [make_test_paper(f"p{i}", f"Paper {i}") for i in range(paper_count)],
@@ -307,7 +313,12 @@ def make_passing_stage_agents(
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> ReviewSummary:
+        del execution_context
         repo.save_evidence_cards(
             run_id,
             [make_test_evidence(f"e{i}", "p0") for i in range(evidence_count)],
@@ -320,7 +331,12 @@ def make_passing_stage_agents(
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> CriticSummary:
+        del execution_context
         repo.save_conflict_clusters(
             run_id,
             [
@@ -334,7 +350,12 @@ def make_passing_stage_agents(
             critic_notes=[],
         )
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(
+        run_id: str,
+        *,
+        execution_context: dict[str, object] | None = None,
+    ) -> PlannerSummary:
+        del execution_context
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(

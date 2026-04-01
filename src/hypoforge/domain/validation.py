@@ -198,25 +198,46 @@ class FeedbackPool(BaseModel):
 
     run_id: str
     feedback_history: list[SynthesizedFeedback] = Field(default_factory=list)
-    accumulated_avoid_patterns: list[str] = Field(default_factory=list)
-    accumulated_focus_areas: list[str] = Field(default_factory=list)
+    pending_feedback_by_stage: dict[StageName, list[SynthesizedFeedback]] = Field(default_factory=dict)
+    accumulated_avoid_patterns_by_stage: dict[StageName, list[str]] = Field(default_factory=dict)
+    accumulated_focus_areas_by_stage: dict[StageName, list[str]] = Field(default_factory=dict)
     iteration_count: int = Field(default=0)
 
-    def add_feedback(self, feedback: SynthesizedFeedback) -> None:
+    def add_feedback(self, target_stage: StageName, feedback: SynthesizedFeedback) -> None:
         """Add new feedback to the pool."""
         self.feedback_history.append(feedback)
+        self.pending_feedback_by_stage.setdefault(target_stage, []).append(feedback)
         self.iteration_count += 1
 
-        # Accumulate patterns (deduplicate)
-        existing_patterns = set(self.accumulated_avoid_patterns)
-        self.accumulated_avoid_patterns = list(existing_patterns | set(feedback.avoid_patterns))
+        existing_patterns = set(self.accumulated_avoid_patterns_by_stage.get(target_stage, []))
+        self.accumulated_avoid_patterns_by_stage[target_stage] = list(
+            existing_patterns | set(feedback.avoid_patterns)
+        )
 
-        existing_areas = set(self.accumulated_focus_areas)
-        self.accumulated_focus_areas = list(existing_areas | set(feedback.focus_areas))
+        existing_areas = set(self.accumulated_focus_areas_by_stage.get(target_stage, []))
+        self.accumulated_focus_areas_by_stage[target_stage] = list(
+            existing_areas | set(feedback.focus_areas)
+        )
 
-    def get_latest_feedback(self) -> SynthesizedFeedback | None:
-        """Get the most recent feedback."""
-        return self.feedback_history[-1] if self.feedback_history else None
+    def get_latest_feedback(self, stage_name: StageName) -> SynthesizedFeedback | None:
+        """Get the most recent pending feedback for a stage."""
+        stage_feedback = self.pending_feedback_by_stage.get(stage_name, [])
+        return stage_feedback[-1] if stage_feedback else None
+
+    def consume_feedback(self, stage_name: StageName) -> SynthesizedFeedback | None:
+        """Consume pending feedback for a stage after it has been applied."""
+        stage_feedback = self.pending_feedback_by_stage.pop(stage_name, [])
+        return stage_feedback[-1] if stage_feedback else None
+
+    def clear_downstream_feedback(self, from_stage: StageName) -> None:
+        """Clear pending feedback for stages that depend on ``from_stage``."""
+        stage_order: list[StageName] = ["retrieval", "review", "critic", "planner"]
+        from_idx = stage_order.index(from_stage)
+        downstream_stages = stage_order[from_idx + 1:]
+        for stage_name in downstream_stages:
+            self.pending_feedback_by_stage.pop(stage_name, None)
+            self.accumulated_avoid_patterns_by_stage.pop(stage_name, None)
+            self.accumulated_focus_areas_by_stage.pop(stage_name, None)
 
     def get_issues_by_priority(self, priority: str) -> list[Issue]:
         """Get all issues of a specific priority across all feedback."""

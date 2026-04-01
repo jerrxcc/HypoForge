@@ -16,7 +16,7 @@ from hypoforge.infrastructure.db.repository import RunRepository
 def test_stage_summaries_mark_all_stages_completed(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -33,7 +33,7 @@ def test_stage_summaries_mark_all_stages_completed(tmp_path) -> None:
             needs_broader_search=False,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -58,11 +58,11 @@ def test_stage_summaries_mark_all_stages_completed(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         del run_id
         return CriticSummary(clusters_created=0, top_axes=[], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, [_hypothesis(1), _hypothesis(2), _hypothesis(3)])
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=[], planner_notes=[])
@@ -89,7 +89,7 @@ def test_stage_summaries_mark_all_stages_completed(tmp_path) -> None:
 def test_retrieval_medium_coverage_is_completed(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints) -> RetrievalSummary:
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -106,7 +106,7 @@ def test_retrieval_medium_coverage_is_completed(tmp_path) -> None:
             needs_broader_search=True,
         )
 
-    def review(run_id: str) -> ReviewSummary:
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
         repo.save_evidence_cards(
             run_id,
             [
@@ -131,11 +131,11 @@ def test_retrieval_medium_coverage_is_completed(tmp_path) -> None:
             low_confidence_paper_ids=[],
         )
 
-    def critic(run_id: str) -> CriticSummary:
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
         del run_id
         return CriticSummary(clusters_created=0, top_axes=[], critic_notes=[])
 
-    def planner(run_id: str) -> PlannerSummary:
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, [_hypothesis(1), _hypothesis(2), _hypothesis(3)])
         repo.save_report_markdown(run_id, "# Report")
         return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=[], planner_notes=[])
