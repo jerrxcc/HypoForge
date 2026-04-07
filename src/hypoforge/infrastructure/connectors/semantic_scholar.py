@@ -8,6 +8,7 @@ from hypoforge.infrastructure.connectors.normalizers import normalize_semantic_s
 
 class SemanticScholarConnector:
     BASE_URL = "https://api.semanticscholar.org/graph/v1"
+    RECOMMENDATIONS_URL = "https://api.semanticscholar.org/recommendations/v1/papers"
     PAPER_FIELDS = ",".join(
         [
             "paperId",
@@ -57,9 +58,9 @@ class SemanticScholarConnector:
     def recommend_papers(self, positive_paper_ids: list[str], limit: int) -> list[PaperDetail]:
         paper_ids = [paper_id.removeprefix("S2:") for paper_id in positive_paper_ids]
         response = self._client.post(
-            f"{self.BASE_URL}/paper/recommendations",
-            json={"positivePaperIds": paper_ids, "limit": limit},
-            params={"fields": self.PAPER_FIELDS},
+            self.RECOMMENDATIONS_URL,
+            json={"positivePaperIds": paper_ids},
+            params={"fields": self.PAPER_FIELDS, "limit": limit},
             headers=self._headers(),
         )
         response.raise_for_status()
