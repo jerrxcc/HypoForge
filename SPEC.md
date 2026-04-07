@@ -5,6 +5,8 @@
 > 文档类型：后端实现 SPEC（MVP，tool-calling-first）  
 > 默认语言：中文  
 > 推荐运行环境：Python 3.12 + FastAPI + OpenAI Responses API / Agents SDK
+>
+> 说明：这份 SPEC 记录的是项目最初的后端优先 V1 设计边界。当前仓库已在此基础上扩展出课程作业用前端原型与更多验证/观测能力，因此“当前实现状态”请以 `README.md` 与 `docs/CODEMAPS/` 为准。
 
 ---
 
@@ -104,7 +106,7 @@ V1 必须实现以下能力：
 - 不默认抓取和解析 PDF 全文
 - 不做向量数据库
 - 不做 LangGraph / AutoGen 双栈并行
-- 不做复杂前端
+- 不做复杂前端（指这份原始 V1 范围；当前仓库已包含课程作业用前端原型）
 - 不做用户权限系统 / 团队协作 / 多租户
 - 不做自动投稿 / 自动实验执行
 - 不做“保证创新性”的 claim
@@ -1822,4 +1824,3 @@ ENABLE_FULLTEXT=false
 - 人工反馈 rerank
 - MCP server 化工具层
 - 多轮主题 refine
-

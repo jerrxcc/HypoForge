@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Global Working Rules
+
+This repository locally inherits the applicable parts of the global `AGENTS.md` and `CLAUDE.md`.
+
+- 如无必要，勿增实体。中文回复，言简意赅，按需使用 Plan Mode。
+- 若提交 Git，提交说明中的 `Log` 必须包含：问题描述，或复现路径，或修复思路。
+- 避免采用降级处理、兜底方案、临时补丁、启发式方法、局部稳定化手段，以及非严谨通用算法的后处理补救措施。
+- Complex work should be planned first, implemented with tests where feasible, then reviewed and verified.
+- Security requirements are default requirements: validate inputs, never hardcode secrets, and avoid leaking sensitive internals in errors.
+- Prefer immutable updates and explicit data flow unless the local code already uses a different established pattern.
+- Keep knowledge in existing project docs; do not create new top-level docs casually.
+
+## RTK
+
+Always prefix shell commands with `rtk` unless there is a concrete reason not to. This applies to single commands and chained commands.
+
+```bash
+rtk git status
+rtk ./.venv/bin/pytest -q
+rtk npm run build
+```
+
 ## Project Overview
 
 HypoForge is a multi-agent scientific hypothesis generator. It takes a research topic, runs it through a four-stage pipeline (retrieval → review → critic → planner), and returns an auditable dossier with selected papers, evidence cards, conflict clusters, three ranked hypotheses, and a final Markdown report.
@@ -16,79 +38,51 @@ HypoForge is a multi-agent scientific hypothesis generator. It takes a research 
 
 ```bash
 # Install dependencies
-python3.12 -m venv .venv
-./.venv/bin/pip install -e '.[dev]'
+rtk python3.12 -m venv .venv
+rtk ./.venv/bin/pip install -e '.[dev]'
 
 # Run the API server
-./.venv/bin/uvicorn hypoforge.api.app:create_app --factory --reload
+rtk ./.venv/bin/uvicorn hypoforge.api.app:create_app --factory --reload
 
 # Run tests
-./.venv/bin/pytest -q
+rtk ./.venv/bin/pytest -q
 
 # Run a single test file
-./.venv/bin/pytest tests/unit/test_config.py -v
+rtk ./.venv/bin/pytest tests/unit/test_config.py -v
 
 # Run live API tests (requires OPENAI_API_KEY)
-RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v
+RUN_REAL_API_TESTS=1 rtk ./.venv/bin/pytest tests/live/test_real_runs_api.py -v
 
 # Run golden topic regressions
-RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v
+RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 rtk ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v
 
 # CLI entry point for running a topic
-./.venv/bin/python scripts/run_topic.py "solid-state battery electrolyte"
-./.venv/bin/python scripts/run_topic.py "topic" --fake  # Fake mode
+rtk ./.venv/bin/python scripts/run_topic.py "solid-state battery electrolyte"
+rtk ./.venv/bin/python scripts/run_topic.py "topic" --fake  # Fake mode
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-npm install
-npm run dev      # Development server at http://localhost:3000
-npm run lint     # ESLint
-npm run build    # Production build
+rtk npm install
+rtk npm run dev      # Development server at http://localhost:3000
+rtk npm run lint     # ESLint
+rtk npm run build    # Production build
 ```
 
 ## Architecture
 
-### Backend Structure (`src/hypoforge/`)
+### Backend Layers (`src/hypoforge/`)
 
-```
-src/hypoforge/
-├── api/                 # FastAPI routes and schemas
-│   ├── app.py          # FastAPI app factory
-│   ├── routes/         # health, runs endpoints
-│   └── schemas.py      # API request/response models
-├── application/         # Core orchestration
-│   ├── coordinator.py  # Pipeline orchestration (retrieval → review → critic → planner)
-│   ├── services.py     # Service container and dependency injection
-│   ├── report_renderer.py  # Markdown report generation
-│   ├── correction_loop.py  # Reflection-correction loop controller
-│   └── stage_graph.py      # Stage navigation for backtracking
-├── agents/              # Stage-specific agents
-│   ├── retrieval.py    # Paper discovery from OpenAlex/Semantic Scholar
-│   ├── review.py       # Evidence card extraction
-│   ├── critic.py       # Conflict cluster identification
-│   ├── planner.py      # Hypothesis generation (exactly 3)
-│   ├── reflection.py   # Quality evaluation for reflection-correction loop
-│   ├── runner.py       # Agent execution runtime (tool loop)
-│   ├── prompts.py      # System prompts for each agent
-│   └── providers.py    # OpenAI client configuration
-├── domain/              # Domain models and validation
-│   ├── models.py       # Core domain objects
-│   ├── schemas.py      # Pydantic models for all stages
-│   ├── quality.py      # Quality thresholds and evaluation
-│   └── perspectives.py # Multi-perspective critique definitions
-├── infrastructure/      # External integrations
-│   ├── connectors/     # OpenAlex, Semantic Scholar, dedupe, ranking, normalizers
-│   ├── db/             # SQLAlchemy models, session, repository
-│   └── ...
-└── tools/               # Tool implementations for agents
-    ├── scholarly_tools.py   # search_openalex_works, search_semantic_scholar_papers
-    ├── workspace_tools.py   # save/load papers, evidence, conflicts, hypotheses
-    ├── render_tools.py      # render_markdown_report
-    └── schemas.py           # Tool input/output schemas
-```
+分层架构，依赖方向：api → application → agents/domain → infrastructure/tools。
+
+- **api/** — FastAPI app factory (`app.py`)、路由 (`routes/`)、请求/响应 schema (`schemas.py`)
+- **application/** — Coordinator (`coordinator.py`) 编排四阶段流水线；服务容器 (`services.py`)；报告渲染 (`report_renderer.py`)；反思校正循环 (`correction_loop.py` + `stage_graph.py`)
+- **agents/** — 每阶段一个 agent（`retrieval.py`, `review.py`, `critic.py`, `planner.py`）+ 反思 agent (`reflection.py`)；共享运行时 (`runner.py`)、提示词 (`prompts.py`)、OpenAI 客户端 (`providers.py`)
+- **domain/** — Pydantic 模型 (`schemas.py`)、核心对象 (`models.py`)、质量阈值 (`quality.py`)、多视角定义 (`perspectives.py`)
+- **infrastructure/** — 学术 API 连接器 (`connectors/`: OpenAlex, Semantic Scholar, dedupe, ranking, normalizers)；SQLAlchemy 持久层 (`db/`)
+- **tools/** — agent 可调用的工具实现：学术搜索 (`scholarly_tools.py`)、workspace 读写 (`workspace_tools.py`)、报告渲染 (`render_tools.py`)
 
 ### Pipeline Flow
 
@@ -134,35 +128,14 @@ When `REFLECTION_ENABLE_REFLECTION=true`, the coordinator:
 
 ### Frontend Structure (`frontend/src/`)
 
-```
-frontend/src/
-├── app/                    # Next.js App Router
-│   ├── layout.tsx          # Root layout
-│   ├── page.tsx            # Landing (redirects to dashboard)
-│   └── dashboard/          # Dashboard routes
-│       ├── layout.tsx      # Dashboard shell
-│       ├── page.tsx        # Dashboard home (stats, recent runs, golden topics)
-│       ├── new/            # New run form
-│       └── runs/           # Run list and detail views
-│           ├── page.tsx    # All runs list
-│           └── [id]/       # Single run detail
-│               ├── page.tsx       # Run overview (papers, evidence, conflicts, hypotheses)
-│               ├── report/        # Markdown report view
-│               └── trace/         # Tool call trace view
-├── components/
-│   ├── dashboard/          # Dashboard-specific (hero, stats, recent runs, golden topics)
-│   ├── dossier/            # Run result tabs (papers, evidence, conflicts, hypotheses)
-│   ├── layout/             # App shell, header, sidebar, nav
-│   ├── primitives/         # Base UI components (button, card, badge, dialog, etc.)
-│   ├── report/             # Markdown renderer
-│   ├── run/                # Run form, run card, stage progress
-│   ├── trace/              # Trace panel
-│   └── query-provider.tsx  # TanStack Query provider
-├── hooks/                  # Custom hooks (use-runs, use-run, use-poll-run, use-report, use-trace)
-├── lib/                    # API client, constants, utilities
-├── stores/                 # Zustand state management
-└── types/                  # TypeScript types (API response types)
-```
+Next.js 16 App Router，路由统一在 `app/dashboard/` 下。
+
+- **app/** — 路由：`dashboard/` (首页)、`dashboard/new/` (新建 run)、`dashboard/runs/` (列表)、`dashboard/runs/[id]/` (详情/report/trace)
+- **components/** — 按功能分目录：`dashboard/` (首页组件)、`dossier/` (papers/evidence/conflicts/hypotheses tabs)、`layout/` (shell/header/sidebar)、`primitives/` (button/card/badge 等基础组件)、`run/` (表单/进度)、`report/` (Markdown 渲染)、`trace/` (工具调用面板)
+- **hooks/** — 数据获取：`use-runs`, `use-run`, `use-poll-run`, `use-report`, `use-trace`
+- **lib/** — API 客户端、常量、工具函数
+- **stores/** — Zustand 状态管理
+- **types/** — API 响应类型定义
 
 ## Environment Variables
 
@@ -222,136 +195,3 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 - **Grounding**: All hypotheses must reference evidence IDs from the pool
 - **No PDF parsing**: V1 operates on title/abstract/metadata only
 
-<!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
-
-## Golden Rule
-
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
-
-**Important**: Even in command chains with `&&`, use `rtk`:
-```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
-
-# ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
-
-## RTK Commands by Workflow
-
-### Build & Compile (80-90% savings)
-```bash
-rtk cargo build         # Cargo build output
-rtk cargo check         # Cargo check output
-rtk cargo clippy        # Clippy warnings grouped by file (80%)
-rtk tsc                 # TypeScript errors grouped by file/code (83%)
-rtk lint                # ESLint/Biome violations grouped (84%)
-rtk prettier --check    # Files needing format only (70%)
-rtk next build          # Next.js build with route metrics (87%)
-```
-
-### Test (90-99% savings)
-```bash
-rtk cargo test          # Cargo test failures only (90%)
-rtk vitest run          # Vitest failures only (99.5%)
-rtk playwright test     # Playwright failures only (94%)
-rtk test <cmd>          # Generic test wrapper - failures only
-```
-
-### Git (59-80% savings)
-```bash
-rtk git status          # Compact status
-rtk git log             # Compact log (works with all git flags)
-rtk git diff            # Compact diff (80%)
-rtk git show            # Compact show (80%)
-rtk git add             # Ultra-compact confirmations (59%)
-rtk git commit          # Ultra-compact confirmations (59%)
-rtk git push            # Ultra-compact confirmations
-rtk git pull            # Ultra-compact confirmations
-rtk git branch          # Compact branch list
-rtk git fetch           # Compact fetch
-rtk git stash           # Compact stash
-rtk git worktree        # Compact worktree
-```
-
-Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
-
-### GitHub (26-87% savings)
-```bash
-rtk gh pr view <num>    # Compact PR view (87%)
-rtk gh pr checks        # Compact PR checks (79%)
-rtk gh run list         # Compact workflow runs (82%)
-rtk gh issue list       # Compact issue list (80%)
-rtk gh api              # Compact API responses (26%)
-```
-
-### JavaScript/TypeScript Tooling (70-90% savings)
-```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
-rtk prisma              # Prisma without ASCII art (88%)
-```
-
-### Files & Search (60-75% savings)
-```bash
-rtk ls <path>           # Tree format, compact (65%)
-rtk read <file>         # Code reading with filtering (60%)
-rtk grep <pattern>      # Search grouped by file (75%)
-rtk find <pattern>      # Find grouped by directory (70%)
-```
-
-### Analysis & Debug (70-90% savings)
-```bash
-rtk err <cmd>           # Filter errors only from any command
-rtk log <file>          # Deduplicated logs with counts
-rtk json <file>         # JSON structure without values
-rtk deps                # Dependency overview
-rtk env                 # Environment variables compact
-rtk summary <cmd>       # Smart summary of command output
-rtk diff                # Ultra-compact diffs
-```
-
-### Infrastructure (85% savings)
-```bash
-rtk docker ps           # Compact container list
-rtk docker images       # Compact image list
-rtk docker logs <c>     # Deduplicated logs
-rtk kubectl get         # Compact resource list
-rtk kubectl logs        # Deduplicated pod logs
-```
-
-### Network (65-70% savings)
-```bash
-rtk curl <url>          # Compact HTTP responses (70%)
-rtk wget <url>          # Compact download output (65%)
-```
-
-### Meta Commands
-```bash
-rtk gain                # View token savings statistics
-rtk gain --history      # View command history with savings
-rtk discover            # Analyze Claude Code sessions for missed RTK usage
-rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
-```
-
-## Token Savings Overview
-
-| Category | Commands | Typical Savings |
-|----------|----------|-----------------|
-| Tests | vitest, playwright, cargo test | 90-99% |
-| Build | next, tsc, lint, prettier | 70-87% |
-| Git | status, log, diff, add, commit | 59-80% |
-| GitHub | gh pr, gh run, gh issue | 26-87% |
-| Package Managers | pnpm, npm, npx | 70-90% |
-| Files | ls, read, grep, find | 60-75% |
-| Infrastructure | docker, kubectl | 85% |
-| Network | curl, wget | 65-70% |
-
-Overall average: **60-90% token reduction** on common development operations.
-<!-- /rtk-instructions -->

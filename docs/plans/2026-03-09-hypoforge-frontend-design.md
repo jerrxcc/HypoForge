@@ -1,5 +1,7 @@
 # HypoForge Frontend Design
 
+> 说明：这是一份早期前端设计记录，保留原始讨论痕迹。当前仓库实际实现以 `frontend/` 目录、`README.md` 和 `docs/CODEMAPS/frontend.md` 为准；其中根路由现为 `/ -> /dashboard`，新建运行页现为 `/dashboard/new`。
+
 ## Goal
 在现有后端已可真实运行的前提下，为 HypoForge 增加一个可直接操作的前端工作台。它不是介绍页，也不是普通 SaaS admin，而是面向研究人员的对外 demo 控制台。
 
@@ -71,10 +73,10 @@ run 详情内部再切：
 - `Report`
 
 ## Route Shape
-建议路由如下：
+原始方案建议路由如下；当前实现已调整为更简洁的命名：
 
-- `/` -> redirect to `/dashboard/new-run`
-- `/dashboard/new-run`
+- `/` -> redirect to `/dashboard`
+- `/dashboard/new`
 - `/dashboard/runs`
 - `/dashboard/runs/[runId]`
 - `/dashboard/runs/[runId]/trace`

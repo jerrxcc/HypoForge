@@ -1,5 +1,7 @@
 # HypoForge Frontend Implementation Plan
 
+> 说明：这是一份历史实现计划，主要用于保留当时的分步执行思路。当前仓库的已落地实现请以 `frontend/`、`README.md` 和 `docs/CODEMAPS/frontend.md` 为准；实际根路由为 `/dashboard`，新建运行页为 `/dashboard/new`。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Build the agreed HypoForge frontend console on top of `Kiranism/next-shadcn-dashboard-starter`, and add the smallest backend extensions needed to support it.

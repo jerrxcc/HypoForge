@@ -1,4 +1,4 @@
-<!-- Generated: 2026-03-22 | Files scanned: 184 | Token estimate: ~600 -->
+<!-- Generated: 2026-04-07 | Files scanned: 190 | Token estimate: ~650 -->
 
 # Dependencies Codemap
 
@@ -42,9 +42,10 @@ Dev: `pytest >=8.3, <9`
 | sonner | ^2.0 | Toasts |
 | clsx + tailwind-merge | ^2.1 / ^3.5 | Class utilities |
 | class-variance-authority | ^0.7 | Variant styling |
-| @radix-ui/* | various | UI primitives (13 packages) |
+| @radix-ui/* | various | UI primitives (12 packages) |
+| radix-ui | ^1.4 | Meta package |
 
-Dev: tailwindcss ^4, typescript ^5, eslint ^9, eslint-config-next 16.1.6
+Dev: tailwindcss ^4, @tailwindcss/typography ^0.5, typescript ^5, eslint ^9, eslint-config-next 16.1.6
 
 ## Caching Strategy
 
@@ -53,7 +54,7 @@ Dev: tailwindcss ^4, typescript ^5, eslint ^9, eslint-config-next 16.1.6
 | Raw response cache | SQLite `cache_entries` | 7 days | OpenAlex/S2/AlphaXiv raw responses |
 | Normalized paper cache | SQLite `cache_entries` | 30 days | Deduplicated paper payloads |
 | Evidence card cache | SQLite `cache_entries` | 30 days | Reuse evidence across runs |
-| Validation cache | In-memory (`ValidationCache`) | per-run | Intermediate validation results |
+| Validation cache | In-memory (`infrastructure/cache.py`) | per-run | Intermediate validation results |
 
 ## Budget Controls
 

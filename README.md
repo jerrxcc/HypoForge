@@ -10,9 +10,9 @@ HypoForge turns a research topic into an auditable dossier with selected papers,
 [![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?style=flat-square&logo=fastapi&logoColor=white)](#backend-api)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](#frontend)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react&logoColor=white)](#frontend)
-[![Tests](https://img.shields.io/badge/tests-175%20passed-success?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests%20(local)-185%20passed-success?style=flat-square)](#testing)
 [![Live Batch](https://img.shields.io/badge/live%20batch-8%2F8-success?style=flat-square)](#project-status)
-[![Status](https://img.shields.io/badge/status-active%20internal%20prototype-4c1d95?style=flat-square)](#project-status)
+[![Status](https://img.shields.io/badge/status-course%20project%20prototype-4c1d95?style=flat-square)](#project-status)
 
 </div>
 
@@ -23,6 +23,8 @@ HypoForge turns a research topic into an auditable dossier with selected papers,
 ## Overview
 
 HypoForge is a full-stack research workflow for exploring scientific topics with explicit evidence grounding.
+
+This repository is a course-project prototype focused on demonstrating an evidence-grounded end-to-end workflow rather than a production deployment target.
 
 Given a topic such as `solid-state battery electrolyte` or `CRISPR delivery lipid nanoparticles`, the system:
 
@@ -35,7 +37,7 @@ Given a topic such as `solid-state battery electrolyte` or `CRISPR delivery lipi
 This repository is no longer a backend-only MVP. The current codebase includes:
 
 - a `FastAPI` backend,
-- a `frontend-v2` dashboard built with `Next.js 16` and `React 19`,
+- a `frontend` dashboard built with `Next.js 16` and `React 19`,
 - persistent storage with `SQLAlchemy`,
 - trace capture and stage summaries,
 - planner-only reruns,
@@ -129,7 +131,7 @@ flowchart LR
 
 - It is not a text-only idea generator. The core output is tied to selected papers, evidence IDs, conflict clusters, and stage summaries.
 - It is not all-or-nothing. The pipeline is designed to preserve useful partial artifacts when later stages degrade.
-- It is not just a backend. `frontend-v2` provides a working dashboard for launch, monitoring, trace inspection, and report reading.
+- It is not just a backend. `frontend` provides a working dashboard for launch, monitoring, trace inspection, and report reading.
 - It is not limited to a single happy path. Reflection and validation layers are already implemented in code for iteration, backtracking, and quality assessment.
 
 ## Project Status
@@ -151,7 +153,7 @@ That report documents:
 The codebase has moved forward after those reports:
 
 - `2026-03-11`: reflection-correction loop landed
-- `2026-03-13`: `frontend-v2` landed as the current dashboard
+- `2026-03-13`: the current `frontend` dashboard landed
 - `2026-03-15`: validation agents landed
 - `2026-03-17`: live regression hardening and frontend markdown dependency fix landed
 
@@ -159,17 +161,16 @@ The codebase has moved forward after those reports:
 
 Verified locally in this repository:
 
-- `./.venv/bin/pytest -q` -> `175 passed, 6 skipped`
-- `cd frontend-v2 && npm run build` -> pass
-- `cd frontend-v2 && npm run lint` -> fails
-  - current result: `1` ESLint error and `6` warnings
+- `./.venv/bin/pytest -q tests/unit tests/integration tests/e2e` -> `185 passed`
+- `cd frontend && npm run build` -> pass
+- `cd frontend && npm run lint` -> pass
 
 ### Honest current read
 
 The strongest accurate summary today is:
 
 - the backend pipeline is implemented and well covered by tests,
-- the dashboard is functional and useful for internal operation,
+- the dashboard is functional and suitable for course demo / prototype use,
 - the latest report-backed live batch is still the `2026-03-10` strict `8/8` result,
 - reflection and validation are implemented in code but do not yet have a newer published live batch report in `docs/reports/`.
 
@@ -208,7 +209,7 @@ Default endpoints:
 ### 4. Start the dashboard
 
 ```bash
-cd frontend-v2
+cd frontend
 npm install
 npm run dev
 ```
@@ -285,7 +286,7 @@ curl -X POST http://127.0.0.1:8000/v1/runs/launch \
 
 ## Frontend
 
-`frontend-v2/` is the current UI surface.
+`frontend/` is the current UI surface.
 
 Current pages:
 
@@ -304,7 +305,7 @@ Current user flows:
 - read and download the Markdown report,
 - inspect tool traces for observability.
 
-The older `frontend/` directory remains in the repo as a legacy/reference surface.
+Some older plans and notes still refer to `frontend-v2`; in the current repository, the live implementation is under `frontend/`.
 
 ## Quality Layers
 
@@ -395,25 +396,26 @@ Validation settings use the `VALIDATION_` prefix, including:
 ### Default suite
 
 ```bash
-./.venv/bin/pytest -q
+./.venv/bin/pytest -q tests/unit tests/integration tests/e2e
 ```
 
 Current local result:
 
-- `175 passed, 6 skipped`
+- `185 passed`
 
 ### Live tests
 
-Real external-service tests are opt-in:
+Real external-service tests should be run individually. They require a valid `OPENAI_API_KEY`, may call external services, and are not the recommended default local baseline.
 
 ```bash
-RUN_REAL_API_TESTS=1 ./.venv/bin/pytest tests/live/test_real_runs_api.py -v
+./.venv/bin/pytest tests/live/test_real_runs_api.py -v
 ```
 
-Golden-topic regressions additionally require:
+Golden-topic and managed-path live checks:
 
 ```bash
-RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test_golden_topics_api.py -v
+./.venv/bin/pytest tests/live/test_golden_topics_api.py -v
+./.venv/bin/pytest tests/live/test_managed_live_paths.py -v
 ```
 
 ### What the tests cover
@@ -440,13 +442,13 @@ RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test
 │   ├── domain/              # schemas, validation, quality logic
 │   ├── infrastructure/      # DB, cache, connectors
 │   └── tools/               # tool schemas and implementations
-├── frontend-v2/             # current dashboard
-├── frontend/                # legacy / reference UI
+├── frontend/                # current dashboard
 ├── tests/
 │   ├── unit/
 │   ├── integration/
 │   ├── e2e/
 │   └── live/
+├── docs/CODEMAPS/
 ├── docs/plans/
 ├── docs/reports/
 └── scripts/run_topic.py
@@ -456,10 +458,11 @@ RUN_REAL_API_TESTS=1 RUN_GOLDEN_TOPIC_TESTS=1 ./.venv/bin/pytest tests/live/test
 
 HypoForge is intentionally honest about what it is today:
 
+- It is a course-project prototype, not a production-hardened service.
 - It is primarily metadata- and abstract-driven, not a full-text ingestion system.
 - It has no auth, project, workspace, or multi-user API surface yet.
 - The planner is intentionally constrained to exactly `3` hypotheses.
-- `frontend-v2` currently builds successfully, but lint is not yet fully clean.
+- `frontend` currently builds and lints successfully in local verification.
 - Reflection and validation are implemented, but their newer live behavior is not yet documented by a refreshed report batch.
 
 ## Related Documents
@@ -471,6 +474,8 @@ HypoForge is intentionally honest about what it is today:
 - Verification reports
   - [`docs/reports/2026-03-10-multi-topic-live-report.md`](docs/reports/2026-03-10-multi-topic-live-report.md)
   - [`docs/reports/2026-03-10-strict-8-topic-live-report.md`](docs/reports/2026-03-10-strict-8-topic-live-report.md)
+  - [`docs/CODEMAPS/architecture.md`](docs/CODEMAPS/architecture.md)
+  - [`docs/CODEMAPS/frontend.md`](docs/CODEMAPS/frontend.md)
 
 ## License
 
