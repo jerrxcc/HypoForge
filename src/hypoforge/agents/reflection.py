@@ -420,11 +420,13 @@ class ReflectionAgent:
         else:
             explanation_depth = 0.0
 
-        # Evidence coverage
+        # Evidence coverage — intersect with actual pool to avoid phantom IDs inflating the ratio
+        valid_evidence_ids = {card.evidence_id for card in evidence_cards}
         covered_evidence = set()
         for cluster in clusters:
             covered_evidence.update(cluster.supporting_evidence_ids)
             covered_evidence.update(cluster.conflicting_evidence_ids)
+        covered_evidence &= valid_evidence_ids
         evidence_coverage = len(covered_evidence) / max(1, len(evidence_cards))
 
         # Axis diversity

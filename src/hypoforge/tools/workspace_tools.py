@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
+
 from hypoforge.domain.schemas import ConflictCluster, StageSummary
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.schemas import SaveConflictClustersArgs, SaveEvidenceCardsArgs, SaveHypothesesArgs
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceTools:
@@ -45,6 +49,17 @@ class WorkspaceTools:
 
     def save_conflict_clusters(self, run_id: str, payload: dict) -> dict:
         args = SaveConflictClustersArgs.model_validate(payload)
+        valid_ids = {card.evidence_id for card in self._repository.load_evidence_cards(run_id)}
+        for cluster in args.conflict_clusters:
+            phantom_sup = [eid for eid in cluster.supporting_evidence_ids if eid not in valid_ids]
+            phantom_con = [eid for eid in cluster.conflicting_evidence_ids if eid not in valid_ids]
+            if phantom_sup or phantom_con:
+                logger.warning(
+                    "Cluster %s: stripping %d phantom evidence IDs",
+                    cluster.cluster_id, len(phantom_sup) + len(phantom_con),
+                )
+                cluster.supporting_evidence_ids = [eid for eid in cluster.supporting_evidence_ids if eid in valid_ids]
+                cluster.conflicting_evidence_ids = [eid for eid in cluster.conflicting_evidence_ids if eid in valid_ids]
         self._repository.save_conflict_clusters(run_id, args.conflict_clusters)
         return {"cluster_ids": [cluster.cluster_id for cluster in args.conflict_clusters]}
 
@@ -82,8 +97,21 @@ class WorkspaceTools:
         review_partial = self._is_review_partial(stage_summaries.get("review"))
         critic_unavailable = self._is_critic_unavailable(stage_summaries.get("critic"), clusters)
 
+        valid_id_set = set(all_evidence_ids)
         for hypothesis in hypotheses:
             supporting_ids = hypothesis.get("supporting_evidence_ids", [])
+            phantom_sup = [eid for eid in supporting_ids if eid not in valid_id_set]
+            phantom_cnt = [eid for eid in hypothesis.get("counterevidence_ids", []) if eid not in valid_id_set]
+            if phantom_sup or phantom_cnt:
+                logger.warning(
+                    "Hypothesis %s: stripping %d phantom evidence IDs",
+                    hypothesis.get("rank", "?"), len(phantom_sup) + len(phantom_cnt),
+                )
+                supporting_ids = [eid for eid in supporting_ids if eid in valid_id_set]
+                hypothesis["supporting_evidence_ids"] = supporting_ids
+                hypothesis["counterevidence_ids"] = [
+                    eid for eid in hypothesis.get("counterevidence_ids", []) if eid in valid_id_set
+                ]
             if not hypothesis.get("counterevidence_ids"):
                 candidate_ids = self._infer_counterevidence_ids(
                     supporting_ids=supporting_ids,
