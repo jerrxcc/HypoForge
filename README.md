@@ -11,7 +11,7 @@ HypoForge turns a research topic into an auditable dossier with selected papers,
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](#frontend)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react&logoColor=white)](#frontend)
 [![Tests](https://img.shields.io/badge/tests%20(local)-185%20passed-success?style=flat-square)](#testing)
-[![Live Batch](https://img.shields.io/badge/live%20batch-8%2F8-success?style=flat-square)](#project-status)
+[![Live Batch](https://img.shields.io/badge/live%20batch-8%2F8%20(2026--04--08)-success?style=flat-square)](#project-status)
 [![Status](https://img.shields.io/badge/status-course%20project%20prototype-4c1d95?style=flat-square)](#project-status)
 
 </div>
@@ -138,24 +138,29 @@ flowchart LR
 
 ### Latest documented live validation
 
-The latest report-backed live milestone is still:
+The latest report-backed live milestone is:
 
-- [`docs/reports/2026-03-10-strict-8-topic-live-report.md`](docs/reports/2026-03-10-strict-8-topic-live-report.md)
+- [`docs/reports/2026-04-08-live-batch-report.md`](docs/reports/2026-04-08-live-batch-report.md)
 
 That report documents:
 
 - a strict-grounding live batch of `8/8` successful topics,
-- successful overview / trace / report frontend route checks,
-- end-to-end runs across multiple real research topics.
+- all topics producing exactly `18` papers, `18-20` evidence cards, `2-4` conflict clusters, and exactly `3` hypotheses,
+- all grounding checks passed (every hypothesis evidence ID verified against the pool),
+- phantom evidence ID validation active and effective (LLM-hallucinated IDs stripped at tool boundary),
+- comparison with the earlier 2026-03-10 baseline showing improvement across all metrics.
 
-### More recent code progress
-
-The codebase has moved forward after those reports:
+### Code progress since initial MVP
 
 - `2026-03-11`: reflection-correction loop landed
 - `2026-03-13`: the current `frontend` dashboard landed
 - `2026-03-15`: validation agents landed
 - `2026-03-17`: live regression hardening and frontend markdown dependency fix landed
+- `2026-03-19`: alphaXiv MCP evidence source integration
+- `2026-03-21`: frontend v3 with Claude warm palette, dashboard, dossier, report, trace pages
+- `2026-03-21–23`: frontend quality audit and remediation (a11y, perf, responsive, theming)
+- `2026-04-01`: real-time SSE agent activity drawer
+- `2026-04-08`: phantom evidence ID validation, 8/8 live batch verified
 
 ### Fresh local verification
 
@@ -164,6 +169,7 @@ Verified locally in this repository:
 - `./.venv/bin/pytest -q tests/unit tests/integration tests/e2e` -> `185 passed`
 - `cd frontend && npm run build` -> pass
 - `cd frontend && npm run lint` -> pass
+- `ALPHAXIV_ACCESS_TOKEN="" python scripts/run_live_batch.py` -> `8/8 passed`
 
 ### Honest current read
 
@@ -171,8 +177,8 @@ The strongest accurate summary today is:
 
 - the backend pipeline is implemented and well covered by tests,
 - the dashboard is functional and suitable for course demo / prototype use,
-- the latest report-backed live batch is still the `2026-03-10` strict `8/8` result,
-- reflection and validation are implemented in code but do not yet have a newer published live batch report in `docs/reports/`.
+- the latest report-backed live batch is the `2026-04-08` strict `8/8` result with grounding verification,
+- reflection, validation, and phantom ID filtering are all implemented, tested, and verified in a live batch.
 
 ## Quick Start
 
@@ -463,7 +469,7 @@ HypoForge is intentionally honest about what it is today:
 - It has no auth, project, workspace, or multi-user API surface yet.
 - The planner is intentionally constrained to exactly `3` hypotheses.
 - `frontend` currently builds and lints successfully in local verification.
-- Reflection and validation are implemented, but their newer live behavior is not yet documented by a refreshed report batch.
+- Reflection, validation, and phantom ID filtering are all documented by the `2026-04-08` live batch report.
 
 ## Related Documents
 
@@ -472,8 +478,9 @@ HypoForge is intentionally honest about what it is today:
   - [`docs/plans/2026-03-08-hypoforge-mvp.md`](docs/plans/2026-03-08-hypoforge-mvp.md)
   - [`docs/plans/2026-03-10-hypoforge-briefing-depth-design.md`](docs/plans/2026-03-10-hypoforge-briefing-depth-design.md)
 - Verification reports
-  - [`docs/reports/2026-03-10-multi-topic-live-report.md`](docs/reports/2026-03-10-multi-topic-live-report.md)
+  - [`docs/reports/2026-04-08-live-batch-report.md`](docs/reports/2026-04-08-live-batch-report.md)
   - [`docs/reports/2026-03-10-strict-8-topic-live-report.md`](docs/reports/2026-03-10-strict-8-topic-live-report.md)
+  - [`docs/reports/2026-03-10-multi-topic-live-report.md`](docs/reports/2026-03-10-multi-topic-live-report.md)
   - [`docs/CODEMAPS/architecture.md`](docs/CODEMAPS/architecture.md)
   - [`docs/CODEMAPS/frontend.md`](docs/CODEMAPS/frontend.md)
 
