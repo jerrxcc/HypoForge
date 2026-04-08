@@ -550,6 +550,10 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             },
         )
 
+    def _cleanup_run(run_id: str) -> None:
+        candidate_pools.pop(run_id, None)
+        budget_trackers.pop(run_id, None)
+
     from hypoforge.application.event_bus import RunEventBus
     event_bus = RunEventBus()
 
@@ -566,6 +570,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         validation_registry=validation_registry,
         validation_settings=settings.validation_settings,
         event_bus=event_bus,
+        run_cleanup=_cleanup_run,
     )
     return ServiceContainer(coordinator=coordinator, event_bus=event_bus)
 

@@ -57,6 +57,7 @@ class RunCoordinator:
         validation_settings: ValidationSettings | None = None,
         event_bus: Any | None = None,
         correction_loop_controller: CorrectionLoopController | None = None,
+        run_cleanup: Callable[[str], None] | None = None,
     ) -> None:
         self._repository = repository
         self._retrieval_agent = retrieval_agent
@@ -70,6 +71,7 @@ class RunCoordinator:
         self._validation_registry = validation_registry
         self._validation_settings = validation_settings or ValidationSettings()
         self._event_bus = event_bus
+        self._run_cleanup = run_cleanup
         self._logger = logging.getLogger(__name__)
         self._correction_loop_controller = correction_loop_controller or CorrectionLoopController(
             repository=repository,
@@ -399,6 +401,8 @@ class RunCoordinator:
                 raise
         finally:
             self._feedback_pools.pop(run_id, None)
+            if self._run_cleanup is not None:
+                self._run_cleanup(run_id)
 
         return self._repository.build_final_result(run_id)
 
@@ -601,6 +605,9 @@ class RunCoordinator:
             self._emit_run_terminal(run_id, "failed", error=str(exc))
             if raise_on_failure:
                 raise
+        finally:
+            if self._run_cleanup is not None:
+                self._run_cleanup(run_id)
         return self._repository.build_final_result(run_id)
 
     def _render_partial_report(self, run_id: str) -> None:
