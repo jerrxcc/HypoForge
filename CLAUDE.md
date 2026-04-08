@@ -78,9 +78,10 @@ rtk npm run build    # Production build
 分层架构，依赖方向：api → application → agents/domain → infrastructure/tools。
 
 - **api/** — FastAPI app factory (`app.py`)、路由 (`routes/`)、请求/响应 schema (`schemas.py`)
-- **application/** — Coordinator (`coordinator.py`) 编排四阶段流水线；服务容器 (`services.py`)；报告渲染 (`report_renderer.py`)；反思校正循环 (`correction_loop.py` + `stage_graph.py`)
-- **agents/** — 每阶段一个 agent（`retrieval.py`, `review.py`, `critic.py`, `planner.py`）+ 反思 agent (`reflection.py`)；共享运行时 (`runner.py`)、提示词 (`prompts.py`)、OpenAI 客户端 (`providers.py`)
-- **domain/** — Pydantic 模型 (`schemas.py`)、核心对象 (`models.py`)、质量阈值 (`quality.py`)、多视角定义 (`perspectives.py`)
+- **application/** — Coordinator (`coordinator.py`) 编排四阶段流水线；服务容器 (`services.py`)；阶段输出修复 (`repair.py`)；证据缓存 (`evidence_cache.py`)；报告渲染 (`report_renderer.py`)；反思校正循环 (`correction_loop.py` + `stage_graph.py`)；事件总线 (`event_bus.py`)；预算追踪 (`budget.py`)
+- **agents/** — 反思 agent (`reflection.py`)；验证 agent (`evidence_validator.py`, `conflict_detector.py`, `quality_assessor.py`, `validation_base.py`)；共享运行时 (`runner.py`)、提示词 (`prompts.py`)、OpenAI 客户端 (`providers.py`)
+- **domain/** — Pydantic 模型 (`schemas.py`)、质量阈值 (`quality.py`)、验证模型 (`validation.py`)
+- **testing/** — 确定性测试桩 (`fake_services.py`)，无需 LLM 即可运行 coordinator
 - **infrastructure/** — 学术 API 连接器 (`connectors/`: OpenAlex, Semantic Scholar, dedupe, ranking, normalizers)；SQLAlchemy 持久层 (`db/`)
 - **tools/** — agent 可调用的工具实现：学术搜索 (`scholarly_tools.py`)、workspace 读写 (`workspace_tools.py`)、报告渲染 (`render_tools.py`)
 
@@ -186,6 +187,37 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 - E2E tests: `tests/e2e/`
 - Live tests: `tests/live/` (require `RUN_REAL_API_TESTS=1`)
 - Shared fixtures in `tests/conftest.py` and `tests/helpers/`
+
+## Working Principles
+
+### 1. Plan Node Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately - don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 4. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes - don't over-engineer
+- Challenge your own work before presenting it
+
+### 5. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests - then resolve them
+- Zero context switching required from the user
 
 ## Important Constraints
 

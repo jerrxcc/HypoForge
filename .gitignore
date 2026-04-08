@@ -1,12 +1,34 @@
+# OS
 .DS_Store
-.env
+
+# Python
 .venv/
 __pycache__/
 .pytest_cache/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
+
+# Database
 *.sqlite3
 *.db
 
+# Secrets
+.env
+
+# Tools / caches
 .superpowers/
+.ruff_cache/
+.rtk/
+.playwright-mcp/
+.reports/
+.claude/
+
+# Build / generated output
+output/
+dist/
+build/
+
+# Binary assets (use docs/ or external hosting)
+*.png
