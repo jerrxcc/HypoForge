@@ -4,7 +4,7 @@ Tests the full validation pipeline with coordinator integration.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from hypoforge.domain.schemas import (
@@ -292,8 +292,7 @@ class TestValidationAgentRegistry:
 class TestValidationPipelineIntegration:
     """Integration tests for the full validation pipeline."""
 
-    @pytest.mark.asyncio
-    async def test_evidence_validation_flow(
+    def test_evidence_validation_flow(
         self, mock_repository, validation_settings,
         sample_evidence_cards, sample_papers
     ):
@@ -313,13 +312,12 @@ class TestValidationPipelineIntegration:
             iteration_number=1,
         )
 
-        result = await validator.validate(context)
+        result = validator.validate(context)
 
         assert result.validated_count == 6
         assert result.score > 0
 
-    @pytest.mark.asyncio
-    async def test_conflict_detection_flow(
+    def test_conflict_detection_flow(
         self, mock_repository, validation_settings,
         sample_evidence_cards, sample_conflicts
     ):
@@ -339,13 +337,12 @@ class TestValidationPipelineIntegration:
             iteration_number=1,
         )
 
-        result = await detector.validate(context)
+        result = detector.validate(context)
 
         assert result.validated_count == 1
         assert result.score > 0
 
-    @pytest.mark.asyncio
-    async def test_quality_assessment_flow(
+    def test_quality_assessment_flow(
         self, mock_repository, validation_settings,
         sample_evidence_cards, sample_conflicts, sample_hypotheses
     ):
@@ -366,7 +363,7 @@ class TestValidationPipelineIntegration:
             iteration_number=1,
         )
 
-        result = await assessor.validate(context)
+        result = assessor.validate(context)
 
         assert result.validated_count == 3
         assert result.score > 0
@@ -421,8 +418,7 @@ class TestValidationPipelineIntegration:
 class TestBacktrackLogic:
     """Tests for backtrack decision logic."""
 
-    @pytest.mark.asyncio
-    async def test_backtrack_on_low_evidence(
+    def test_backtrack_on_low_evidence(
         self, mock_repository, validation_settings
     ):
         """Test backtrack triggered by low evidence count."""
@@ -466,13 +462,12 @@ class TestBacktrackLogic:
             iteration_number=1,
         )
 
-        result = await validator.validate(context)
+        result = validator.validate(context)
 
         assert result.valid is False
         assert result.backtrack_recommendation is not None
 
-    @pytest.mark.asyncio
-    async def test_no_backtrack_on_valid_results(
+    def test_no_backtrack_on_valid_results(
         self, mock_repository, validation_settings,
         sample_evidence_cards, sample_papers
     ):
@@ -492,7 +487,7 @@ class TestBacktrackLogic:
             iteration_number=1,
         )
 
-        result = await validator.validate(context)
+        result = validator.validate(context)
 
         # Should not backtrack with sufficient evidence
         assert result.valid is True or result.backtrack_recommendation is None

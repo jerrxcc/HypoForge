@@ -114,7 +114,7 @@ def run_live_scenario_round_trip(
         },
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, f"POST /v1/runs returned {response.status_code}: {response.text[:500]}"
     body = response.json()
     run_id = body["run_id"]
 

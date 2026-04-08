@@ -109,7 +109,7 @@ class QualityAssessor(ValidationAgent):
     def target_stage(self) -> StageName:
         return "planner"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         """Validate hypothesis quality.
 
         Args:

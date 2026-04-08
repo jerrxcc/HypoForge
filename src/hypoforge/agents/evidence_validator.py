@@ -98,7 +98,7 @@ class EvidenceValidator(ValidationAgent):
     def target_stage(self) -> StageName:
         return "review"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         """Validate evidence cards for the run.
 
         Args:

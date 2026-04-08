@@ -94,7 +94,7 @@ class FeedbackSynthesizer(ValidationAgent):
         # Feedback synthesizer runs after all validations
         return "planner"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         """Synthesize feedback from validation results.
 
         Note: This method is called for interface compatibility, but

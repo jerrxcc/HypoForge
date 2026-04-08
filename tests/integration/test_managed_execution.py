@@ -35,7 +35,7 @@ class ScriptedReviewValidator(ValidationAgent):
     def target_stage(self):
         return "review"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         self.call_count += 1
         if self.call_count == 1:
             return ValidationResult(
@@ -82,7 +82,7 @@ class CountingReviewValidator(ValidationAgent):
     def target_stage(self):
         return "review"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         del context
         self.call_count += 1
         return ValidationResult(

@@ -78,7 +78,7 @@ class ValidationAgent(ABC):
         pass
 
     @abstractmethod
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         """Execute validation and return results.
 
         Args:
@@ -182,7 +182,7 @@ class ValidationAgentRegistry:
         """
         return self._validators.get(stage, [])
 
-    async def validate_stage(
+    def validate_stage(
         self,
         stage: StageName,
         context: ValidationContext,
@@ -201,7 +201,7 @@ class ValidationAgentRegistry:
 
         for validator in validators:
             try:
-                result = await validator.validate(context)
+                result = validator.validate(context)
                 results.append(result)
                 self._logger.info(
                     f"Validation {validator.validation_type} completed",

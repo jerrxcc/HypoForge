@@ -5,7 +5,7 @@ and FeedbackSynthesizer agents.
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 from datetime import datetime
 
 from hypoforge.domain.schemas import (
@@ -195,8 +195,7 @@ class TestEvidenceValidator:
         assert validator.validation_type == "evidence_validation"
         assert validator.target_stage == "review"
 
-    @pytest.mark.asyncio
-    async def test_validate_empty_evidence(self, mock_repository, validation_settings, validation_context):
+    def test_validate_empty_evidence(self, mock_repository, validation_settings, validation_context):
         """Test validation with no evidence cards."""
         mock_repository.load_evidence_cards.return_value = []
 
@@ -205,14 +204,13 @@ class TestEvidenceValidator:
             settings=validation_settings,
         )
 
-        result = await validator.validate(validation_context)
+        result = validator.validate(validation_context)
 
         assert result.valid is False
         assert result.score == 0.0
         assert any("no_evidence" in i.issue_type.lower() for i in result.issues)
 
-    @pytest.mark.asyncio
-    async def test_validate_complete_evidence(
+    def test_validate_complete_evidence(
         self, mock_repository, validation_settings, validation_context,
         sample_evidence_cards, sample_papers
     ):
@@ -225,14 +223,13 @@ class TestEvidenceValidator:
             settings=validation_settings,
         )
 
-        result = await validator.validate(validation_context)
+        result = validator.validate(validation_context)
 
         assert result.validated_count == 3
         assert result.score > 0
         assert len(result.issues) >= 0
 
-    @pytest.mark.asyncio
-    async def test_validate_incomplete_evidence(self, mock_repository, validation_settings, validation_context):
+    def test_validate_incomplete_evidence(self, mock_repository, validation_settings, validation_context):
         """Test validation with incomplete evidence cards."""
         incomplete_evidence = [
             EvidenceCard(
@@ -254,7 +251,7 @@ class TestEvidenceValidator:
             settings=validation_settings,
         )
 
-        result = await validator.validate(validation_context)
+        result = validator.validate(validation_context)
 
         assert result.valid is False
         assert len(result.issues) > 0
@@ -309,8 +306,7 @@ class TestConflictDetector:
         assert detector.validation_type == "conflict_detection"
         assert detector.target_stage == "critic"
 
-    @pytest.mark.asyncio
-    async def test_validate_no_evidence(self, mock_repository, validation_settings, validation_context):
+    def test_validate_no_evidence(self, mock_repository, validation_settings, validation_context):
         """Test conflict detection with no evidence."""
         mock_repository.load_evidence_cards.return_value = []
 
@@ -319,13 +315,12 @@ class TestConflictDetector:
             settings=validation_settings,
         )
 
-        result = await detector.validate(validation_context)
+        result = detector.validate(validation_context)
 
         assert result.valid is False
         assert result.score == 0.0
 
-    @pytest.mark.asyncio
-    async def test_validate_with_conflicts(
+    def test_validate_with_conflicts(
         self, mock_repository, validation_settings, validation_context,
         sample_evidence_cards, sample_conflict_clusters
     ):
@@ -338,7 +333,7 @@ class TestConflictDetector:
             settings=validation_settings,
         )
 
-        result = await detector.validate(validation_context)
+        result = detector.validate(validation_context)
 
         assert result.validated_count == 1
         assert result.score > 0
@@ -381,8 +376,7 @@ class TestQualityAssessor:
         assert assessor.validation_type == "quality_assessment"
         assert assessor.target_stage == "planner"
 
-    @pytest.mark.asyncio
-    async def test_validate_no_hypotheses(self, mock_repository, validation_settings, validation_context):
+    def test_validate_no_hypotheses(self, mock_repository, validation_settings, validation_context):
         """Test quality assessment with no hypotheses."""
         mock_repository.load_hypotheses.return_value = []
 
@@ -391,13 +385,12 @@ class TestQualityAssessor:
             settings=validation_settings,
         )
 
-        result = await assessor.validate(validation_context)
+        result = assessor.validate(validation_context)
 
         assert result.valid is False
         assert result.score == 0.0
 
-    @pytest.mark.asyncio
-    async def test_validate_with_hypotheses(
+    def test_validate_with_hypotheses(
         self, mock_repository, validation_settings, validation_context,
         sample_hypotheses, sample_evidence_cards, sample_conflict_clusters
     ):
@@ -411,7 +404,7 @@ class TestQualityAssessor:
             settings=validation_settings,
         )
 
-        result = await assessor.validate(validation_context)
+        result = assessor.validate(validation_context)
 
         assert result.validated_count == 1
         assert result.score > 0

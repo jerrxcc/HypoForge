@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable
@@ -337,15 +336,13 @@ class RunCoordinator:
                         continue
 
                 if validation_enabled:
-                    validation_results = asyncio.run(
-                        self._run_validation_agents(
-                            run_id=run_id,
-                            stage_name=current_stage,
-                            request=request,
-                            summary=stage_result.summary,
-                            iteration_state=iteration_state,
-                            feedback_pool=feedback_pool,
-                        )
+                    validation_results = self._run_validation_agents(
+                        run_id=run_id,
+                        stage_name=current_stage,
+                        request=request,
+                        summary=stage_result.summary,
+                        iteration_state=iteration_state,
+                        feedback_pool=feedback_pool,
                     )
                     backtrack_recommendation = self._get_backtrack_recommendation(validation_results)
                     if (
@@ -487,7 +484,7 @@ class RunCoordinator:
         self._emit_stage_complete(run_id, stage_name, attempt, "completed")
         return summary
 
-    async def _run_validation_agents(
+    def _run_validation_agents(
         self,
         *,
         run_id: str,
@@ -512,7 +509,7 @@ class RunCoordinator:
         results: list[ValidationResult] = []
         for validator in validators:
             try:
-                result = await validator.validate(context)
+                result = validator.validate(context)
                 results.append(result)
                 self._logger.info(
                     "Validation %s completed",

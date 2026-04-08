@@ -99,7 +99,7 @@ class ConflictDetector(ValidationAgent):
     def target_stage(self) -> StageName:
         return "critic"
 
-    async def validate(self, context: ValidationContext) -> ValidationResult:
+    def validate(self, context: ValidationContext) -> ValidationResult:
         """Validate and enhance conflict detection.
 
         Args:
