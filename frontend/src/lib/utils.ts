@@ -7,11 +7,20 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
+ * Parse backend datetimes as UTC when SQLite serialization drops the offset.
+ */
+export function parseApiDate(date: string | Date): Date {
+  if (date instanceof Date) return date;
+  const hasExplicitZone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(date);
+  return new Date(hasExplicitZone ? date : `${date}Z`);
+}
+
+/**
  * Format a date as a relative human-readable string (e.g. "2 hours ago").
  * Falls back to a locale date string for dates older than 7 days.
  */
 export function formatDate(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = parseApiDate(date);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffSec = Math.floor(diffMs / 1000);

@@ -23,20 +23,20 @@ export function ItemGroup({ groupKey, label, count, children }: ItemGroupProps) 
 
   return (
     <Collapsible open={expanded} onOpenChange={() => toggleGroup(groupKey)}>
-      <CollapsibleTrigger aria-label={`Toggle ${label} section`} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      <CollapsibleTrigger aria-label={`Toggle ${label} section`} className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted/50 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <ChevronRight
           className={cn(
             'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
             expanded && 'rotate-90',
           )}
         />
-        <span className="flex-1 text-left">{label}</span>
+        <span className="min-w-0 flex-1 text-left">{label}</span>
         <Badge variant="secondary" className="text-xs px-1.5 py-0">
           {count}
         </Badge>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="flex flex-col gap-px py-1">
+        <div className="flex min-w-0 flex-col gap-px py-1">
           {children}
         </div>
       </CollapsibleContent>

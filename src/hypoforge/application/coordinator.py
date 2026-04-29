@@ -181,10 +181,13 @@ class RunCoordinator:
     def get_report_markdown(self, run_id: str) -> str:
         run = self._repository.get_run(run_id)
         report_markdown = run.final_report_md or ""
-        if not report_markdown or report_markdown.startswith("# HypoForge Report:"):
-            refreshed = self._report_renderer.render(self._repository.build_final_result(run_id))
-            self._repository.save_report_markdown(run_id, refreshed)
-            return refreshed
+        expected_status_line = f"- Final status: `{run.status}`"
+        if (
+            not report_markdown
+            or report_markdown.startswith("# HypoForge Report:")
+            or expected_status_line not in report_markdown
+        ):
+            return self._render_report(run_id)
         return report_markdown
 
     def get_reflection_history(
@@ -216,6 +219,7 @@ class RunCoordinator:
             self._finish_stage(run_id, "planner", planner_summary, attempt=attempt)
             self._emit_stage_complete(run_id, "planner", attempt, "completed")
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._render_report(run_id)
             self._emit_run_terminal(run_id, "done")
         except Exception as exc:
             self._repository.finish_stage(
@@ -388,6 +392,7 @@ class RunCoordinator:
 
             self._repository.save_iteration_state(run_id, iteration_state)
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._render_report(run_id)
             self._emit_run_terminal(run_id, "done")
         except Exception as exc:
             self._repository.update_run_status(run_id, "failed", error_message=str(exc))
@@ -594,6 +599,7 @@ class RunCoordinator:
             self._run_linear_stage(run_id, "critic", request)
             self._run_linear_stage(run_id, "planner", request)
             self._repository.update_run_status(run_id, "done", error_message=None)
+            self._render_report(run_id)
             self._emit_run_terminal(run_id, "done")
         except Exception as exc:
             self._repository.update_run_status(run_id, "failed", error_message=str(exc))
@@ -612,6 +618,12 @@ class RunCoordinator:
         if result.report_markdown:
             return
         self._repository.save_report_markdown(run_id, self._report_renderer.render(result))
+
+    def _render_report(self, run_id: str) -> str:
+        result = self._repository.build_final_result(run_id)
+        markdown = self._report_renderer.render(result)
+        self._repository.save_report_markdown(run_id, markdown)
+        return markdown
 
     def _finish_stage(
         self,

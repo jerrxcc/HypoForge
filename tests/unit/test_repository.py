@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from hypoforge.domain.schemas import (
     ConflictCluster,
     EvidenceCard,
@@ -52,6 +54,18 @@ def test_repository_persists_error_message_on_status_update(tmp_path) -> None:
 
     assert loaded.status == "failed"
     assert loaded.error_message == "planner unavailable"
+
+
+def test_repository_returns_utc_run_summary_timestamps(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="timezone serialization"))
+
+    repo.update_run_status(run.run_id, "done")
+
+    summary = repo.list_runs()[0]
+
+    assert summary.created_at.tzinfo is UTC
+    assert summary.updated_at.tzinfo is UTC
 
 
 def test_repository_builds_final_result(tmp_path) -> None:

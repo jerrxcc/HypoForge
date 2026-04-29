@@ -67,7 +67,7 @@ export function DetailPanel({ run }: DetailPanelProps) {
   }
 
   return (
-    <ScrollArea className={`h-full ${TYPE_ACCENT[selectedType]}`}>
+    <ScrollArea className={`box-border h-full min-w-0 max-w-full overflow-hidden ${TYPE_ACCENT[selectedType]}`}>
       {content}
     </ScrollArea>
   );

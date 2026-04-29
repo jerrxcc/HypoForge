@@ -2,7 +2,7 @@ import type { Direction } from '@/types';
 
 export function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 max-w-full flex-col gap-1.5 [overflow-wrap:anywhere]">
       <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       {children}
     </div>
@@ -12,7 +12,7 @@ export function Section({ title, children }: { readonly title: string; readonly 
 export function BulletList({ items }: { readonly items: readonly string[] }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground">None</p>;
   return (
-    <ul className="list-disc pl-4 text-sm space-y-1">
+    <ul className="list-disc pl-4 text-sm space-y-1 [overflow-wrap:anywhere]">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}

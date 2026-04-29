@@ -32,7 +32,7 @@ export function SearchFilter() {
   );
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <label htmlFor="dossier-filter" className="sr-only">Filter items</label>
       <Input
@@ -40,7 +40,7 @@ export function SearchFilter() {
         placeholder="Filter items..."
         value={localValue}
         onChange={handleChange}
-        className="pl-9 text-sm"
+        className="min-w-0 pl-9 text-sm"
       />
     </div>
   );

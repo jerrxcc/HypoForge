@@ -12,12 +12,12 @@ interface PaperDetailProps {
 
 export function PaperDetailView({ paper }: PaperDetailProps) {
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex min-w-0 max-w-full flex-col gap-5 p-4 [overflow-wrap:anywhere]">
       {/* Title */}
-      <h2 className="text-lg font-semibold leading-snug">{paper.title}</h2>
+      <h2 className="min-w-0 text-lg font-semibold leading-snug [overflow-wrap:anywhere]">{paper.title}</h2>
 
       {/* Metadata row */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         {paper.authors.length > 0 && (
           <span>{paper.authors.join(', ')}</span>
         )}
@@ -40,7 +40,7 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
       {/* Fields of study */}
       {paper.fields_of_study.length > 0 && (
         <Section title="Fields of Study">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             {paper.fields_of_study.map((field, i) => (
               <Badge key={i} variant="secondary" className="text-xs">
                 {field}
@@ -54,7 +54,7 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
 
       {/* Links */}
       <Section title="Links">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {paper.doi && (
             <a
               href={`https://doi.org/${paper.doi}`}
@@ -98,7 +98,7 @@ export function PaperDetailView({ paper }: PaperDetailProps) {
       {/* Provenance */}
       {paper.provenance.length > 0 && (
         <Section title="Provenance">
-          <ul className="list-disc pl-4 text-sm space-y-1">
+          <ul className="list-disc pl-4 text-sm space-y-1 [overflow-wrap:anywhere]">
             {paper.provenance.map((p, i) => (
               <li key={i}>{p}</li>
             ))}

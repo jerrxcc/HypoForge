@@ -9,6 +9,7 @@ from hypoforge.domain.schemas import (
     ReviewSummary,
     CriticSummary,
     PlannerSummary,
+    RunRequest,
 )
 from hypoforge.infrastructure.db.repository import RunRepository
 
@@ -172,6 +173,7 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
 
     assert stage_calls == ["retrieval", "review", "critic", "planner"]
     assert result.status == "done"
+    assert "- Final status: `done`" in coordinator.get_report_markdown(result.run_id)
     assert result.hypotheses[0].rank == 1
     assert [summary.stage_name for summary in result.stage_summaries] == [
         "retrieval",
@@ -265,6 +267,33 @@ def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
     assert markdown.startswith("# HypoForge Briefing:")
     assert "## Executive Summary" in markdown
     assert repo.get_run(result.run_id).final_report_md == markdown
+
+
+def test_get_report_markdown_rerenders_stale_status_report(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="stale report status"))
+    repo.update_run_status(run.run_id, "planning")
+    repo.save_report_markdown(
+        run.run_id,
+        "# HypoForge Briefing: stale report status\n\n"
+        f"- Run ID: `{run.run_id}`\n"
+        "- Final status: `planning`\n",
+    )
+    repo.update_run_status(run.run_id, "done")
+
+    coordinator = RunCoordinator(
+        repository=repo,
+        retrieval_agent=lambda *args, **kwargs: None,
+        review_agent=lambda *args, **kwargs: None,
+        critic_agent=lambda *args, **kwargs: None,
+        planner_agent=lambda *args, **kwargs: None,
+    )
+
+    markdown = coordinator.get_report_markdown(run.run_id)
+
+    assert "- Final status: `done`" in markdown
+    assert "- Final status: `planning`" not in markdown
+    assert repo.get_run(run.run_id).final_report_md == markdown
 
 
 def _make_hypothesis(rank: int) -> Hypothesis:

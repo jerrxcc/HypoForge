@@ -44,16 +44,16 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
   const { minimal_experiment: exp } = hypothesis;
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex min-w-0 max-w-full flex-col gap-5 p-4 [overflow-wrap:anywhere]">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Badge variant="outline" className="font-mono text-xs">
             #{hypothesis.rank}
           </Badge>
-          <h2 className="text-lg font-semibold">{hypothesis.title}</h2>
+          <h2 className="min-w-0 text-lg font-semibold leading-snug [overflow-wrap:anywhere]">{hypothesis.title}</h2>
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-1.5">
+        <div className="flex w-full max-w-sm min-w-0 flex-col gap-1.5">
           <ScoreBar label="Novelty" score={hypothesis.novelty_score} />
           <ScoreBar label="Feasibility" score={hypothesis.feasibility_score} />
           <ScoreBar label="Overall" score={hypothesis.overall_score} />
@@ -81,7 +81,7 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
 
       {/* Supporting Evidence */}
       <Section title="Supporting Evidence">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
           {hypothesis.supporting_evidence_ids.length > 0
             ? hypothesis.supporting_evidence_ids.map((id) => (
                 <EvidenceLink key={id} evidenceId={id} />
@@ -92,7 +92,7 @@ export function HypothesisDetail({ hypothesis }: HypothesisDetailProps) {
 
       {/* Counter Evidence */}
       <Section title="Counter Evidence">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex min-w-0 flex-wrap gap-1.5">
           {hypothesis.counterevidence_ids.length > 0
             ? hypothesis.counterevidence_ids.map((id) => (
                 <EvidenceLink key={id} evidenceId={id} variant="counter" />

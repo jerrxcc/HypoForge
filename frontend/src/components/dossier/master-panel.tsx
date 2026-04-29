@@ -75,8 +75,8 @@ export function MasterPanel({ run }: MasterPanelProps) {
   const { hypotheses: filteredHypotheses, conflicts: filteredConflicts, evidence: filteredEvidence, papers: filteredPapers } = filtered;
 
   return (
-    <ScrollArea className="h-full">
-      <div className="flex flex-col gap-2 p-3">
+    <ScrollArea className="h-full min-w-0">
+      <div className="flex min-w-0 flex-col gap-2 p-3">
         <SearchFilter />
 
         {filteredHypotheses.length > 0 && (

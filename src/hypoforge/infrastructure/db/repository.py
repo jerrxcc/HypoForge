@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
@@ -43,6 +44,14 @@ from hypoforge.infrastructure.db.session import create_session_factory
 
 def _normalize_title(value: str) -> str:
     return " ".join(value.lower().split())
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class RunRepository:
@@ -399,8 +408,8 @@ class RunRepository:
                     attempt=row.attempt,
                     summary=row.summary_json,
                     error_message=row.error_message,
-                    started_at=row.started_at,
-                    completed_at=row.completed_at,
+                    started_at=_as_utc(row.started_at),
+                    completed_at=_as_utc(row.completed_at),
                 )
                 for row in rows
             ]
@@ -439,7 +448,7 @@ class RunRepository:
                     "request_id": (row.result_summary_json or {}).get("request_id"),
                     "success": row.success,
                     "error_message": row.error_message,
-                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "created_at": _as_utc(row.created_at).isoformat() if row.created_at else None,
                 }
                 for row in rows
             ]
@@ -509,8 +518,8 @@ class RunRepository:
             run_id=row.id,
             topic=row.topic,
             status=row.status,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+            created_at=_as_utc(row.created_at),
+            updated_at=_as_utc(row.updated_at),
             selected_paper_count=self._count_rows(session, RunPaperRow, row.id),
             evidence_card_count=self._count_rows(session, EvidenceCardRow, row.id),
             conflict_cluster_count=self._count_rows(session, ConflictClusterRow, row.id),

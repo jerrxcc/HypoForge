@@ -18,11 +18,11 @@ interface ConflictDetailProps {
 
 export function ConflictDetail({ conflict }: ConflictDetailProps) {
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex min-w-0 max-w-full flex-col gap-5 p-4 [overflow-wrap:anywhere]">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">{conflict.topic_axis}</h2>
-        <div className="flex flex-wrap gap-2">
+        <h2 className="min-w-0 text-lg font-semibold leading-snug [overflow-wrap:anywhere]">{conflict.topic_axis}</h2>
+        <div className="flex min-w-0 flex-wrap gap-2">
           <Badge variant="outline">
             {CONFLICT_TYPE_LABEL[conflict.conflict_type] ?? conflict.conflict_type}
           </Badge>
@@ -35,9 +35,9 @@ export function ConflictDetail({ conflict }: ConflictDetailProps) {
       <Separator />
 
       {/* Two-column evidence grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
         <Section title="Supporting Evidence">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             {conflict.supporting_evidence_ids.length > 0
               ? conflict.supporting_evidence_ids.map((id) => (
                   <EvidenceLink key={id} evidenceId={id} />
@@ -47,7 +47,7 @@ export function ConflictDetail({ conflict }: ConflictDetailProps) {
         </Section>
 
         <Section title="Conflicting Evidence">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             {conflict.conflicting_evidence_ids.length > 0
               ? conflict.conflicting_evidence_ids.map((id) => (
                   <EvidenceLink key={id} evidenceId={id} />

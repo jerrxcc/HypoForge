@@ -6,7 +6,7 @@ import { useRuns } from '@/hooks/use-runs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate, truncate } from '@/lib/utils';
+import { formatDate, parseApiDate, truncate } from '@/lib/utils';
 import type { RunStatus } from '@/types';
 
 function statusVariant(status: RunStatus) {
@@ -40,7 +40,7 @@ export function RecentRunsStrip() {
   const recentRuns = useMemo(() => {
     if (!runs) return [];
     return [...runs]
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .sort((a, b) => parseApiDate(b.updated_at).getTime() - parseApiDate(a.updated_at).getTime())
       .slice(0, 5);
   }, [runs]);
 

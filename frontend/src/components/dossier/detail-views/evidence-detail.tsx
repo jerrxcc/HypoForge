@@ -12,9 +12,9 @@ import type { EvidenceCard } from '@/types';
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   if (!value) return null;
   return (
-    <div className="flex gap-2 text-sm">
+    <div className="flex min-w-0 gap-2 text-sm">
       <span className="shrink-0 font-medium text-muted-foreground">{label}:</span>
-      <span>{value}</span>
+      <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
     </div>
   );
 }
@@ -28,11 +28,11 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
   const groundingId = `grounding-notes-${evidence.evidence_id}`;
 
   return (
-    <div className="flex flex-col gap-5 p-4">
+    <div className="flex min-w-0 max-w-full flex-col gap-5 p-4 [overflow-wrap:anywhere]">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">{evidence.title}</h2>
-        <div className="flex flex-wrap gap-2">
+        <h2 className="min-w-0 text-lg font-semibold leading-snug [overflow-wrap:anywhere]">{evidence.title}</h2>
+        <div className="flex min-w-0 flex-wrap gap-2">
           <Badge variant={directionVariant(evidence.direction)}>
             {evidence.direction}
           </Badge>
@@ -54,7 +54,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
 
       {/* PICO Fields */}
       <Section title="PICO">
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <FieldRow label="System/Material" value={evidence.system_or_material} />
           <FieldRow label="Intervention" value={evidence.intervention} />
           <FieldRow label="Comparator" value={evidence.comparator} />
@@ -72,7 +72,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       {/* Conditions */}
       {evidence.conditions.length > 0 && (
         <Section title="Conditions">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             {evidence.conditions.map((c, i) => (
               <Badge key={i} variant="secondary" className="text-xs">
                 {c}
@@ -85,7 +85,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
       {/* Limitations */}
       {evidence.limitations.length > 0 && (
         <Section title="Limitations">
-          <ul className="list-disc pl-4 text-sm space-y-1">
+          <ul className="list-disc pl-4 text-sm space-y-1 [overflow-wrap:anywhere]">
             {evidence.limitations.map((l, i) => (
               <li key={i}>{l}</li>
             ))}
@@ -114,7 +114,7 @@ export function EvidenceDetail({ evidence }: EvidenceDetailProps) {
               Grounding Notes
             </button>
             {groundingOpen && (
-              <ul id={groundingId} className="mt-2 list-disc pl-4 text-sm space-y-1">
+              <ul id={groundingId} className="mt-2 list-disc pl-4 text-sm space-y-1 [overflow-wrap:anywhere]">
                 {evidence.grounding_notes.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
