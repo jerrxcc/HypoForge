@@ -1,5 +1,6 @@
 from hypoforge.domain.schemas import PaperDetail, RunRequest
 from hypoforge.application.budget import BudgetExceededError
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivToolError
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.scholarly_tools import ScholarlyTools
 import httpx
@@ -64,6 +65,18 @@ class FakeAlphaXivConnector:
 
     def read_files_from_github_repository(self, github_url: str, path: str):
         return {"github_url": github_url, "path": path}
+
+
+class PdfQueryFailingAlphaXivConnector(FakeAlphaXivConnector):
+    def answer_pdf_queries(self, url: str, query: str):
+        del url, query
+        raise AlphaXivToolError(
+            tool_name="answer_pdf_queries",
+            result={
+                "isError": True,
+                "content": [{"type": "text", "text": "Invalid file type: text/html;charset=UTF-8"}],
+            },
+        )
 
 
 class FailingSemanticScholarConnector:
@@ -289,3 +302,27 @@ def test_read_alphaxiv_github_repository_returns_structured_payload(tmp_path) ->
     )
 
     assert result["repository_content"]["github_url"] == "https://github.com/example/repo"
+
+
+def test_answer_alphaxiv_pdf_queries_returns_error_payload_on_tool_error(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    tools = ScholarlyTools(
+        openalex=FakeOpenAlexConnector(),
+        semantic_scholar=FakeSemanticScholarConnector(),
+        alphaxiv=PdfQueryFailingAlphaXivConnector(),
+        repository=repo,
+    )
+
+    result = tools.answer_alphaxiv_pdf_queries(
+        {
+            "url": "https://doi.org/10.1016/J.CEJ.2018.07.127",
+            "query": "What is the main finding?",
+        }
+    )
+
+    assert result["answer"] == ""
+    assert result["error"] == {
+        "type": "alphaxiv_tool_error",
+        "tool_name": "answer_pdf_queries",
+        "message": "Invalid file type: text/html;charset=UTF-8",
+    }

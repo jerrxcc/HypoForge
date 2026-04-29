@@ -13,6 +13,16 @@ _ARXIV_ID_PATTERN = re.compile(r"\b\d{4}\.\d{4,5}(?:v\d+)?\b")
 _YEAR_PATTERN = re.compile(r"\b(19|20)\d{2}\b")
 
 
+class AlphaXivToolError(RuntimeError):
+    """Raised when an alphaXiv MCP tool returns a normal tool-level error."""
+
+    def __init__(self, *, tool_name: str, result: dict[str, Any]) -> None:
+        self.tool_name = tool_name
+        self.result = result
+        self.message = _tool_result_text(result)
+        super().__init__(f"alphaXiv tool {tool_name} failed: {self.message}")
+
+
 class AlphaXivMCPClient:
     """Minimal JSON-RPC client for the alphaXiv MCP endpoint."""
 
@@ -118,7 +128,7 @@ class AlphaXivMCPClient:
         if not isinstance(result, dict):
             raise RuntimeError(f"alphaXiv MCP returned unexpected result for {tool_name}: {payload}")
         if result.get("isError"):
-            raise RuntimeError(f"alphaXiv tool {tool_name} failed: {result}")
+            raise AlphaXivToolError(tool_name=tool_name, result=result)
         return result
 
 

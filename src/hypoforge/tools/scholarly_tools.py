@@ -7,6 +7,7 @@ import httpx
 
 from hypoforge.application.budget import BudgetExceededError
 from hypoforge.domain.schemas import PaperDetail
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivToolError
 from hypoforge.infrastructure.connectors.cached import (
     CachedAlphaXivConnector,
     CachedOpenAlexConnector,
@@ -233,6 +234,17 @@ class ScholarlyTools:
                     "type": "budget_exceeded",
                     "source": exc.source,
                     "message": str(exc),
+                },
+            }
+        except AlphaXivToolError as exc:
+            logger.warning("alphaXiv tool %s returned an error: %s", exc.tool_name, exc.message)
+            return {
+                result_key: [] if result_key == "papers" else "",
+                "cache_hit": bool(getattr(source, "last_cache_hit", False)),
+                "error": {
+                    "type": "alphaxiv_tool_error",
+                    "tool_name": exc.tool_name,
+                    "message": exc.message,
                 },
             }
         except httpx.HTTPError as exc:

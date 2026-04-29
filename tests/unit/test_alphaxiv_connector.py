@@ -1,6 +1,7 @@
+import pytest
 import httpx
 
-from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector, AlphaXivMCPClient
+from hypoforge.infrastructure.connectors.alphaxiv import AlphaXivConnector, AlphaXivMCPClient, AlphaXivToolError
 
 
 def test_alphaxiv_mcp_client_sends_bearer_token_and_jsonrpc_payload() -> None:
@@ -106,3 +107,35 @@ def test_alphaxiv_connector_wraps_pdf_query_inputs_as_arrays() -> None:
         "urls": ["https://arxiv.org/abs/2401.12345"],
         "queries": ["What datasets were used?"],
     }
+
+
+def test_alphaxiv_mcp_client_raises_tool_error_for_tool_level_failure() -> None:
+    call_count = {"value": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        call_count["value"] += 1
+        if call_count["value"] == 2:
+            return httpx.Response(202, text="")
+        if call_count["value"] == 3:
+            return httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                text='event: message\ndata: {"jsonrpc":"2.0","id":2,"result":{"isError":true,"content":[{"type":"text","text":"Invalid file type: text/html;charset=UTF-8"}]}}\n\n',
+            )
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text='event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{}}}\n\n',
+        )
+
+    client = AlphaXivMCPClient(
+        endpoint="https://api.alphaxiv.org/mcp/v1",
+        access_token="jwt.token.value",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    with pytest.raises(AlphaXivToolError) as exc_info:
+        client.call_tool("answer_pdf_queries", {"urls": ["https://doi.org/10.1/example"], "queries": ["Q"]})
+
+    assert exc_info.value.tool_name == "answer_pdf_queries"
+    assert exc_info.value.message == "Invalid file type: text/html;charset=UTF-8"
