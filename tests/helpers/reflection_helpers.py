@@ -12,7 +12,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from hypoforge.agents.reflection import ReflectionAgent
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.config import ReflectionSettings
 from hypoforge.domain.schemas import (
@@ -24,7 +23,6 @@ from hypoforge.domain.schemas import (
     PaperDetail,
     ReflectionFeedback,
     ReflectionSummary,
-    RunIterationState,
     StageName,
 )
 from hypoforge.infrastructure.db.repository import RunRepository

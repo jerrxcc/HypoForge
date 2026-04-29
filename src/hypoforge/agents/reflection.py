@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from hypoforge.agents.prompts import REFLECTION_PROMPT, MULTI_PERSPECTIVE_PROMPTS
 from hypoforge.domain.quality import (
     CriticQualityMetrics,
     PlannerQualityMetrics,
@@ -141,7 +140,6 @@ class ReflectionAgent:
         # Load current state data
         papers = self._repository.load_selected_papers(run_id)
         evidence_cards = self._repository.load_evidence_cards(run_id)
-        clusters = self._repository.load_conflict_clusters(run_id)
 
         # Check for cross-stage issues
         issues: list[str] = []
@@ -693,8 +691,6 @@ class ReflectionAgent:
         Note: This is a simplified implementation. In production, this would
         call an LLM with the perspective-specific prompt.
         """
-        prompt = MULTI_PERSPECTIVE_PROMPTS.get(perspective, "")
-
         # Placeholder: In production, call LLM here
         # For now, return a basic critique based on perspective
         issues: list[str] = []

@@ -5,8 +5,7 @@ and FeedbackSynthesizer agents.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime
+from unittest.mock import MagicMock
 
 from hypoforge.domain.schemas import (
     EvidenceCard,

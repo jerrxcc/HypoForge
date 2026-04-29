@@ -9,7 +9,6 @@ Tests that:
 
 from pathlib import Path
 
-import pytest
 
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.application.stage_graph import StageNavigator
@@ -24,11 +23,9 @@ from hypoforge.domain.schemas import (
     ReviewSummary,
     RunConstraints,
     RunRequest,
-    StageName,
 )
 from hypoforge.infrastructure.db.repository import RunRepository
 from tests.helpers.reflection_helpers import (
-    ScriptedReflectionAgent,
     build_reflection_test_services,
     make_three_test_hypotheses,
 )

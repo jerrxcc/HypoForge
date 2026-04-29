@@ -9,7 +9,6 @@ This module defines quality indicators for each pipeline stage:
 
 from __future__ import annotations
 
-from typing import Literal
 
 from pydantic import BaseModel, Field
 

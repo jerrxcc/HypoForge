@@ -18,7 +18,7 @@ from hypoforge.domain.validation import (
     ValidationIssue,
     ValidationResult,
 )
-from hypoforge.domain.schemas import StageName, Severity
+from hypoforge.domain.schemas import StageName
 
 if TYPE_CHECKING:
     from hypoforge.config import ValidationSettings

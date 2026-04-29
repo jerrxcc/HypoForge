@@ -7,7 +7,6 @@ Tests the quality metrics calculation for each pipeline stage:
 - PlannerQualityMetrics
 """
 
-import pytest
 
 from hypoforge.domain.quality import (
     CriticQualityMetrics,

@@ -212,7 +212,7 @@ class ValidationAgentRegistry:
                         "score": result.score,
                     },
                 )
-            except Exception as exc:
+            except Exception:
                 self._logger.exception(
                     f"Validation {validator.validation_type} failed",
                     extra={"run_id": context.run_id, "stage": stage},

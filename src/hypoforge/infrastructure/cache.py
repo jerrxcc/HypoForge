@@ -10,7 +10,6 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Generic, TypeVar
-from uuid import uuid4
 
 
 logger = logging.getLogger(__name__)

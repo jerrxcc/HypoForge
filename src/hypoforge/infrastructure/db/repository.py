@@ -12,7 +12,6 @@ from hypoforge.domain.schemas import (
     ConflictCluster,
     EvidenceCard,
     Hypothesis,
-    IterationState,
     PaperDetail,
     ReflectionFeedback,
     RunConstraints,

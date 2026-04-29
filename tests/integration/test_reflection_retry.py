@@ -9,7 +9,6 @@ Tests that:
 
 from pathlib import Path
 
-import pytest
 
 from hypoforge.application.coordinator import RunCoordinator
 from hypoforge.config import ReflectionSettings
@@ -22,9 +21,7 @@ from hypoforge.domain.schemas import (
     RetrievalSummary,
     ReviewSummary,
 )
-from hypoforge.infrastructure.db.repository import RunRepository
 from tests.helpers.reflection_helpers import (
-    ScriptedReflectionAgent,
     build_reflection_test_services,
     make_three_test_hypotheses,
 )
