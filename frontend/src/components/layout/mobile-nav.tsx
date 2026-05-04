@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home' },
+  { href: '/dashboard/new', label: 'New Run' },
   { href: '/dashboard/runs', label: 'Runs' },
 ] as const;
 

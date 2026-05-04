@@ -87,7 +87,11 @@ def test_stage_navigator_get_stage_dependencies(tmp_path: Path) -> None:
     assert navigator.get_stage_dependencies("retrieval") == []
     assert navigator.get_stage_dependencies("review") == ["retrieval"]
     assert navigator.get_stage_dependencies("critic") == ["retrieval", "review"]
-    assert navigator.get_stage_dependencies("planner") == ["retrieval", "review", "critic"]
+    assert navigator.get_stage_dependencies("planner") == [
+        "retrieval",
+        "review",
+        "critic",
+    ]
 
 
 def test_stage_navigator_get_dependent_stages(tmp_path: Path) -> None:
@@ -96,7 +100,11 @@ def test_stage_navigator_get_dependent_stages(tmp_path: Path) -> None:
     navigator = StageNavigator(repository=repo)
 
     # Test dependent stages
-    assert navigator.get_dependent_stages("retrieval") == ["review", "critic", "planner"]
+    assert navigator.get_dependent_stages("retrieval") == [
+        "review",
+        "critic",
+        "planner",
+    ]
     assert navigator.get_dependent_stages("review") == ["critic", "planner"]
     assert navigator.get_dependent_stages("critic") == ["planner"]
     assert navigator.get_dependent_stages("planner") == []
@@ -237,7 +245,9 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -298,7 +308,12 @@ def test_max_backtrack_limit_configuration(tmp_path: Path) -> None:
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -365,7 +380,7 @@ def test_run_iteration_state_record_backtrack() -> None:
     assert record["iteration"] == 1
 
 
-def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
+def test_backtrack_limit_marks_run_failed(tmp_path: Path) -> None:
     repo, agent, settings = build_reflection_test_services(
         tmp_path,
         quality_scores_by_stage={
@@ -387,12 +402,21 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
 
     call_counts = {"retrieval": 0, "review": 0, "critic": 0, "planner": 0}
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints
         call_counts["retrieval"] += 1
         repo.save_selected_papers(
             run_id,
-            [PaperDetail(paper_id=f"p{call_counts['retrieval']}", title=topic, year=2024, provenance=["test"])],
+            [
+                PaperDetail(
+                    paper_id=f"p{call_counts['retrieval']}",
+                    title=topic,
+                    year=2024,
+                    provenance=["test"],
+                )
+            ],
             "seed",
         )
         return RetrievalSummary(
@@ -453,7 +477,12 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
         call_counts["planner"] += 1
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -466,10 +495,13 @@ def test_backtrack_limit_still_reaches_final_done_state(tmp_path: Path) -> None:
         stage_navigator=StageNavigator(repository=repo),
     )
 
-    result = coordinator.run_topic("test topic")
+    run = coordinator.launch_run("test topic")
+    result = coordinator.execute_run(run.run_id)
 
-    assert result.status == "done"
-    assert call_counts == {"retrieval": 2, "review": 2, "critic": 2, "planner": 1}
+    assert result.status == "failed"
+    assert result.error_message is not None
+    assert "reflection backtrack could not be applied" in result.error_message
+    assert call_counts == {"retrieval": 2, "review": 2, "critic": 2, "planner": 0}
 
     iteration_state = repo.load_iteration_state(result.run_id)
     assert iteration_state is not None

@@ -14,7 +14,11 @@ from hypoforge.domain.schemas import (
     RetrievalSummary,
     ReviewSummary,
 )
-from hypoforge.domain.validation import ValidationContext, ValidationIssue, ValidationResult
+from hypoforge.domain.validation import (
+    ValidationContext,
+    ValidationIssue,
+    ValidationResult,
+)
 from hypoforge.infrastructure.db.repository import RunRepository
 from tests.helpers.reflection_helpers import (
     build_reflection_test_services,
@@ -69,6 +73,45 @@ class ScriptedReviewValidator(ValidationAgent):
         )
 
 
+class AlwaysBacktrackReviewValidator(ValidationAgent):
+    def __init__(self, *, repository: RunRepository) -> None:
+        super().__init__(repository=repository)
+        self.call_count = 0
+
+    @property
+    def validation_type(self) -> str:
+        return "always_backtrack_review_validation"
+
+    @property
+    def target_stage(self):
+        return "review"
+
+    def validate(self, context: ValidationContext) -> ValidationResult:
+        del context
+        self.call_count += 1
+        return ValidationResult(
+            valid=False,
+            score=0.2,
+            issues=[
+                ValidationIssue(
+                    issue_type="evidence_extraction",
+                    severity="high",
+                    description="Evidence extraction still lacks depth",
+                    suggested_fix="Extract richer intervention/outcome details",
+                )
+            ],
+            backtrack_recommendation=self.create_backtrack_recommendation(
+                target_stage="review",
+                reason="Need richer evidence extraction",
+                priority="high",
+                estimated_impact=0.8,
+            ),
+            validation_type=self.validation_type,
+            validated_count=1,
+            passed_count=0,
+        )
+
+
 class CountingReviewValidator(ValidationAgent):
     def __init__(self, *, repository: RunRepository) -> None:
         super().__init__(repository=repository)
@@ -108,7 +151,9 @@ def test_reflection_retry_injects_previous_iteration_feedback(tmp_path: Path) ->
     )
     retrieval_contexts: list[dict] = []
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints
         retrieval_contexts.append(dict(execution_context or {}))
         repo.save_selected_papers(
@@ -183,7 +228,12 @@ def test_reflection_retry_injects_previous_iteration_feedback(tmp_path: Path) ->
         del execution_context
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -206,13 +256,17 @@ def test_reflection_retry_injects_previous_iteration_feedback(tmp_path: Path) ->
     assert retrieval_contexts[1]["is_retry"] is True
     assert "previous_iteration_feedback" in retrieval_contexts[1]
     retrieval_summary = next(
-        summary for summary in result.stage_summaries if summary.stage_name == "retrieval"
+        summary
+        for summary in result.stage_summaries
+        if summary.stage_name == "retrieval"
     )
     assert retrieval_summary.attempt == 2
     assert len(repo.load_reflection_history(result.run_id, "retrieval")) == 2
 
 
-def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(tmp_path: Path) -> None:
+def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(
+    tmp_path: Path,
+) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     registry = ValidationAgentRegistry()
     validator = ScriptedReviewValidator(repository=repo)
@@ -222,7 +276,9 @@ def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(tmp_path
     critic_contexts: list[dict] = []
     call_counts = {"retrieval": 0, "review": 0, "critic": 0, "planner": 0}
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints, execution_context
         call_counts["retrieval"] += 1
         repo.save_selected_papers(
@@ -291,7 +347,12 @@ def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(tmp_path
         call_counts["planner"] += 1
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -301,7 +362,9 @@ def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(tmp_path
         planner_agent=planner,
         reflection_settings=ReflectionSettings(enable_reflection=False),
         validation_registry=registry,
-        validation_settings=ValidationSettings(enable_validation_agents=True, max_total_backtrack=1),
+        validation_settings=ValidationSettings(
+            enable_validation_agents=True, max_total_backtrack=1
+        ),
     )
 
     result = coordinator.run_topic("test topic")
@@ -320,7 +383,98 @@ def test_validation_only_reruns_target_stage_with_stage_scoped_feedback(tmp_path
     assert review_summary.attempt == 2
 
 
-def test_combined_mode_validates_after_reflection_stabilizes_stage(tmp_path: Path) -> None:
+def test_validation_backtrack_limit_marks_run_failed(tmp_path: Path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    registry = ValidationAgentRegistry()
+    validator = AlwaysBacktrackReviewValidator(repository=repo)
+    registry.register(validator)
+    call_counts = {"retrieval": 0, "review": 0, "critic": 0, "planner": 0}
+
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
+        del constraints, execution_context
+        call_counts["retrieval"] += 1
+        repo.save_selected_papers(
+            run_id,
+            [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
+            "seed",
+        )
+        return RetrievalSummary(
+            canonical_topic=topic,
+            query_variants_used=[topic],
+            search_notes=[],
+            selected_paper_ids=["p1"],
+            excluded_paper_ids=[],
+            coverage_assessment="good",
+            needs_broader_search=False,
+        )
+
+    def review(run_id: str, *, execution_context=None) -> ReviewSummary:
+        del execution_context
+        call_counts["review"] += 1
+        repo.save_evidence_cards(
+            run_id,
+            [
+                EvidenceCard(
+                    evidence_id="e1",
+                    paper_id="p1",
+                    title="Evidence",
+                    claim_text="Claim",
+                    system_or_material="System",
+                    intervention="Intervention",
+                    outcome="Outcome",
+                    direction="positive",
+                    confidence=0.8,
+                )
+            ],
+        )
+        return ReviewSummary(
+            papers_processed=1,
+            evidence_cards_created=1,
+            coverage_summary="ok",
+            dominant_axes=["axis"],
+            low_confidence_paper_ids=[],
+        )
+
+    def critic(run_id: str, *, execution_context=None) -> CriticSummary:
+        del run_id, execution_context
+        call_counts["critic"] += 1
+        return CriticSummary(clusters_created=0, top_axes=[], critic_notes=[])
+
+    def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
+        del run_id, execution_context
+        call_counts["planner"] += 1
+        return PlannerSummary(
+            hypotheses_created=3, report_rendered=True, top_axes=[], planner_notes=[]
+        )
+
+    coordinator = RunCoordinator(
+        repository=repo,
+        retrieval_agent=retrieval,
+        review_agent=review,
+        critic_agent=critic,
+        planner_agent=planner,
+        reflection_settings=ReflectionSettings(enable_reflection=False),
+        validation_registry=registry,
+        validation_settings=ValidationSettings(
+            enable_validation_agents=True, max_total_backtrack=1
+        ),
+    )
+    run = coordinator.launch_run("test topic")
+
+    result = coordinator.execute_run(run.run_id)
+
+    assert result.status == "failed"
+    assert result.error_message is not None
+    assert "validation backtrack could not be applied" in result.error_message
+    assert validator.call_count == 2
+    assert call_counts == {"retrieval": 1, "review": 2, "critic": 0, "planner": 0}
+
+
+def test_combined_mode_validates_after_reflection_stabilizes_stage(
+    tmp_path: Path,
+) -> None:
     repo, agent, settings = build_reflection_test_services(
         tmp_path,
         quality_scores_by_stage={
@@ -337,7 +491,9 @@ def test_combined_mode_validates_after_reflection_stabilizes_stage(tmp_path: Pat
 
     review_call_count = 0
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints, execution_context
         repo.save_selected_papers(
             run_id,
@@ -403,7 +559,12 @@ def test_combined_mode_validates_after_reflection_stabilizes_stage(tmp_path: Pat
         del execution_context
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,

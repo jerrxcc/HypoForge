@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: run } = usePollRun(id);
-  const { data: content, isLoading } = useReport(id);
+  const { data: content, isLoading } = useReport(id, run?.status);
 
   const topic = run?.topic ?? id;
   const filename = `${topic.toLowerCase().replace(/\s+/g, '-')}-report.md`;

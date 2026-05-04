@@ -15,6 +15,7 @@ export function TopNav() {
         {/* Center: Navigation links (hidden on mobile) */}
         <nav aria-label="Main navigation" className="ml-8 hidden items-center gap-6 md:flex">
           <NavLink href="/dashboard">Home</NavLink>
+          <NavLink href="/dashboard/new">New Run</NavLink>
           <NavLink href="/dashboard/runs">Runs</NavLink>
         </nav>
 

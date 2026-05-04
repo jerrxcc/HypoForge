@@ -53,7 +53,9 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
 
     call_history: list[str] = []
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         call_history.append("retrieval")
         repo.save_selected_papers(
             run_id,
@@ -116,7 +118,11 @@ def test_full_e2e_with_reflection_enabled(tmp_path: Path) -> None:
                 cluster_id=f"c{i}",
                 topic_axis=f"axis{i}",
                 supporting_evidence_ids=[evidence[i * 2].evidence_id],
-                conflicting_evidence_ids=[evidence[i * 2 + 1].evidence_id if len(evidence) > i * 2 + 1 else evidence[0].evidence_id],
+                conflicting_evidence_ids=[
+                    evidence[i * 2 + 1].evidence_id
+                    if len(evidence) > i * 2 + 1
+                    else evidence[0].evidence_id
+                ],
                 conflict_type="weak_evidence_gap",
                 likely_explanations=[f"Explanation {i}"],
                 critic_summary=f"Conflict {i}",
@@ -200,7 +206,9 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [
@@ -270,7 +278,12 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -306,12 +319,12 @@ def test_full_e2e_with_mixed_quality_scores(tmp_path: Path) -> None:
 
 
 def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
-    """Test full pipeline with backtracking recommendation recorded in feedback.
+    """Test unresolved backtracking recommendation fails explicitly.
 
     Scenario:
     1. Critic detects issue and recommends backtrack
     2. Pipeline records the backtrack recommendation in feedback
-    3. Pipeline completes without actual backtracking (no StageNavigator)
+    3. Pipeline fails because no StageNavigator is available to apply it
     """
     repo, agent, settings = build_reflection_test_services(
         tmp_path,
@@ -335,7 +348,9 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [
@@ -405,10 +420,14 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
-    # Note: We don't pass stage_navigator, so backtracking won't actually happen
-    # but the recommendation should still be recorded in feedback
+    # No stage_navigator is passed, so the backtrack cannot be applied.
     coordinator = RunCoordinator(
         repository=repo,
         retrieval_agent=retrieval,
@@ -420,10 +439,12 @@ def test_full_e2e_with_backtrack_recommendation(tmp_path: Path) -> None:
         # stage_navigator not passed - no actual backtracking
     )
 
-    result = coordinator.run_topic("CRISPR gene editing")
+    run = coordinator.launch_run("CRISPR gene editing")
+    result = coordinator.execute_run(run.run_id)
 
-    # Verify successful completion
-    assert result.status == "done"
+    assert result.status == "failed"
+    assert result.error_message is not None
+    assert "reflection backtrack could not be applied" in result.error_message
 
     # Verify critic feedback has backtrack recommendation
     critic_feedback = repo.load_reflection_history(result.run_id, "critic")
@@ -449,7 +470,9 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -510,7 +533,12 @@ def test_full_e2e_iteration_state_tracking(tmp_path: Path) -> None:
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -558,7 +586,9 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
         reflection_enabled=True,
     )
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         repo.save_selected_papers(
             run_id,
             [PaperDetail(paper_id="p1", title=topic, year=2024, provenance=["test"])],
@@ -619,7 +649,12 @@ def test_full_e2e_coordinator_api_methods(tmp_path: Path) -> None:
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
         repo.save_hypotheses(run_id, make_three_test_hypotheses())
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,

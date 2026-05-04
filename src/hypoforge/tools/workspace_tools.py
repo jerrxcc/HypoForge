@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import logging
-
-from hypoforge.domain.schemas import ConflictCluster, StageSummary
+from hypoforge.domain.schemas import ConflictCluster, Hypothesis, StageSummary
 from hypoforge.infrastructure.db.repository import RunRepository
-from hypoforge.tools.schemas import SaveConflictClustersArgs, SaveEvidenceCardsArgs, SaveHypothesesArgs
-
-logger = logging.getLogger(__name__)
+from hypoforge.tools.schemas import (
+    SaveConflictClustersArgs,
+    SaveEvidenceCardsArgs,
+    SaveHypothesesArgs,
+)
 
 
 class WorkspaceTools:
@@ -49,19 +49,34 @@ class WorkspaceTools:
 
     def save_conflict_clusters(self, run_id: str, payload: dict) -> dict:
         args = SaveConflictClustersArgs.model_validate(payload)
-        valid_ids = {card.evidence_id for card in self._repository.load_evidence_cards(run_id)}
+        valid_ids = {
+            card.evidence_id for card in self._repository.load_evidence_cards(run_id)
+        }
+        invalid_refs: list[str] = []
         for cluster in args.conflict_clusters:
-            phantom_sup = [eid for eid in cluster.supporting_evidence_ids if eid not in valid_ids]
-            phantom_con = [eid for eid in cluster.conflicting_evidence_ids if eid not in valid_ids]
-            if phantom_sup or phantom_con:
-                logger.warning(
-                    "Cluster %s: stripping %d phantom evidence IDs",
-                    cluster.cluster_id, len(phantom_sup) + len(phantom_con),
+            invalid_supporting = [
+                eid for eid in cluster.supporting_evidence_ids if eid not in valid_ids
+            ]
+            invalid_conflicting = [
+                eid for eid in cluster.conflicting_evidence_ids if eid not in valid_ids
+            ]
+            if invalid_supporting:
+                invalid_refs.append(
+                    f"{cluster.cluster_id} supporting_evidence_ids={invalid_supporting}"
                 )
-                cluster.supporting_evidence_ids = [eid for eid in cluster.supporting_evidence_ids if eid in valid_ids]
-                cluster.conflicting_evidence_ids = [eid for eid in cluster.conflicting_evidence_ids if eid in valid_ids]
+            if invalid_conflicting:
+                invalid_refs.append(
+                    f"{cluster.cluster_id} conflicting_evidence_ids={invalid_conflicting}"
+                )
+        if invalid_refs:
+            raise ValueError(
+                "conflict cluster evidence ids must reference saved evidence cards: "
+                + "; ".join(invalid_refs)
+            )
         self._repository.save_conflict_clusters(run_id, args.conflict_clusters)
-        return {"cluster_ids": [cluster.cluster_id for cluster in args.conflict_clusters]}
+        return {
+            "cluster_ids": [cluster.cluster_id for cluster in args.conflict_clusters]
+        }
 
     def load_conflict_clusters(self, run_id: str, payload: dict | None = None) -> dict:
         del payload
@@ -69,9 +84,9 @@ class WorkspaceTools:
         return {"conflict_clusters": [cluster.model_dump() for cluster in clusters]}
 
     def save_hypotheses(self, run_id: str, payload: dict) -> dict:
-        args = SaveHypothesesArgs.model_validate(
-            self._repair_hypothesis_payload(run_id, payload)
-        )
+        args = SaveHypothesesArgs.model_validate(payload)
+        self._validate_hypothesis_grounding(run_id, args.hypotheses)
+        self._annotate_hypothesis_credibility(run_id, args.hypotheses)
         self._repository.save_hypotheses(run_id, args.hypotheses)
         return {"hypothesis_ranks": [hypothesis.rank for hypothesis in args.hypotheses]}
 
@@ -80,76 +95,80 @@ class WorkspaceTools:
         hypotheses = self._repository.load_hypotheses(run_id)
         return {"hypotheses": [hypothesis.model_dump() for hypothesis in hypotheses]}
 
-    def _repair_hypothesis_payload(self, run_id: str, payload: dict) -> dict:
-        repaired = dict(payload)
-        hypotheses = [dict(item) for item in repaired.get("hypotheses", [])]
+    def _validate_hypothesis_grounding(
+        self,
+        run_id: str,
+        hypotheses: list[Hypothesis],
+    ) -> None:
+        valid_ids = {
+            card.evidence_id for card in self._repository.load_evidence_cards(run_id)
+        }
+        invalid_refs: list[str] = []
+        for hypothesis in hypotheses:
+            invalid_supporting = [
+                evidence_id
+                for evidence_id in hypothesis.supporting_evidence_ids
+                if evidence_id not in valid_ids
+            ]
+            invalid_counter = [
+                evidence_id
+                for evidence_id in hypothesis.counterevidence_ids
+                if evidence_id not in valid_ids
+            ]
+            if invalid_supporting:
+                invalid_refs.append(
+                    f"rank {hypothesis.rank} supporting_evidence_ids={invalid_supporting}"
+                )
+            if invalid_counter:
+                invalid_refs.append(
+                    f"rank {hypothesis.rank} counterevidence_ids={invalid_counter}"
+                )
+        if invalid_refs:
+            raise ValueError(
+                "hypothesis evidence ids must reference saved evidence cards: "
+                + "; ".join(invalid_refs)
+            )
+
+    def _annotate_hypothesis_credibility(
+        self,
+        run_id: str,
+        hypotheses: list[Hypothesis],
+    ) -> None:
         if not hypotheses:
-            return repaired
+            return
 
         clusters = self._repository.load_conflict_clusters(run_id)
-        evidence_cards = self._repository.load_evidence_cards(run_id)
         stage_summaries = {
-            summary.stage_name: summary for summary in self._repository.list_stage_summaries(run_id)
+            summary.stage_name: summary
+            for summary in self._repository.list_stage_summaries(run_id)
         }
-        all_conflicting_ids = self._collect_conflicting_ids(clusters)
-        all_evidence_ids = [card.evidence_id for card in evidence_cards]
-        retrieval_low_evidence = self._is_retrieval_low_evidence(stage_summaries.get("retrieval"))
+        retrieval_low_evidence = self._is_retrieval_low_evidence(
+            stage_summaries.get("retrieval")
+        )
         review_partial = self._is_review_partial(stage_summaries.get("review"))
-        critic_unavailable = self._is_critic_unavailable(stage_summaries.get("critic"), clusters)
+        critic_unavailable = self._is_critic_unavailable(
+            stage_summaries.get("critic"), clusters
+        )
 
-        valid_id_set = set(all_evidence_ids)
         for hypothesis in hypotheses:
-            supporting_ids = hypothesis.get("supporting_evidence_ids", [])
-            phantom_sup = [eid for eid in supporting_ids if eid not in valid_id_set]
-            phantom_cnt = [eid for eid in hypothesis.get("counterevidence_ids", []) if eid not in valid_id_set]
-            if phantom_sup or phantom_cnt:
-                logger.warning(
-                    "Hypothesis %s: stripping %d phantom evidence IDs",
-                    hypothesis.get("rank", "?"), len(phantom_sup) + len(phantom_cnt),
-                )
-                supporting_ids = [eid for eid in supporting_ids if eid in valid_id_set]
-                hypothesis["supporting_evidence_ids"] = supporting_ids
-                hypothesis["counterevidence_ids"] = [
-                    eid for eid in hypothesis.get("counterevidence_ids", []) if eid in valid_id_set
-                ]
-            if not hypothesis.get("counterevidence_ids"):
-                candidate_ids = self._infer_counterevidence_ids(
-                    supporting_ids=supporting_ids,
-                    clusters=clusters,
-                    all_conflicting_ids=all_conflicting_ids,
-                    all_evidence_ids=all_evidence_ids,
-                )
-                if candidate_ids:
-                    hypothesis["counterevidence_ids"] = candidate_ids[:3]
-            if len(supporting_ids) < 3:
-                repaired_supporting_ids = self._repair_supporting_evidence_ids(
-                    supporting_ids=supporting_ids,
-                    counterevidence_ids=hypothesis.get("counterevidence_ids", []),
-                    clusters=clusters,
-                    all_evidence_ids=all_evidence_ids,
-                )
-                if repaired_supporting_ids:
-                    hypothesis["supporting_evidence_ids"] = repaired_supporting_ids
             self._apply_credibility_annotations(
                 hypothesis,
                 retrieval_low_evidence=retrieval_low_evidence,
                 review_partial=review_partial,
                 critic_unavailable=critic_unavailable,
             )
-        repaired["hypotheses"] = hypotheses
-        return repaired
 
     def _apply_credibility_annotations(
         self,
-        hypothesis: dict,
+        hypothesis: Hypothesis,
         *,
         retrieval_low_evidence: bool,
         review_partial: bool,
         critic_unavailable: bool,
     ) -> None:
-        limitations = list(hypothesis.get("limitations") or [])
-        uncertainty_notes = list(hypothesis.get("uncertainty_notes") or [])
-        risks = list(hypothesis.get("risks") or [])
+        limitations = list(hypothesis.limitations)
+        uncertainty_notes = list(hypothesis.uncertainty_notes)
+        risks = list(hypothesis.risks)
 
         if retrieval_low_evidence:
             limitations.append(
@@ -174,101 +193,9 @@ class WorkspaceTools:
                 "Grounding is limited to the retrieved abstracts and evidence cards rather than full-text review."
             )
 
-        hypothesis["limitations"] = list(dict.fromkeys(limitations))
-        hypothesis["uncertainty_notes"] = list(dict.fromkeys(uncertainty_notes))
-        hypothesis["risks"] = list(dict.fromkeys(risks))
-
-    def _repair_supporting_evidence_ids(
-        self,
-        *,
-        supporting_ids: list[str],
-        counterevidence_ids: list[str],
-        clusters: list[ConflictCluster],
-        all_evidence_ids: list[str],
-    ) -> list[str]:
-        repaired = list(dict.fromkeys(supporting_ids))
-        candidate_ids = self._infer_supporting_evidence_ids(
-            counterevidence_ids=counterevidence_ids,
-            clusters=clusters,
-            all_evidence_ids=all_evidence_ids,
-        )
-        for evidence_id in candidate_ids:
-            if evidence_id in repaired:
-                continue
-            repaired.append(evidence_id)
-            if len(repaired) >= 3:
-                break
-        # Last resort: if pool is tiny, allow counterevidence IDs as supporting too
-        if len(repaired) < 3:
-            for evidence_id in all_evidence_ids:
-                if evidence_id in repaired:
-                    continue
-                repaired.append(evidence_id)
-                if len(repaired) >= 3:
-                    break
-        return repaired
-
-    def _infer_counterevidence_ids(
-        self,
-        *,
-        supporting_ids: list[str],
-        clusters: list[ConflictCluster],
-        all_conflicting_ids: list[str],
-        all_evidence_ids: list[str],
-    ) -> list[str]:
-        related_conflicts: list[str] = []
-        supporting_set = set(supporting_ids)
-        for cluster in clusters:
-            if supporting_set.intersection(cluster.supporting_evidence_ids):
-                related_conflicts.extend(cluster.conflicting_evidence_ids)
-        if related_conflicts:
-            return list(dict.fromkeys(related_conflicts))
-        fallback_conflicts = [
-            evidence_id for evidence_id in all_conflicting_ids if evidence_id not in supporting_set
-        ]
-        if fallback_conflicts:
-            return list(dict.fromkeys(fallback_conflicts))
-        return [
-            evidence_id for evidence_id in all_evidence_ids if evidence_id not in supporting_set
-        ]
-
-    def _collect_conflicting_ids(self, clusters: list[ConflictCluster]) -> list[str]:
-        conflicting_ids: list[str] = []
-        for cluster in clusters:
-            conflicting_ids.extend(cluster.conflicting_evidence_ids)
-        return list(dict.fromkeys(conflicting_ids))
-
-    def _infer_supporting_evidence_ids(
-        self,
-        *,
-        counterevidence_ids: list[str],
-        clusters: list[ConflictCluster],
-        all_evidence_ids: list[str],
-    ) -> list[str]:
-        counterevidence_set = set(counterevidence_ids)
-        related_supporting_ids: list[str] = []
-        for cluster in clusters:
-            if counterevidence_set.intersection(cluster.conflicting_evidence_ids):
-                related_supporting_ids.extend(cluster.supporting_evidence_ids)
-        if related_supporting_ids:
-            return list(dict.fromkeys(related_supporting_ids))
-
-        cluster_supporting_ids: list[str] = []
-        for cluster in clusters:
-            cluster_supporting_ids.extend(cluster.supporting_evidence_ids)
-        cluster_supporting_ids = [
-            evidence_id
-            for evidence_id in cluster_supporting_ids
-            if evidence_id not in counterevidence_set
-        ]
-        if cluster_supporting_ids:
-            return list(dict.fromkeys(cluster_supporting_ids))
-
-        return [
-            evidence_id
-            for evidence_id in all_evidence_ids
-            if evidence_id not in counterevidence_set
-        ]
+        hypothesis.limitations = list(dict.fromkeys(limitations))
+        hypothesis.uncertainty_notes = list(dict.fromkeys(uncertainty_notes))
+        hypothesis.risks = list(dict.fromkeys(risks))
 
     def _is_retrieval_low_evidence(self, summary: StageSummary | None) -> bool:
         if summary is None:

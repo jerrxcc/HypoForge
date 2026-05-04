@@ -25,7 +25,11 @@ from hypoforge.domain.schemas import (
     RunSummary,
     StageName,
 )
-from hypoforge.domain.validation import FeedbackPool, ValidationContext, ValidationResult
+from hypoforge.domain.validation import (
+    FeedbackPool,
+    ValidationContext,
+    ValidationResult,
+)
 from hypoforge.infrastructure.db.repository import RunRepository
 
 if TYPE_CHECKING:
@@ -72,10 +76,13 @@ class RunCoordinator:
         self._event_bus = event_bus
         self._run_cleanup = run_cleanup
         self._logger = logging.getLogger(__name__)
-        self._correction_loop_controller = correction_loop_controller or CorrectionLoopController(
-            repository=repository,
-            reflection_agent=reflection_agent,
-            settings=self._reflection_settings,
+        self._correction_loop_controller = (
+            correction_loop_controller
+            or CorrectionLoopController(
+                repository=repository,
+                reflection_agent=reflection_agent,
+                settings=self._reflection_settings,
+            )
         )
         self._agents: dict[StageName, Callable[..., StageSummary]] = {
             "retrieval": retrieval_agent,
@@ -94,27 +101,40 @@ class RunCoordinator:
             self._event_bus.publish(run_id, event)
 
     def _emit_stage_start(self, run_id: str, stage_name: str, attempt: int) -> None:
-        self._emit(run_id, {
-            "type": "stage_start",
-            "stage_name": stage_name,
-            "attempt": attempt,
-        })
+        self._emit(
+            run_id,
+            {
+                "type": "stage_start",
+                "stage_name": stage_name,
+                "attempt": attempt,
+            },
+        )
 
-    def _emit_stage_complete(self, run_id: str, stage_name: str, attempt: int, status: str) -> None:
-        self._emit(run_id, {
-            "type": "stage_complete",
-            "stage_name": stage_name,
-            "attempt": attempt,
-            "status": status,
-        })
+    def _emit_stage_complete(
+        self, run_id: str, stage_name: str, attempt: int, status: str
+    ) -> None:
+        self._emit(
+            run_id,
+            {
+                "type": "stage_complete",
+                "stage_name": stage_name,
+                "attempt": attempt,
+                "status": status,
+            },
+        )
 
-    def _emit_run_terminal(self, run_id: str, status: str, error: str | None = None) -> None:
+    def _emit_run_terminal(
+        self, run_id: str, status: str, error: str | None = None
+    ) -> None:
         event_type = "run_complete" if status == "done" else "run_error"
-        self._emit(run_id, {
-            "type": event_type,
-            "status": status,
-            "error": error,
-        })
+        self._emit(
+            run_id,
+            {
+                "type": event_type,
+                "status": status,
+                "error": error,
+            },
+        )
 
     def _get_attempt(self, run_id: str, stage_name: str) -> int:
         if self._event_bus is not None:
@@ -125,20 +145,26 @@ class RunCoordinator:
     # Public API
     # ------------------------------------------------------------------
 
-    def run_topic(self, topic: str, constraints: RunConstraints | None = None) -> RunResult:
+    def run_topic(
+        self, topic: str, constraints: RunConstraints | None = None
+    ) -> RunResult:
         run = self.launch_run(topic, constraints)
         self.execute_run(run.run_id, raise_on_failure=True)
         return self._repository.build_final_result(run.run_id)
 
-    def launch_run(self, topic: str, constraints: RunConstraints | None = None) -> RunState:
+    def launch_run(
+        self, topic: str, constraints: RunConstraints | None = None
+    ) -> RunState:
         request = RunRequest(topic=topic, constraints=constraints or RunConstraints())
         run_state = self._repository.create_run(request)
 
         reflection_globally_enabled = (
-            self._reflection_settings.enable_reflection and self._reflection_agent is not None
+            self._reflection_settings.enable_reflection
+            and self._reflection_agent is not None
         )
         validation_globally_enabled = (
-            self._validation_settings.enable_validation_agents and self._validation_registry is not None
+            self._validation_settings.enable_validation_agents
+            and self._validation_registry is not None
         )
         if reflection_globally_enabled or validation_globally_enabled:
             iteration_state = create_run_iteration_state(
@@ -170,7 +196,14 @@ class RunCoordinator:
         return self._execute_linear(run_id, request, raise_on_failure)
 
     def get_run_result(self, run_id: str) -> RunResult:
-        return self._repository.build_final_result(run_id)
+        result = self._repository.build_final_result(run_id)
+        if result.report_markdown and self._report_needs_refresh(
+            result.report_markdown,
+            result.status,
+        ):
+            self._render_report(run_id)
+            return self._repository.build_final_result(run_id)
+        return result
 
     def list_runs(self) -> list[RunSummary]:
         return self._repository.list_runs()
@@ -181,11 +214,9 @@ class RunCoordinator:
     def get_report_markdown(self, run_id: str) -> str:
         run = self._repository.get_run(run_id)
         report_markdown = run.final_report_md or ""
-        expected_status_line = f"- Final status: `{run.status}`"
-        if (
-            not report_markdown
-            or report_markdown.startswith("# HypoForge Report:")
-            or expected_status_line not in report_markdown
+        if not report_markdown or self._report_needs_refresh(
+            report_markdown,
+            run.status,
         ):
             return self._render_report(run_id)
         return report_markdown
@@ -290,7 +321,9 @@ class RunCoordinator:
         )
         feedback_pool = None
         if validation_enabled:
-            feedback_pool = self._feedback_pools.setdefault(run_id, FeedbackPool(run_id=run_id))
+            feedback_pool = self._feedback_pools.setdefault(
+                run_id, FeedbackPool(run_id=run_id)
+            )
 
         current_stage: StageName | None = "retrieval"
         total_validation_backtracks = 0
@@ -306,11 +339,13 @@ class RunCoordinator:
                     run_id=run_id,
                     stage_name=current_stage,
                     run_iteration_state=iteration_state,
-                    attempt_executor=lambda execution_context, stage_name=current_stage: self._run_managed_stage_attempt(
-                        run_id,
-                        stage_name,
-                        request,
-                        execution_context,
+                    attempt_executor=lambda execution_context, stage_name=current_stage: (
+                        self._run_managed_stage_attempt(
+                            run_id,
+                            stage_name,
+                            request,
+                            execution_context,
+                        )
                     ),
                     validation_feedback=pending_validation_feedback,
                     enable_reflection=reflection_enabled,
@@ -319,7 +354,10 @@ class RunCoordinator:
                 for feedback in stage_result.reflection_feedbacks:
                     self._repository.save_reflection_feedback(run_id, feedback)
 
-                if feedback_pool is not None and pending_validation_feedback is not None:
+                if (
+                    feedback_pool is not None
+                    and pending_validation_feedback is not None
+                ):
                     feedback_pool.consume_feedback(current_stage)
 
                 self._repository.save_iteration_state(run_id, iteration_state)
@@ -338,6 +376,10 @@ class RunCoordinator:
                         self._repository.save_iteration_state(run_id, iteration_state)
                         current_stage = stage_result.backtrack_to
                         continue
+                    raise RuntimeError(
+                        "reflection backtrack could not be applied: "
+                        f"{current_stage} -> {stage_result.backtrack_to}; {reason}"
+                    )
 
                 if validation_enabled:
                     validation_results = self._run_validation_agents(
@@ -348,13 +390,23 @@ class RunCoordinator:
                         iteration_state=iteration_state,
                         feedback_pool=feedback_pool,
                     )
-                    backtrack_recommendation = self._get_backtrack_recommendation(validation_results)
-                    if (
-                        backtrack_recommendation is not None
-                        and feedback_pool is not None
-                        and total_validation_backtracks < self._validation_settings.max_total_backtrack
-                    ):
-                        from hypoforge.agents.feedback_synthesizer import FeedbackSynthesizer
+                    backtrack_recommendation = self._get_backtrack_recommendation(
+                        validation_results
+                    )
+                    if backtrack_recommendation is not None:
+                        if (
+                            feedback_pool is None
+                            or total_validation_backtracks
+                            >= self._validation_settings.max_total_backtrack
+                        ):
+                            raise RuntimeError(
+                                "validation backtrack could not be applied: "
+                                f"{current_stage} -> {backtrack_recommendation.target_stage}; "
+                                f"{backtrack_recommendation.reason}"
+                            )
+                        from hypoforge.agents.feedback_synthesizer import (
+                            FeedbackSynthesizer,
+                        )
 
                         synthesizer = FeedbackSynthesizer(
                             repository=self._repository,
@@ -372,7 +424,9 @@ class RunCoordinator:
                                 feedback_pool=feedback_pool,
                             ),
                         )
-                        feedback_pool.add_feedback(backtrack_recommendation.target_stage, stage_feedback)
+                        feedback_pool.add_feedback(
+                            backtrack_recommendation.target_stage, stage_feedback
+                        )
 
                         if self._prepare_backtrack(
                             run_id=run_id,
@@ -381,10 +435,13 @@ class RunCoordinator:
                             target_stage=backtrack_recommendation.target_stage,
                             reason=backtrack_recommendation.reason,
                             feedback_pool=feedback_pool,
-                            record_cross_stage=backtrack_recommendation.target_stage != current_stage,
+                            record_cross_stage=backtrack_recommendation.target_stage
+                            != current_stage,
                         ):
                             total_validation_backtracks += 1
-                            self._repository.save_iteration_state(run_id, iteration_state)
+                            self._repository.save_iteration_state(
+                                run_id, iteration_state
+                            )
                             current_stage = backtrack_recommendation.target_stage
                             continue
 
@@ -412,7 +469,10 @@ class RunCoordinator:
         if not stage_result.reflection_feedbacks:
             return "reflection requested backtrack"
         latest_feedback = stage_result.reflection_feedbacks[-1]
-        return "; ".join(latest_feedback.issues_found[:2]) or "reflection requested backtrack"
+        return (
+            "; ".join(latest_feedback.issues_found[:2])
+            or "reflection requested backtrack"
+        )
 
     def _prepare_backtrack(
         self,
@@ -430,7 +490,9 @@ class RunCoordinator:
                 return False
             if (
                 self._stage_navigator is not None
-                and not self._stage_navigator.can_backtrack_to(current_stage, target_stage)
+                and not self._stage_navigator.can_backtrack_to(
+                    current_stage, target_stage
+                )
             ):
                 return False
             iteration_state.record_backtrack(
@@ -472,7 +534,9 @@ class RunCoordinator:
                     execution_context=execution_context,
                 )
             else:
-                summary = self._agents[stage_name](run_id, execution_context=execution_context)
+                summary = self._agents[stage_name](
+                    run_id, execution_context=execution_context
+                )
         except Exception as exc:
             self._repository.finish_stage(
                 run_id,
@@ -553,7 +617,9 @@ class RunCoordinator:
             topic=request.topic,
             current_stage=current_stage,
             iteration_number=stage_iteration.iteration_number,
-            previous_feedback=list(feedback_pool.feedback_history) if feedback_pool else [],
+            previous_feedback=list(feedback_pool.feedback_history)
+            if feedback_pool
+            else [],
             stage_output=summary.model_dump(),
             selected_paper_ids=run.selected_paper_ids,
             evidence_ids=run.evidence_ids,
@@ -567,7 +633,9 @@ class RunCoordinator:
     ) -> Any:
         if self._validation_registry is None:
             return None
-        return self._validation_registry.get_backtrack_recommendation(validation_results)
+        return self._validation_registry.get_backtrack_recommendation(
+            validation_results
+        )
 
     # ------------------------------------------------------------------
     # Linear execution
@@ -615,15 +683,27 @@ class RunCoordinator:
 
     def _render_partial_report(self, run_id: str) -> None:
         result = self._repository.build_final_result(run_id)
-        if result.report_markdown:
+        if result.report_markdown and not self._report_needs_refresh(
+            result.report_markdown,
+            result.status,
+        ):
             return
-        self._repository.save_report_markdown(run_id, self._report_renderer.render(result))
+        self._repository.save_report_markdown(
+            run_id, self._report_renderer.render(result)
+        )
 
     def _render_report(self, run_id: str) -> str:
         result = self._repository.build_final_result(run_id)
         markdown = self._report_renderer.render(result)
         self._repository.save_report_markdown(run_id, markdown)
         return markdown
+
+    def _report_needs_refresh(self, report_markdown: str, status: str) -> bool:
+        expected_status_line = f"- Final status: `{status}`"
+        return (
+            report_markdown.startswith("# HypoForge Report:")
+            or expected_status_line not in report_markdown
+        )
 
     def _finish_stage(
         self,

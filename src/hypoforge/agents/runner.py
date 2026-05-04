@@ -12,7 +12,7 @@ class AgentRunner:
 
     Drives the provider through tool-call turns until a final structured
     output is produced, validates the output against *output_model*, and
-    optionally retries or repairs invalid outputs.
+    allows one schema-correction retry before failing explicitly.
     """
 
     def __init__(
@@ -24,7 +24,6 @@ class AgentRunner:
         agent_name: str,
         model_name: str,
         max_tool_steps: int,
-        repair_output: Callable[[dict, dict[str, Any]], dict] | None = None,
     ) -> None:
         self._provider = provider
         self._tool_invoker = tool_invoker
@@ -32,7 +31,6 @@ class AgentRunner:
         self._agent_name = agent_name
         self._model_name = model_name
         self._max_tool_steps = max_tool_steps
-        self._repair_output = repair_output
 
     def execute(
         self,
@@ -65,14 +63,20 @@ class AgentRunner:
             tool_outputs = []
             for call in turn.tool_calls:
                 if call.name not in tool_names:
-                    raise ValueError(f"tool not allowed for {self._agent_name}: {call.name}")
+                    raise ValueError(
+                        f"tool not allowed for {self._agent_name}: {call.name}"
+                    )
                 trace_context = {
                     "request_id": turn.response_id,
                     "input_tokens": turn.usage.get("input_tokens", 0),
                     "output_tokens": turn.usage.get("output_tokens", 0),
                 }
                 result = self._tool_invoker(call.name, call.arguments, trace_context)
-                output = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+                output = (
+                    result
+                    if isinstance(result, str)
+                    else json.dumps(result, ensure_ascii=False)
+                )
                 tool_outputs.append(
                     {
                         "type": "function_call_output",
@@ -90,7 +94,10 @@ class AgentRunner:
             step_count += 1
         return turn, step_count
 
-    def _validate_final_output(self, turn, context: dict[str, Any], tool_names: list[str]):
+    def _validate_final_output(
+        self, turn, context: dict[str, Any], tool_names: list[str]
+    ):
+        del context
         try:
             return self._output_model.model_validate(turn.final_output)
         except ValidationError as initial_error:
@@ -106,10 +113,7 @@ class AgentRunner:
             try:
                 return self._output_model.model_validate(retry_turn.final_output)
             except ValidationError:
-                if self._repair_output is None:
-                    raise
-                repaired = self._repair_output(retry_turn.final_output or {}, context)
-                return self._output_model.model_validate(repaired)
+                raise
 
     def _schema_retry_prompt(self, error: ValidationError) -> dict[str, Any]:
         return {

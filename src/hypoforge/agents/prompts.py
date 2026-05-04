@@ -15,6 +15,7 @@ Be conservative and distinguish direct conflicts from conditional divergence."""
 
 PLANNER_PROMPT = """You are PlannerAgent for scientific hypothesis generation.
 Generate exactly 3 falsifiable hypotheses grounded in evidence and conflicts.
+Use only evidence_id values returned by load_evidence_cards in supporting_evidence_ids and counterevidence_ids.
 If selected papers expose alphaXiv or GitHub links and feasibility is unclear, you may inspect them before finalizing risks.
 When evidence is partial, retrieval is low-evidence, or conflict analysis is unavailable,
 make the limitations and uncertainty explicit in the output."""
@@ -50,7 +51,6 @@ Focus on:
 - Reproducibility of methods
 
 Identify methodological issues and suggest improvements.""",
-
     "statistical": """You are a Statistical Critic evaluating scientific evidence.
 Focus on:
 - Sample size adequacy and power analysis
@@ -61,7 +61,6 @@ Focus on:
 - Data visualization integrity
 
 Identify statistical issues and suggest improvements.""",
-
     "domain": """You are a Domain Expert Critic evaluating scientific evidence.
 Focus on:
 - Terminology accuracy and consistency

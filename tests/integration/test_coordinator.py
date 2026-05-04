@@ -18,7 +18,9 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
     stage_calls: list[str] = []
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints
         stage_calls.append("retrieval")
         repo.save_selected_papers(
@@ -159,7 +161,12 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
             ],
         )
         repo.save_report_markdown(run_id, "# Report")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -188,7 +195,9 @@ def test_coordinator_runs_all_stages_in_order(tmp_path) -> None:
 def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
     repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
 
-    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None) -> RetrievalSummary:
+    def retrieval(
+        run_id: str, topic: str, constraints, *, execution_context=None
+    ) -> RetrievalSummary:
         del constraints
         repo.save_selected_papers(
             run_id,
@@ -248,9 +257,16 @@ def test_get_report_markdown_rerenders_legacy_report_format(tmp_path) -> None:
         return CriticSummary(clusters_created=1, top_axes=["axis"], critic_notes=[])
 
     def planner(run_id: str, *, execution_context=None) -> PlannerSummary:
-        repo.save_hypotheses(run_id, [_make_hypothesis(1), _make_hypothesis(2), _make_hypothesis(3)])
+        repo.save_hypotheses(
+            run_id, [_make_hypothesis(1), _make_hypothesis(2), _make_hypothesis(3)]
+        )
         repo.save_report_markdown(run_id, "# HypoForge Report: legacy")
-        return PlannerSummary(hypotheses_created=3, report_rendered=True, top_axes=["axis"], planner_notes=[])
+        return PlannerSummary(
+            hypotheses_created=3,
+            report_rendered=True,
+            top_axes=["axis"],
+            planner_notes=[],
+        )
 
     coordinator = RunCoordinator(
         repository=repo,
@@ -294,6 +310,63 @@ def test_get_report_markdown_rerenders_stale_status_report(tmp_path) -> None:
     assert "- Final status: `done`" in markdown
     assert "- Final status: `planning`" not in markdown
     assert repo.get_run(run.run_id).final_report_md == markdown
+
+
+def test_get_run_result_rerenders_stale_status_report(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="stale json status"))
+    repo.update_run_status(run.run_id, "planning")
+    repo.save_report_markdown(
+        run.run_id,
+        "# HypoForge Briefing: stale json status\n\n"
+        f"- Run ID: `{run.run_id}`\n"
+        "- Final status: `planning`\n",
+    )
+    repo.update_run_status(run.run_id, "done")
+
+    coordinator = RunCoordinator(
+        repository=repo,
+        retrieval_agent=lambda *args, **kwargs: None,
+        review_agent=lambda *args, **kwargs: None,
+        critic_agent=lambda *args, **kwargs: None,
+        planner_agent=lambda *args, **kwargs: None,
+    )
+
+    result = coordinator.get_run_result(run.run_id)
+
+    assert result.report_markdown is not None
+    assert "- Final status: `done`" in result.report_markdown
+    assert "- Final status: `planning`" not in result.report_markdown
+
+
+def test_failure_path_rerenders_stale_partial_report(tmp_path) -> None:
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+
+    def retrieval(run_id: str, topic: str, constraints, *, execution_context=None):
+        del topic, constraints, execution_context
+        repo.save_report_markdown(
+            run_id,
+            "# HypoForge Briefing: stale failed status\n\n"
+            f"- Run ID: `{run_id}`\n"
+            "- Final status: `retrieving`\n",
+        )
+        raise RuntimeError("retrieval failed")
+
+    coordinator = RunCoordinator(
+        repository=repo,
+        retrieval_agent=retrieval,
+        review_agent=lambda *args, **kwargs: None,
+        critic_agent=lambda *args, **kwargs: None,
+        planner_agent=lambda *args, **kwargs: None,
+    )
+    run = coordinator.launch_run("stale failed status")
+
+    result = coordinator.execute_run(run.run_id)
+
+    assert result.status == "failed"
+    assert result.report_markdown is not None
+    assert "- Final status: `failed`" in result.report_markdown
+    assert "- Final status: `retrieving`" not in result.report_markdown
 
 
 def _make_hypothesis(rank: int) -> Hypothesis:

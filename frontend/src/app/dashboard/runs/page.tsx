@@ -42,7 +42,7 @@ export default function RunsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your Runs</h1>
         <Button asChild>
-          <Link href="/dashboard">
+          <Link href="/dashboard/new">
             <Plus aria-hidden="true" className="size-4" />
             New Run
           </Link>
@@ -78,7 +78,7 @@ export default function RunsPage() {
           </p>
           {!search && (
             <Button asChild variant="outline">
-              <Link href="/dashboard">Start your first run</Link>
+              <Link href="/dashboard/new">Start your first run</Link>
             </Button>
           )}
         </div>

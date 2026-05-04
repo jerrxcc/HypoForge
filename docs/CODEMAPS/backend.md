@@ -40,11 +40,11 @@ Events emitted via `_emit()` -> `RunEventBus.publish()` at stage_start, stage_co
 
 | File | Lines | Role |
 |------|-------|------|
-| `application/services.py` | 993 | DI wiring, batch review, recovery, repair functions |
+| `application/services.py` | 776 | DI wiring, batch review, connector/tool orchestration |
 | `agents/quality_assessor.py` | 778 | Hypothesis quality validation agent |
 | `agents/reflection.py` | 772 | Quality evaluation, multi-perspective critique |
 | `infrastructure/db/repository.py` | 650 | All DB CRUD operations |
-| `application/coordinator.py` | 642 | Pipeline orchestration, 3 execution paths, SSE events |
+| `application/coordinator.py` | 729 | Pipeline orchestration, 3 execution paths, SSE events |
 | `agents/conflict_detector.py` | 637 | Conflict validation agent |
 | `agents/evidence_validator.py` | 604 | Evidence card validation agent |
 | `agents/feedback_synthesizer.py` | 596 | Feedback aggregation validation agent |

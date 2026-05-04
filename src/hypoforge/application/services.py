@@ -18,12 +18,6 @@ from hypoforge.application.evidence_cache import (
     load_cached_evidence_cards_for_papers,
     save_evidence_cards_to_cache,
 )
-from hypoforge.application.repair import (
-    repair_retrieval_output,
-    repair_review_output,
-    repair_critic_output,
-    repair_planner_output,
-)
 from hypoforge.application.report_renderer import ReportRenderer
 from hypoforge.application.stage_graph import StageNavigator
 from hypoforge.config import Settings
@@ -41,8 +35,13 @@ from hypoforge.infrastructure.connectors.cached import (
     CachedOpenAlexConnector,
     CachedSemanticScholarConnector,
 )
-from hypoforge.infrastructure.connectors.dedupe import merge_paper_details, paper_identity_key
-from hypoforge.infrastructure.connectors.semantic_scholar import SemanticScholarConnector
+from hypoforge.infrastructure.connectors.dedupe import (
+    merge_paper_details,
+    paper_identity_key,
+)
+from hypoforge.infrastructure.connectors.semantic_scholar import (
+    SemanticScholarConnector,
+)
 from hypoforge.infrastructure.db.cache_repository import CacheRepository
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.render_tools import RenderTools
@@ -74,9 +73,7 @@ def _merge_execution_context(
 
     unknown_keys = set(execution_context) - _ALLOWED_EXECUTION_CONTEXT_KEYS
     if unknown_keys:
-        raise ValueError(
-            f"unsupported execution context keys: {sorted(unknown_keys)}"
-        )
+        raise ValueError(f"unsupported execution context keys: {sorted(unknown_keys)}")
 
     return {
         **base_context,
@@ -104,7 +101,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     renderer = ReportRenderer()
     logger = logging.getLogger(__name__)
     openalex_base = OpenAlexConnector(api_key=settings.openalex_api_key or None)
-    semantic_scholar_base = SemanticScholarConnector(api_key=settings.semantic_scholar_api_key or None)
+    semantic_scholar_base = SemanticScholarConnector(
+        api_key=settings.semantic_scholar_api_key or None
+    )
     alphaxiv_enabled = bool(settings.alphaxiv_access_token.strip())
     alphaxiv_base = (
         AlphaXivConnector(
@@ -174,7 +173,9 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             semantic_scholar=semantic_scholar,
             alphaxiv=alphaxiv,
             repository=repository,
-            paper_lookup=lambda paper_ids: _lookup_candidate_papers(candidate_pool, paper_ids),
+            paper_lookup=lambda paper_ids: _lookup_candidate_papers(
+                candidate_pool, paper_ids
+            ),
         )
         workspace_tools = WorkspaceTools(
             repository=repository,
@@ -183,34 +184,74 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         )
         render_tools = RenderTools(repository=repository, renderer=renderer)
         registry = {
-            "search_openalex_works": lambda payload: update_candidate_pool(scholarly_tools.search_openalex_works(payload)),
-            "search_semantic_scholar_papers": lambda payload: update_candidate_pool(scholarly_tools.search_semantic_scholar_papers(payload)),
-            "recommend_semantic_scholar_papers": lambda payload: update_candidate_pool(scholarly_tools.recommend_semantic_scholar_papers(payload)),
-            "get_paper_details": lambda payload: update_candidate_pool(scholarly_tools.get_paper_details(payload)),
-            "save_selected_papers": lambda payload: scholarly_tools.save_selected_papers(run_id, payload),
-            "load_selected_papers": lambda payload: workspace_tools.load_selected_papers(run_id, payload),
-            "save_evidence_cards": lambda payload: workspace_tools.save_evidence_cards(run_id, payload),
-            "load_evidence_cards": lambda payload: workspace_tools.load_evidence_cards(run_id, payload),
-            "save_conflict_clusters": lambda payload: workspace_tools.save_conflict_clusters(run_id, payload),
-            "load_conflict_clusters": lambda payload: workspace_tools.load_conflict_clusters(run_id, payload),
-            "save_hypotheses": lambda payload: workspace_tools.save_hypotheses(run_id, payload),
-            "render_markdown_report": lambda payload: render_tools.render_markdown_report(run_id, payload),
+            "search_openalex_works": lambda payload: update_candidate_pool(
+                scholarly_tools.search_openalex_works(payload)
+            ),
+            "search_semantic_scholar_papers": lambda payload: update_candidate_pool(
+                scholarly_tools.search_semantic_scholar_papers(payload)
+            ),
+            "recommend_semantic_scholar_papers": lambda payload: update_candidate_pool(
+                scholarly_tools.recommend_semantic_scholar_papers(payload)
+            ),
+            "get_paper_details": lambda payload: update_candidate_pool(
+                scholarly_tools.get_paper_details(payload)
+            ),
+            "save_selected_papers": lambda payload: (
+                scholarly_tools.save_selected_papers(run_id, payload)
+            ),
+            "load_selected_papers": lambda payload: (
+                workspace_tools.load_selected_papers(run_id, payload)
+            ),
+            "save_evidence_cards": lambda payload: workspace_tools.save_evidence_cards(
+                run_id, payload
+            ),
+            "load_evidence_cards": lambda payload: workspace_tools.load_evidence_cards(
+                run_id, payload
+            ),
+            "save_conflict_clusters": lambda payload: (
+                workspace_tools.save_conflict_clusters(run_id, payload)
+            ),
+            "load_conflict_clusters": lambda payload: (
+                workspace_tools.load_conflict_clusters(run_id, payload)
+            ),
+            "save_hypotheses": lambda payload: workspace_tools.save_hypotheses(
+                run_id, payload
+            ),
+            "render_markdown_report": lambda payload: (
+                render_tools.render_markdown_report(run_id, payload)
+            ),
         }
         if alphaxiv is not None:
             registry.update(
                 {
-                    "search_alphaxiv_embedding_similarity": lambda payload: update_candidate_pool(
-                        scholarly_tools.search_alphaxiv_embedding_similarity(payload)
+                    "search_alphaxiv_embedding_similarity": lambda payload: (
+                        update_candidate_pool(
+                            scholarly_tools.search_alphaxiv_embedding_similarity(
+                                payload
+                            )
+                        )
                     ),
-                    "search_alphaxiv_full_text_papers": lambda payload: update_candidate_pool(
-                        scholarly_tools.search_alphaxiv_full_text_papers(payload)
+                    "search_alphaxiv_full_text_papers": lambda payload: (
+                        update_candidate_pool(
+                            scholarly_tools.search_alphaxiv_full_text_papers(payload)
+                        )
                     ),
-                    "search_alphaxiv_agentic_paper_retrieval": lambda payload: update_candidate_pool(
-                        scholarly_tools.search_alphaxiv_agentic_paper_retrieval(payload)
+                    "search_alphaxiv_agentic_paper_retrieval": lambda payload: (
+                        update_candidate_pool(
+                            scholarly_tools.search_alphaxiv_agentic_paper_retrieval(
+                                payload
+                            )
+                        )
                     ),
-                    "get_alphaxiv_paper_content": lambda payload: scholarly_tools.get_alphaxiv_paper_content(payload),
-                    "answer_alphaxiv_pdf_queries": lambda payload: scholarly_tools.answer_alphaxiv_pdf_queries(payload),
-                    "read_alphaxiv_github_repository": lambda payload: scholarly_tools.read_alphaxiv_github_repository(payload),
+                    "get_alphaxiv_paper_content": lambda payload: (
+                        scholarly_tools.get_alphaxiv_paper_content(payload)
+                    ),
+                    "answer_alphaxiv_pdf_queries": lambda payload: (
+                        scholarly_tools.answer_alphaxiv_pdf_queries(payload)
+                    ),
+                    "read_alphaxiv_github_repository": lambda payload: (
+                        scholarly_tools.read_alphaxiv_github_repository(payload)
+                    ),
                 }
             )
 
@@ -218,13 +259,16 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             attempt = 1
             if event_bus is not None:
                 attempt = event_bus.get_attempt(run_id, stage_name)
-                event_bus.publish(run_id, {
-                    "type": "tool_start",
-                    "stage_name": stage_name,
-                    "attempt": attempt,
-                    "agent_name": agent_name,
-                    "tool_name": tool_name,
-                })
+                event_bus.publish(
+                    run_id,
+                    {
+                        "type": "tool_start",
+                        "stage_name": stage_name,
+                        "attempt": attempt,
+                        "agent_name": agent_name,
+                        "tool_name": tool_name,
+                    },
+                )
             started_at = perf_counter()
             try:
                 result = registry[tool_name](payload)
@@ -235,16 +279,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
 
                 def on_recorded(trace_dict: dict) -> None:
                     if event_bus is not None:
-                        event_bus.publish(run_id, {
-                            "type": "tool_complete",
-                            "stage_name": stage_name,
-                            "attempt": attempt,
-                            "agent_name": agent_name,
-                            "tool_name": tool_name,
-                            "trace_id": trace_dict["id"],
-                            "latency_ms": latency_ms,
-                            "success": True,
-                        })
+                        event_bus.publish(
+                            run_id,
+                            {
+                                "type": "tool_complete",
+                                "stage_name": stage_name,
+                                "attempt": attempt,
+                                "agent_name": agent_name,
+                                "tool_name": tool_name,
+                                "trace_id": trace_dict["id"],
+                                "latency_ms": latency_ms,
+                                "success": True,
+                            },
+                        )
 
                 repository.record_tool_trace(
                     run_id=run_id,
@@ -280,16 +327,19 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     error_message=str(exc),
                 )
                 if event_bus is not None:
-                    event_bus.publish(run_id, {
-                        "type": "tool_complete",
-                        "stage_name": stage_name,
-                        "attempt": attempt,
-                        "agent_name": agent_name,
-                        "tool_name": tool_name,
-                        "latency_ms": latency_ms,
-                        "success": False,
-                        "error": str(exc),
-                    })
+                    event_bus.publish(
+                        run_id,
+                        {
+                            "type": "tool_complete",
+                            "stage_name": stage_name,
+                            "attempt": attempt,
+                            "agent_name": agent_name,
+                            "tool_name": tool_name,
+                            "latency_ms": latency_ms,
+                            "success": False,
+                            "error": str(exc),
+                        },
+                    )
                 raise
 
         return invoke
@@ -303,12 +353,16 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     ) -> RetrievalSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "retrieval", settings.openai_model_retrieval, stage_name="retrieval"),
+            tool_invoker=make_tool_invoker(
+                run_id,
+                "retrieval",
+                settings.openai_model_retrieval,
+                stage_name="retrieval",
+            ),
             output_model=RetrievalSummary,
             agent_name="retrieval",
             model_name=settings.openai_model_retrieval,
             max_tool_steps=settings.max_tool_steps_retrieval,
-            repair_output=repair_retrieval_output,
         )
         retrieval_tool_names = [
             "search_openalex_works",
@@ -358,7 +412,10 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                     agent_name="review",
                     tool_name="evidence_extraction_cache_hit",
                     stage_name="review",
-                    args={"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                    args={
+                        "run_id": run_id,
+                        "paper_ids": [paper.paper_id for paper in batch],
+                    },
                     result_summary={
                         "cache_hit": True,
                         "evidence_ids": [card.evidence_id for card in cached_cards[:5]],
@@ -370,7 +427,11 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 )
                 logger.info(
                     "review cache hit",
-                    extra={"run_id": run_id, "cards": len(cached_cards), "paper_count": len(batch)},
+                    extra={
+                        "run_id": run_id,
+                        "cards": len(cached_cards),
+                        "paper_count": len(batch),
+                    },
                 )
                 return ReviewSummary(
                     papers_processed=len(batch),
@@ -394,7 +455,6 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
                 agent_name="review",
                 model_name=settings.openai_model_review,
                 max_tool_steps=settings.max_tool_steps_review,
-                repair_output=repair_review_output,
             )
             review_tool_names = ["load_selected_papers", "save_evidence_cards"]
             if alphaxiv_enabled:
@@ -406,7 +466,10 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
             summary = runner.execute(
                 instructions=review_prompt,
                 context=_merge_execution_context(
-                    {"run_id": run_id, "paper_ids": [paper.paper_id for paper in batch]},
+                    {
+                        "run_id": run_id,
+                        "paper_ids": [paper.paper_id for paper in batch],
+                    },
                     execution_context,
                 ),
                 tool_names=review_tool_names,
@@ -435,12 +498,13 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     ) -> CriticSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "critic", settings.openai_model_critic, stage_name="critic"),
+            tool_invoker=make_tool_invoker(
+                run_id, "critic", settings.openai_model_critic, stage_name="critic"
+            ),
             output_model=CriticSummary,
             agent_name="critic",
             model_name=settings.openai_model_critic,
             max_tool_steps=settings.max_tool_steps_critic,
-            repair_output=repair_critic_output,
         )
         return runner.execute(
             instructions=prompt_for("critic"),
@@ -455,14 +519,20 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
     ) -> PlannerSummary:
         runner = AgentRunner(
             provider=provider,
-            tool_invoker=make_tool_invoker(run_id, "planner", settings.openai_model_planner, stage_name="planner"),
+            tool_invoker=make_tool_invoker(
+                run_id, "planner", settings.openai_model_planner, stage_name="planner"
+            ),
             output_model=PlannerSummary,
             agent_name="planner",
             model_name=settings.openai_model_planner,
             max_tool_steps=settings.max_tool_steps_planner,
-            repair_output=repair_planner_output,
         )
-        planner_tool_names = ["load_evidence_cards", "load_conflict_clusters", "save_hypotheses", "render_markdown_report"]
+        planner_tool_names = [
+            "load_evidence_cards",
+            "load_conflict_clusters",
+            "save_hypotheses",
+            "render_markdown_report",
+        ]
         if alphaxiv_enabled:
             planner_tool_names = [
                 "load_selected_papers",
@@ -526,21 +596,27 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         validation_registry = ValidationAgentRegistry()
 
         # Register validators for each stage
-        validation_registry.register(EvidenceValidator(
-            repository=repository,
-            settings=settings.validation_settings,
-            provider=provider,
-        ))
-        validation_registry.register(ConflictDetector(
-            repository=repository,
-            settings=settings.validation_settings,
-            provider=provider,
-        ))
-        validation_registry.register(QualityAssessor(
-            repository=repository,
-            settings=settings.validation_settings,
-            provider=provider,
-        ))
+        validation_registry.register(
+            EvidenceValidator(
+                repository=repository,
+                settings=settings.validation_settings,
+                provider=provider,
+            )
+        )
+        validation_registry.register(
+            ConflictDetector(
+                repository=repository,
+                settings=settings.validation_settings,
+                provider=provider,
+            )
+        )
+        validation_registry.register(
+            QualityAssessor(
+                repository=repository,
+                settings=settings.validation_settings,
+                provider=provider,
+            )
+        )
 
         logger.info(
             "Validation agents enabled",
@@ -555,6 +631,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         budget_trackers.pop(run_id, None)
 
     from hypoforge.application.event_bus import RunEventBus
+
     event_bus = RunEventBus()
 
     coordinator = RunCoordinator(
@@ -613,7 +690,9 @@ def _summarize_tool_result(result: dict) -> dict:
     return summary
 
 
-def _lookup_candidate_papers(candidate_pool: dict[str, PaperDetail], paper_ids: list[str]) -> list[PaperDetail]:
+def _lookup_candidate_papers(
+    candidate_pool: dict[str, PaperDetail], paper_ids: list[str]
+) -> list[PaperDetail]:
     papers: list[PaperDetail] = []
     all_candidates = list(candidate_pool.values())
     for paper_id in paper_ids:
@@ -621,7 +700,9 @@ def _lookup_candidate_papers(candidate_pool: dict[str, PaperDetail], paper_ids: 
         if candidate is None:
             continue
         key = paper_identity_key(candidate)
-        duplicates = [paper for paper in all_candidates if paper_identity_key(paper) == key]
+        duplicates = [
+            paper for paper in all_candidates if paper_identity_key(paper) == key
+        ]
         merged = candidate
         for duplicate in duplicates:
             if duplicate.paper_id == merged.paper_id:
@@ -629,8 +710,6 @@ def _lookup_candidate_papers(candidate_pool: dict[str, PaperDetail], paper_ids: 
             merged = merge_paper_details(merged, duplicate)
         papers.append(merged)
     return papers
-
-
 
 
 def _review_papers_in_batches(
@@ -657,9 +736,13 @@ def _review_papers_in_batches(
         successful_summaries.append(review_batch(batch))
 
     papers_processed = sum(summary.papers_processed for summary in successful_summaries)
-    evidence_cards_created = sum(summary.evidence_cards_created for summary in successful_summaries)
+    evidence_cards_created = sum(
+        summary.evidence_cards_created for summary in successful_summaries
+    )
     dominant_axes = list(
-        dict.fromkeys(axis for summary in successful_summaries for axis in summary.dominant_axes)
+        dict.fromkeys(
+            axis for summary in successful_summaries for axis in summary.dominant_axes
+        )
     )
     low_confidence_paper_ids = list(
         dict.fromkeys(
@@ -683,14 +766,11 @@ def _review_papers_in_batches(
     )
 
 
-
-
-
-
 def build_fake_services(
     *,
     database_url: str = "sqlite:///./hypoforge.fake.db",
 ) -> ServiceContainer:
     """Re-export: delegates to :func:`hypoforge.testing.fake_services.build_fake_services`."""
     from hypoforge.testing.fake_services import build_fake_services as _impl
+
     return _impl(database_url=database_url)

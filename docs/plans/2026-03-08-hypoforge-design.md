@@ -1,5 +1,9 @@
 # HypoForge V1 Design
 
+> Historical note: this was the initial backend-only V1 design from 2026-03-08.
+> The current course-project prototype includes the `frontend/` dashboard and
+> should be verified against `README.md` and `docs/CODEMAPS/`.
+
 ## Background
 HypoForge V1 is a backend-only scientific hypothesis generation system. It accepts a research topic, retrieves relevant literature, compresses metadata-grounded evidence, identifies conflicts or evidence gaps, and returns exactly three falsifiable hypotheses with minimal experiments and a deterministic Markdown report.
 

@@ -1,5 +1,9 @@
 # HypoForge MVP Implementation Plan
 
+> Historical note: this was the initial backend MVP implementation plan from
+> 2026-03-08. The current course-project prototype includes the `frontend/`
+> dashboard and should be verified against `README.md` and `docs/CODEMAPS/`.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Build the HypoForge V1 backend from `SPEC.md`, including FastAPI API endpoints, bounded four-stage agent orchestration, SQLite persistence, deterministic report rendering, tests, and Git/GitHub initialization.

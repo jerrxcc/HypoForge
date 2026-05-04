@@ -1,8 +1,14 @@
 import pytest
 
-from hypoforge.agents.providers import ProviderToolCall, ScriptedProvider, ScriptedProviderTurn
+from hypoforge.agents.providers import (
+    ProviderToolCall,
+    ScriptedProvider,
+    ScriptedProviderTurn,
+)
 from hypoforge.agents.runner import AgentRunner
 from hypoforge.application.budget import ToolStepBudgetExceededError
+from pydantic import ValidationError
+
 from hypoforge.domain.schemas import RetrievalSummary
 import json
 
@@ -94,7 +100,12 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
                     ProviderToolCall(
                         call_id="call_1",
                         name="search_openalex_works",
-                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                        arguments={
+                            "query": "x",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
                     )
                 ]
             ),
@@ -114,7 +125,9 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
 
     runner = AgentRunner(
         provider=provider,
-        tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
+        tool_invoker=lambda tool_name, payload, trace_context: {
+            "papers": [{"paper_id": "p1"}]
+        },
         output_model=RetrievalSummary,
         agent_name="retrieval",
         model_name="gpt-5.4-mini",
@@ -128,7 +141,9 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
     )
 
     assert isinstance(captured_tool_outputs[0]["output"], str)
-    assert json.loads(captured_tool_outputs[0]["output"]) == {"papers": [{"paper_id": "p1"}]}
+    assert json.loads(captured_tool_outputs[0]["output"]) == {
+        "papers": [{"paper_id": "p1"}]
+    }
 
 
 def test_agent_runner_retries_once_after_output_validation_failure() -> None:
@@ -199,7 +214,7 @@ def test_agent_runner_retries_once_after_output_validation_failure() -> None:
     assert "failed schema validation" in json.dumps(continue_inputs[0])
 
 
-def test_agent_runner_uses_repair_output_after_retry_still_invalid() -> None:
+def test_agent_runner_raises_after_retry_still_invalid() -> None:
     provider = ScriptedProvider(
         [
             ScriptedProviderTurn(
@@ -232,20 +247,14 @@ def test_agent_runner_uses_repair_output_after_retry_still_invalid() -> None:
         agent_name="retrieval",
         model_name="gpt-5.4-mini",
         max_tool_steps=2,
-        repair_output=lambda output, context: {
-            **output,
-            "canonical_topic": output.get("canonical_topic") or context["topic"],
-            "coverage_assessment": "medium",
-        },
     )
 
-    summary = runner.execute(
-        instructions="Retrieve papers",
-        context={"topic": "x"},
-        tool_names=["search_openalex_works"],
-    )
-
-    assert summary.coverage_assessment == "medium"
+    with pytest.raises(ValidationError, match="coverage_assessment"):
+        runner.execute(
+            instructions="Retrieve papers",
+            context={"topic": "x"},
+            tool_names=["search_openalex_works"],
+        )
 
 
 def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> None:
@@ -256,7 +265,12 @@ def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> 
                     ProviderToolCall(
                         call_id="call_1",
                         name="search_openalex_works",
-                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                        arguments={
+                            "query": "x",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
                     )
                 ]
             ),
@@ -265,7 +279,12 @@ def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> 
                     ProviderToolCall(
                         call_id="call_2",
                         name="search_openalex_works",
-                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                        arguments={
+                            "query": "x",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
                     )
                 ]
             ),
@@ -274,7 +293,12 @@ def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> 
                     ProviderToolCall(
                         call_id="call_3",
                         name="search_openalex_works",
-                        arguments={"query": "x", "year_from": 2018, "year_to": 2026, "limit": 5},
+                        arguments={
+                            "query": "x",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
                     )
                 ]
             ),
@@ -283,14 +307,18 @@ def test_agent_runner_raises_tool_step_budget_when_provider_never_finishes() -> 
 
     runner = AgentRunner(
         provider=provider,
-        tool_invoker=lambda tool_name, payload, trace_context: {"papers": [{"paper_id": "p1"}]},
+        tool_invoker=lambda tool_name, payload, trace_context: {
+            "papers": [{"paper_id": "p1"}]
+        },
         output_model=RetrievalSummary,
         agent_name="retrieval",
         model_name="gpt-5.4-mini",
         max_tool_steps=2,
     )
 
-    with pytest.raises(ToolStepBudgetExceededError, match="retrieval exceeded tool step budget"):
+    with pytest.raises(
+        ToolStepBudgetExceededError, match="retrieval exceeded tool step budget"
+    ):
         runner.execute(
             instructions="Retrieve papers",
             context={"topic": "x"},
@@ -303,7 +331,9 @@ def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
         def __init__(self) -> None:
             self.continue_calls = 0
 
-        def start(self, *, instructions, context, tool_names, model_name, output_schema=None):
+        def start(
+            self, *, instructions, context, tool_names, model_name, output_schema=None
+        ):
             del instructions, context, tool_names, model_name, output_schema
             from hypoforge.agents.providers import ProviderTurn
 
@@ -320,7 +350,9 @@ def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
         ):
             del response_id, tool_outputs, tool_names, model_name, output_schema
             self.continue_calls += 1
-            raise AssertionError("provider should not be called again for a stalled turn")
+            raise AssertionError(
+                "provider should not be called again for a stalled turn"
+            )
 
     provider = NoProgressProvider()
     runner = AgentRunner(
@@ -332,7 +364,9 @@ def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
         max_tool_steps=2,
     )
 
-    with pytest.raises(RuntimeError, match="returned neither tool calls nor final output"):
+    with pytest.raises(
+        RuntimeError, match="returned neither tool calls nor final output"
+    ):
         runner.execute(
             instructions="Retrieve papers",
             context={"topic": "x"},
