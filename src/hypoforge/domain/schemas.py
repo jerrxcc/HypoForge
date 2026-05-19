@@ -144,8 +144,20 @@ class EvidenceCard(BaseModel):
 class ConflictCluster(BaseModel):
     cluster_id: str
     topic_axis: str
-    supporting_evidence_ids: list[str] = Field(default_factory=list)
-    conflicting_evidence_ids: list[str] = Field(default_factory=list)
+    supporting_evidence_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Exact EvidenceCard.evidence_id values returned by load_evidence_cards; "
+            "do not use paper_id or source identifiers."
+        ),
+    )
+    conflicting_evidence_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Exact EvidenceCard.evidence_id values returned by load_evidence_cards; "
+            "do not use paper_id or source identifiers."
+        ),
+    )
     conflict_type: ConflictType
     likely_explanations: list[str] = Field(default_factory=list)
     missing_controls: list[str] = Field(default_factory=list)

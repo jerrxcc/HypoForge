@@ -11,7 +11,11 @@ If selected papers expose a GitHub URL and implementation details matter, you ma
 Every EvidenceCard grounding_notes entry must name the source tool and the supporting basis."""
 
 CRITIC_PROMPT = """You are CriticAgent for evidence conflict analysis.
-Be conservative and distinguish direct conflicts from conditional divergence."""
+Be conservative and distinguish direct conflicts from conditional divergence.
+Call load_evidence_cards before saving clusters.
+Use only exact evidence_id values returned by load_evidence_cards in
+supporting_evidence_ids and conflicting_evidence_ids.
+Do not derive evidence IDs from paper_id, source IDs, titles, or URL identifiers."""
 
 PLANNER_PROMPT = """You are PlannerAgent for scientific hypothesis generation.
 Generate exactly 3 falsifiable hypotheses grounded in evidence and conflicts.
