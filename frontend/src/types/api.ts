@@ -70,6 +70,8 @@ export interface RunLaunch {
   run_id: string;
   topic: string;
   status: RunStatus;
+  created_at: string | null;
+  updated_at: string | null;
   trace_path: string | null;
 }
 
@@ -152,6 +154,8 @@ export interface RunResult {
   run_id: string;
   topic: string;
   status: RunStatus;
+  created_at: string | null;
+  updated_at: string | null;
   error_message: string | null;
   selected_papers: PaperDetail[];
   evidence_cards: EvidenceCard[];

@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import type { RunStatus } from '@/types';
 
-const ACTIVE_STATUSES = new Set<RunStatus>(['retrieving', 'reviewing', 'criticizing', 'planning', 'reflecting']);
+const ACTIVE_STATUSES = new Set<RunStatus>(['queued', 'retrieving', 'reviewing', 'criticizing', 'planning', 'reflecting']);
 
 export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -111,6 +111,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
         activity={activity}
         open={drawerOpen}
         onClose={() => setUserDrawerPref(false)}
+        runCreatedAt={run.created_at}
+        runUpdatedAt={run.updated_at}
+        runActive={isActive}
       />
     </div>
   );

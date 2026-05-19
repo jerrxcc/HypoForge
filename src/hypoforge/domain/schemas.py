@@ -81,6 +81,8 @@ class RunState(BaseModel):
     topic: str
     constraints: RunConstraints
     status: RunStatus
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     error_message: str | None = None
     selected_paper_ids: list[str] = Field(default_factory=list)
     evidence_ids: list[str] = Field(default_factory=list)
@@ -240,6 +242,8 @@ class RunResult(BaseModel):
     run_id: str
     topic: str
     status: RunStatus
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     error_message: str | None = None
     selected_papers: list[PaperDetail] = Field(default_factory=list)
     evidence_cards: list[EvidenceCard] = Field(default_factory=list)

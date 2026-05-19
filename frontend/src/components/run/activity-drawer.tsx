@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Loader2, CheckCircle2, XCircle, Wifi, WifiOff } from 'lucide-react';
-import { cn, formatDuration } from '@/lib/utils';
+import { cn, formatDuration, parseApiDate } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import type { RunActivity } from '@/hooks/use-run-activity';
@@ -21,10 +21,21 @@ interface ActivityDrawerProps {
   readonly activity: RunActivity;
   readonly open: boolean;
   readonly onClose: () => void;
+  readonly runCreatedAt: string | null;
+  readonly runUpdatedAt: string | null;
+  readonly runActive: boolean;
 }
 
-export function ActivityDrawer({ activity, open, onClose }: ActivityDrawerProps) {
+export function ActivityDrawer({
+  activity,
+  open,
+  onClose,
+  runCreatedAt,
+  runUpdatedAt,
+  runActive,
+}: ActivityDrawerProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const elapsedSeconds = useElapsedSeconds(runCreatedAt, runUpdatedAt, runActive);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,7 +73,10 @@ export function ActivityDrawer({ activity, open, onClose }: ActivityDrawerProps)
       {/* Metrics bar */}
       <div className="flex items-center gap-4 border-b px-4 py-2 text-xs text-muted-foreground">
         <span>{activity.metrics.totalTools} tool calls</span>
-        <span>{formatDuration(activity.metrics.totalLatencyMs / 1000)} total</span>
+        {elapsedSeconds !== null && (
+          <span>{formatDuration(elapsedSeconds)} elapsed</span>
+        )}
+        <span>{formatDuration(activity.metrics.totalLatencyMs / 1000)} tool time</span>
       </div>
 
       {/* Thinking indicator */}
@@ -105,6 +119,31 @@ export function ActivityDrawer({ activity, open, onClose }: ActivityDrawerProps)
       </ScrollArea>
     </div>
   );
+}
+
+function useElapsedSeconds(
+  runCreatedAt: string | null,
+  runUpdatedAt: string | null,
+  runActive: boolean,
+): number | null {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!runActive) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [runActive, runCreatedAt]);
+
+  return useMemo(() => {
+    if (!runCreatedAt) return null;
+
+    const startMs = parseApiDate(runCreatedAt).getTime();
+    const endMs = runActive
+      ? now
+      : parseApiDate(runUpdatedAt ?? runCreatedAt).getTime();
+
+    return Math.max(0, (endMs - startMs) / 1000);
+  }, [now, runActive, runCreatedAt, runUpdatedAt]);
 }
 
 function TraceItem({ trace }: { readonly trace: ToolTrace }) {

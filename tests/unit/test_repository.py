@@ -190,6 +190,10 @@ def test_repository_builds_final_result(tmp_path) -> None:
 
     assert result.topic == "solid-state battery electrolyte"
     assert result.status == "done"
+    assert result.created_at is not None
+    assert result.updated_at is not None
+    assert result.created_at.tzinfo is UTC
+    assert result.updated_at.tzinfo is UTC
     assert len(result.selected_papers) == 1
     assert len(result.hypotheses) == 3
     assert result.report_markdown == "# Report"
