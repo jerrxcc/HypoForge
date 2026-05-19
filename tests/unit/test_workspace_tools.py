@@ -7,6 +7,7 @@ from hypoforge.domain.schemas import (
     RunRequest,
 )
 from hypoforge.infrastructure.db.repository import RunRepository
+from hypoforge.tools.errors import RecoverableToolInputError
 from hypoforge.tools.workspace_tools import WorkspaceTools
 
 
@@ -70,7 +71,7 @@ def test_save_conflict_clusters_rejects_unknown_evidence_ids(tmp_path) -> None:
     )
     tools = WorkspaceTools(repository=repo)
 
-    with pytest.raises(ValueError, match="conflict cluster evidence ids"):
+    with pytest.raises(RecoverableToolInputError, match="conflict cluster evidence ids"):
         tools.save_conflict_clusters(
             run.run_id,
             {

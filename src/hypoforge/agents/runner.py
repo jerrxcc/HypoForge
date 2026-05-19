@@ -5,6 +5,7 @@ from typing import Any, Callable, Type
 from pydantic import BaseModel, ValidationError
 
 from hypoforge.application.budget import ToolStepBudgetExceededError
+from hypoforge.tools.errors import RecoverableToolInputError
 
 
 class AgentRunner:
@@ -71,12 +72,11 @@ class AgentRunner:
                     "input_tokens": turn.usage.get("input_tokens", 0),
                     "output_tokens": turn.usage.get("output_tokens", 0),
                 }
-                result = self._tool_invoker(call.name, call.arguments, trace_context)
-                output = (
-                    result
-                    if isinstance(result, str)
-                    else json.dumps(result, ensure_ascii=False)
-                )
+                try:
+                    result = self._tool_invoker(call.name, call.arguments, trace_context)
+                    output = self._serialize_tool_output(result)
+                except RecoverableToolInputError as exc:
+                    output = self._serialize_recoverable_tool_error(exc)
                 tool_outputs.append(
                     {
                         "type": "function_call_output",
@@ -93,6 +93,29 @@ class AgentRunner:
             )
             step_count += 1
         return turn, step_count
+
+    def _serialize_tool_output(self, result: Any) -> str:
+        return (
+            result
+            if isinstance(result, str)
+            else json.dumps(result, ensure_ascii=False)
+        )
+
+    def _serialize_recoverable_tool_error(
+        self,
+        error: RecoverableToolInputError,
+    ) -> str:
+        return json.dumps(
+            {
+                "error": {
+                    "type": "tool_input_validation_error",
+                    "message": str(error),
+                    "retryable": True,
+                    "instruction": error.instruction,
+                }
+            },
+            ensure_ascii=False,
+        )
 
     def _validate_final_output(
         self, turn, context: dict[str, Any], tool_names: list[str]

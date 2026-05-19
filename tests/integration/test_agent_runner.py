@@ -9,7 +9,10 @@ from hypoforge.agents.runner import AgentRunner
 from hypoforge.application.budget import ToolStepBudgetExceededError
 from pydantic import ValidationError
 
-from hypoforge.domain.schemas import RetrievalSummary
+from hypoforge.domain.schemas import CriticSummary, EvidenceCard, RetrievalSummary, RunRequest
+from hypoforge.infrastructure.db.repository import RunRepository
+from hypoforge.tools.errors import RecoverableToolInputError
+from hypoforge.tools.workspace_tools import WorkspaceTools
 import json
 
 
@@ -144,6 +147,215 @@ def test_agent_runner_stringifies_tool_outputs_for_provider() -> None:
     assert json.loads(captured_tool_outputs[0]["output"]) == {
         "papers": [{"paper_id": "p1"}]
     }
+
+
+def test_agent_runner_returns_recoverable_tool_input_errors_to_provider() -> None:
+    captured_tool_outputs = []
+
+    class CapturingProvider(ScriptedProvider):
+        def continue_with_tool_outputs(
+            self,
+            *,
+            response_id,
+            tool_outputs,
+            tool_names,
+            model_name,
+            output_schema=None,
+        ):
+            del response_id, tool_names, model_name, output_schema
+            captured_tool_outputs.extend(tool_outputs)
+            return super().continue_with_tool_outputs(
+                response_id="scripted_1",
+                tool_outputs=tool_outputs,
+                tool_names=[],
+                model_name="gpt-5.4-mini",
+                output_schema=None,
+            )
+
+    provider = CapturingProvider(
+        [
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_bad",
+                        name="search_openalex_works",
+                        arguments={
+                            "query": "bad id",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_fixed",
+                        name="search_openalex_works",
+                        arguments={
+                            "query": "fixed id",
+                            "year_from": 2018,
+                            "year_to": 2026,
+                            "limit": 5,
+                        },
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                final_output={
+                    "canonical_topic": "x",
+                    "query_variants_used": ["x"],
+                    "search_notes": ["corrected tool input"],
+                    "selected_paper_ids": ["p1"],
+                    "excluded_paper_ids": [],
+                    "coverage_assessment": "good",
+                    "needs_broader_search": False,
+                }
+            ),
+        ]
+    )
+    call_count = 0
+
+    def invoke(tool_name: str, payload: dict, trace_context: dict) -> dict:
+        nonlocal call_count
+        del tool_name, trace_context
+        call_count += 1
+        if payload["query"] == "bad id":
+            raise RecoverableToolInputError(
+                "invalid evidence id",
+                instruction="Use exact EvidenceCard.evidence_id values.",
+            )
+        return {"papers": [{"paper_id": "p1"}]}
+
+    runner = AgentRunner(
+        provider=provider,
+        tool_invoker=invoke,
+        output_model=RetrievalSummary,
+        agent_name="retrieval",
+        model_name="gpt-5.4-mini",
+        max_tool_steps=3,
+    )
+
+    summary = runner.execute(
+        instructions="Retrieve papers",
+        context={"topic": "x"},
+        tool_names=["search_openalex_works"],
+    )
+
+    first_output = json.loads(captured_tool_outputs[0]["output"])
+    assert first_output["error"]["type"] == "tool_input_validation_error"
+    assert first_output["error"]["retryable"] is True
+    assert first_output["error"]["instruction"] == "Use exact EvidenceCard.evidence_id values."
+    assert json.loads(captured_tool_outputs[1]["output"]) == {
+        "papers": [{"paper_id": "p1"}]
+    }
+    assert call_count == 2
+    assert summary.coverage_assessment == "good"
+
+
+def test_agent_runner_recovers_invalid_conflict_evidence_ids(tmp_path) -> None:
+    captured_tool_outputs = []
+
+    class CapturingProvider(ScriptedProvider):
+        def continue_with_tool_outputs(
+            self,
+            *,
+            response_id,
+            tool_outputs,
+            tool_names,
+            model_name,
+            output_schema=None,
+        ):
+            del response_id, tool_names, model_name, output_schema
+            captured_tool_outputs.extend(tool_outputs)
+            return super().continue_with_tool_outputs(
+                response_id="scripted_1",
+                tool_outputs=tool_outputs,
+                tool_names=[],
+                model_name="gpt-5.4-mini",
+                output_schema=None,
+            )
+
+    invalid_cluster = {
+        "cluster_id": "high_rate_stability_depends_on_architecture",
+        "topic_axis": "high-rate stability depends on architecture",
+        "supporting_evidence_ids": ["W4391361976_1"],
+        "conflicting_evidence_ids": ["oa_W3107306211_1"],
+        "conflict_type": "conditional_divergence",
+        "critic_summary": "Architecture affects high-rate stability.",
+        "confidence": 0.8,
+    }
+    valid_cluster = {
+        **invalid_cluster,
+        "supporting_evidence_ids": ["oa_W4391361976_1"],
+    }
+    provider = CapturingProvider(
+        [
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_bad",
+                        name="save_conflict_clusters",
+                        arguments={"conflict_clusters": [invalid_cluster]},
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                tool_calls=[
+                    ProviderToolCall(
+                        call_id="call_fixed",
+                        name="save_conflict_clusters",
+                        arguments={"conflict_clusters": [valid_cluster]},
+                    )
+                ]
+            ),
+            ScriptedProviderTurn(
+                final_output={
+                    "clusters_created": 1,
+                    "top_axes": ["high-rate stability"],
+                    "critic_notes": ["corrected evidence id"],
+                }
+            ),
+        ]
+    )
+    repo = RunRepository.from_sqlite_path(tmp_path / "app.db")
+    run = repo.create_run(RunRequest(topic="solid-state battery electrolyte"))
+    repo.save_evidence_cards(
+        run.run_id,
+        [
+            _evidence_card("oa_W4391361976_1"),
+            _evidence_card("oa_W3107306211_1"),
+        ],
+    )
+    tools = WorkspaceTools(repository=repo)
+
+    runner = AgentRunner(
+        provider=provider,
+        tool_invoker=lambda tool_name, payload, trace_context: tools.save_conflict_clusters(
+            run.run_id, payload
+        ),
+        output_model=CriticSummary,
+        agent_name="critic",
+        model_name="gpt-5.4-mini",
+        max_tool_steps=3,
+    )
+
+    summary = runner.execute(
+        instructions="Save conflict clusters",
+        context={"run_id": run.run_id},
+        tool_names=["save_conflict_clusters"],
+    )
+
+    first_output = json.loads(captured_tool_outputs[0]["output"])
+    assert first_output["error"]["type"] == "tool_input_validation_error"
+    assert "W4391361976_1" in first_output["error"]["message"]
+    assert json.loads(captured_tool_outputs[1]["output"]) == {
+        "cluster_ids": ["high_rate_stability_depends_on_architecture"]
+    }
+    assert summary.clusters_created == 1
+    clusters = repo.load_conflict_clusters(run.run_id)
+    assert clusters[0].supporting_evidence_ids == ["oa_W4391361976_1"]
 
 
 def test_agent_runner_retries_once_after_output_validation_failure() -> None:
@@ -374,3 +586,17 @@ def test_agent_runner_fails_fast_when_provider_turn_cannot_progress() -> None:
         )
 
     assert provider.continue_calls == 0
+
+
+def _evidence_card(evidence_id: str) -> EvidenceCard:
+    return EvidenceCard(
+        evidence_id=evidence_id,
+        paper_id="p1",
+        title="Paper",
+        claim_text="Claim",
+        system_or_material="System",
+        intervention="Intervention",
+        outcome="Outcome",
+        direction="positive",
+        confidence=0.8,
+    )

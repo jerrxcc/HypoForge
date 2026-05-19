@@ -7,6 +7,7 @@ from hypoforge.tools.schemas import (
     SaveEvidenceCardsArgs,
     SaveHypothesesArgs,
 )
+from hypoforge.tools.errors import RecoverableToolInputError
 
 
 class WorkspaceTools:
@@ -69,9 +70,14 @@ class WorkspaceTools:
                     f"{cluster.cluster_id} conflicting_evidence_ids={invalid_conflicting}"
                 )
         if invalid_refs:
-            raise ValueError(
+            raise RecoverableToolInputError(
                 "conflict cluster evidence ids must reference saved evidence cards: "
-                + "; ".join(invalid_refs)
+                + "; ".join(invalid_refs),
+                instruction=(
+                    "Call load_evidence_cards again if needed, then re-call "
+                    "save_conflict_clusters using only exact EvidenceCard.evidence_id "
+                    "values from the loaded evidence cards."
+                ),
             )
         self._repository.save_conflict_clusters(run_id, args.conflict_clusters)
         return {
@@ -124,9 +130,14 @@ class WorkspaceTools:
                     f"rank {hypothesis.rank} counterevidence_ids={invalid_counter}"
                 )
         if invalid_refs:
-            raise ValueError(
+            raise RecoverableToolInputError(
                 "hypothesis evidence ids must reference saved evidence cards: "
-                + "; ".join(invalid_refs)
+                + "; ".join(invalid_refs),
+                instruction=(
+                    "Call load_evidence_cards and load_conflict_clusters again if needed, "
+                    "then re-call save_hypotheses using only exact EvidenceCard.evidence_id "
+                    "values from the loaded evidence cards."
+                ),
             )
 
     def _annotate_hypothesis_credibility(
