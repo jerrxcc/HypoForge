@@ -18,10 +18,10 @@ export type StageId = (typeof STAGES)[number]['id'];
 /** Curated golden topics for quick demo runs. */
 export const GOLDEN_TOPICS = [
   'solid-state battery electrolyte interfaces',
-  'CRISPR base editing off-target effects',
-  'microbiome modulation of Alzheimer disease',
   'perovskite solar cell stability degradation',
-  'mRNA vaccine adjuvant innate immune response',
+  'solid oxide fuel cell electrode degradation',
+  'low-temperature sodium-ion battery electrolytes',
+  'machine learning interatomic potentials for catalysis',
 ] as const;
 
 /** Default run constraints exposed in the new-run form. */

@@ -82,8 +82,17 @@ class CountingAlphaXivConnector:
     def search_full_text_papers(self, query: str, year_from: int, year_to: int, limit: int):
         return self.search_embedding_similarity(query, year_from, year_to, limit)
 
-    def search_agentic_paper_retrieval(self, query: str, year_from: int, year_to: int, limit: int):
-        return self.search_embedding_similarity(query, year_from, year_to, limit)
+    def search_agentic_paper_retrieval(
+        self,
+        keywords: list[str],
+        question: str,
+        difficulty: int,
+        year_from: int,
+        year_to: int,
+        limit: int,
+    ):
+        del keywords, difficulty
+        return self.search_embedding_similarity(question, year_from, year_to, limit)
 
     def get_paper_content(self, url: str, full_text: bool = False):
         del full_text

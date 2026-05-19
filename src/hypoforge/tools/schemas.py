@@ -12,6 +12,21 @@ class SearchPapersArgs(BaseModel):
     limit: int = Field(default=15, ge=1, le=50)
 
 
+class DiscoverAlphaXivPapersArgs(BaseModel):
+    keywords: list[str] = Field(
+        min_length=1,
+        max_length=4,
+        description="Concise exact-match terms for alphaXiv discovery.",
+    )
+    question: str = Field(
+        description="Detailed semantic description of the papers that should answer the retrieval request."
+    )
+    difficulty: int = Field(default=4, ge=1, le=10)
+    year_from: int
+    year_to: int
+    limit: int = Field(default=15, ge=1, le=50)
+
+
 class RecommendPapersArgs(BaseModel):
     positive_paper_ids: list[str]
     limit: int = Field(default=20, ge=1, le=50)
@@ -88,7 +103,7 @@ TOOL_ARG_MODELS = {
     "recommend_semantic_scholar_papers": RecommendPapersArgs,
     "search_alphaxiv_embedding_similarity": SearchPapersArgs,
     "search_alphaxiv_full_text_papers": SearchPapersArgs,
-    "search_alphaxiv_agentic_paper_retrieval": SearchPapersArgs,
+    "search_alphaxiv_agentic_paper_retrieval": DiscoverAlphaXivPapersArgs,
     "get_paper_details": GetPaperDetailsArgs,
     "get_alphaxiv_paper_content": GetAlphaXivPaperContentArgs,
     "answer_alphaxiv_pdf_queries": AnswerAlphaXivPdfQueriesArgs,

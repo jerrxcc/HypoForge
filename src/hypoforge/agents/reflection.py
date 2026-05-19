@@ -640,7 +640,7 @@ class ReflectionAgent:
             "semantic_scholar.recommend": "Semantic Scholar recommendations",
             "alphaxiv.embedding_similarity_search": "alphaXiv embedding search",
             "alphaxiv.full_text_papers_search": "alphaXiv full-text search",
-            "alphaxiv.agentic_paper_retrieval": "alphaXiv agentic retrieval",
+            "alphaxiv.discover_papers": "alphaXiv paper discovery",
         }
         return labels.get(channel, channel)
 

@@ -374,8 +374,6 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         if alphaxiv_enabled:
             retrieval_tool_names.extend(
                 [
-                    "search_alphaxiv_embedding_similarity",
-                    "search_alphaxiv_full_text_papers",
                     "search_alphaxiv_agentic_paper_retrieval",
                 ]
             )
@@ -559,9 +557,7 @@ def build_default_services(settings: Settings | None = None) -> ServiceContainer
         if alphaxiv_enabled:
             retrieval_channels.extend(
                 [
-                    "alphaxiv.embedding_similarity_search",
-                    "alphaxiv.full_text_papers_search",
-                    "alphaxiv.agentic_paper_retrieval",
+                    "alphaxiv.discover_papers",
                 ]
             )
         reflection_agent = ReflectionAgent(

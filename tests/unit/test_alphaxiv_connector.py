@@ -66,14 +66,50 @@ def test_alphaxiv_connector_normalizes_structured_search_response() -> None:
 
     connector = AlphaXivConnector(client=FakeClient(), access_token="jwt.token.value")
 
-    papers = connector.search_embedding_similarity("battery", 2018, 2026, 5)
+    papers = connector.search_agentic_paper_retrieval(["battery"], "battery", 4, 2018, 2026, 5)
 
     assert len(papers) == 1
     assert papers[0].paper_id == "ax:2401.12345"
     assert papers[0].source == "alphaxiv"
-    assert papers[0].provenance == ["alphaxiv.embedding_similarity_search"]
+    assert papers[0].provenance == ["alphaxiv.discover_papers"]
     assert papers[0].source_urls["github"] == "https://github.com/example/repo"
     assert papers[0].source_urls["arxiv"] == "https://arxiv.org/abs/2401.12345"
+
+
+def test_alphaxiv_connector_normalizes_discover_text_response() -> None:
+    class FakeClient:
+        def call_tool(self, tool_name: str, arguments: dict):
+            assert tool_name == "discover_papers"
+            assert arguments["keywords"]
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "1. [ID=2402.04095] **Two-step growth mechanism of the solid "
+                            "electrolyte interphase in argyrodyte/Li-metal contacts**. "
+                            "Published 2024-02-06 by CEA: The structure and growth of the SEI region.\n"
+                            "2. [ID=2412.02433] **Ab initio Study on Lithium Anode Interface Instability**. "
+                            "Published 2024-12-03 by NTUST: Emerging superionic conductors are promising."
+                        ),
+                    }
+                ]
+            }
+
+    connector = AlphaXivConnector(client=FakeClient(), access_token="jwt.token.value")
+
+    papers = connector.search_agentic_paper_retrieval(
+        ["solid-state battery", "electrolyte interfaces"],
+        "solid-state battery electrolyte interfaces",
+        4,
+        2024,
+        2026,
+        5,
+    )
+
+    assert [paper.paper_id for paper in papers] == ["ax:2402.04095", "ax:2412.02433"]
+    assert papers[0].title == "Two-step growth mechanism of the solid electrolyte interphase in argyrodyte/Li-metal contacts"
+    assert papers[0].abstract == "The structure and growth of the SEI region."
 
 
 def test_alphaxiv_connector_reads_text_tool_results() -> None:
@@ -104,7 +140,7 @@ def test_alphaxiv_connector_wraps_pdf_query_inputs_as_arrays() -> None:
     assert result == "answer"
     assert seen["tool"]["name"] == "answer_pdf_queries"
     assert seen["tool"]["arguments"] == {
-        "urls": ["https://arxiv.org/abs/2401.12345"],
+        "url": "https://arxiv.org/abs/2401.12345",
         "queries": ["What datasets were used?"],
     }
 
@@ -135,7 +171,7 @@ def test_alphaxiv_mcp_client_raises_tool_error_for_tool_level_failure() -> None:
     )
 
     with pytest.raises(AlphaXivToolError) as exc_info:
-        client.call_tool("answer_pdf_queries", {"urls": ["https://doi.org/10.1/example"], "queries": ["Q"]})
+        client.call_tool("answer_pdf_queries", {"url": "https://doi.org/10.1/example", "queries": ["Q"]})
 
     assert exc_info.value.tool_name == "answer_pdf_queries"
     assert exc_info.value.message == "Invalid file type: text/html;charset=UTF-8"

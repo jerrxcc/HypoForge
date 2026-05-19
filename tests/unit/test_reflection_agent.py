@@ -14,7 +14,7 @@ def test_reflection_agent_uses_dynamic_retrieval_channel_count(tmp_path) -> None
                 title="Paper 1",
                 abstract="Abstract",
                 year=2024,
-                provenance=["openalex.search", "alphaxiv.agentic_paper_retrieval"],
+                provenance=["openalex.search", "alphaxiv.discover_papers"],
             )
         ],
         "seed",
@@ -26,9 +26,7 @@ def test_reflection_agent_uses_dynamic_retrieval_channel_count(tmp_path) -> None
             "openalex.search",
             "semantic_scholar.search",
             "semantic_scholar.recommend",
-            "alphaxiv.embedding_similarity_search",
-            "alphaxiv.full_text_papers_search",
-            "alphaxiv.agentic_paper_retrieval",
+            "alphaxiv.discover_papers",
         ],
     )
 
@@ -37,7 +35,7 @@ def test_reflection_agent_uses_dynamic_retrieval_channel_count(tmp_path) -> None
         {"coverage_assessment": "medium"},
     )
 
-    assert round(assessment.metrics.source_coverage, 4) == round(2 / 6, 4)
+    assert round(assessment.metrics.source_coverage, 4) == round(2 / 4, 4)
 
 
 def test_reflection_agent_accepts_legacy_provenance_labels(tmp_path) -> None:

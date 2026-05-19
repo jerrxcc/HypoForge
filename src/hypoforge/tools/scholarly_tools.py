@@ -18,6 +18,7 @@ from hypoforge.infrastructure.connectors.ranking import rank_papers
 from hypoforge.infrastructure.db.repository import RunRepository
 from hypoforge.tools.schemas import (
     AnswerAlphaXivPdfQueriesArgs,
+    DiscoverAlphaXivPapersArgs,
     GetAlphaXivPaperContentArgs,
     GetPaperDetailsArgs,
     ReadAlphaXivGithubRepositoryArgs,
@@ -104,11 +105,13 @@ class ScholarlyTools:
         )
 
     def search_alphaxiv_agentic_paper_retrieval(self, payload: dict) -> dict:
-        args = SearchPapersArgs.model_validate(payload)
+        args = DiscoverAlphaXivPapersArgs.model_validate(payload)
         connector = self._require_alphaxiv()
         return self._run_source_call(
             lambda: connector.search_agentic_paper_retrieval(
-                args.query,
+                args.keywords,
+                args.question,
+                args.difficulty,
                 args.year_from,
                 args.year_to,
                 args.limit,

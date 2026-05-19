@@ -185,18 +185,27 @@ class AlphaXivConnector:
 
     def search_agentic_paper_retrieval(
         self,
-        query: str,
+        keywords: list[str],
+        question: str,
+        difficulty: int,
         year_from: int,
         year_to: int,
         limit: int,
     ) -> list[PaperDetail]:
-        result = self._client.call_tool("agentic_paper_retrieval", {"query": query})
+        result = self._client.call_tool(
+            "discover_papers",
+            {
+                "keywords": keywords,
+                "question": question,
+                "difficulty": difficulty,
+            },
+        )
         return self._normalize_search_result(
             result,
             year_from=year_from,
             year_to=year_to,
             limit=limit,
-            provenance="alphaxiv.agentic_paper_retrieval",
+            provenance="alphaxiv.discover_papers",
         )
 
     def get_paper_content(self, url: str, full_text: bool = False) -> str:
@@ -204,7 +213,7 @@ class AlphaXivConnector:
         return _tool_result_text(result)
 
     def answer_pdf_queries(self, url: str, query: str) -> str:
-        result = self._client.call_tool("answer_pdf_queries", {"urls": [url], "queries": [query]})
+        result = self._client.call_tool("answer_pdf_queries", {"url": url, "queries": [query]})
         return _tool_result_text(result)
 
     def read_files_from_github_repository(self, github_url: str, path: str) -> dict[str, Any] | str:
@@ -288,7 +297,7 @@ def _parse_text_or_json_items(text: str) -> list[dict[str, Any]]:
 
 
 def _parse_text_blocks(text: str) -> list[dict[str, Any]]:
-    blocks = [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
+    blocks = _split_text_result_blocks(text)
     items: list[dict[str, Any]] = []
     for block in blocks:
         lines = [line.strip(" -*\t") for line in block.splitlines() if line.strip()]
@@ -296,7 +305,7 @@ def _parse_text_blocks(text: str) -> list[dict[str, Any]]:
             continue
         joined = "\n".join(lines)
         arxiv_id = _extract_arxiv_id(joined)
-        title = re.sub(r"^\d+[.)]\s*", "", lines[0]).strip()
+        title = _extract_text_result_title(lines[0])
         abstract = ""
         authors: list[str] = []
         year = _extract_year(joined)
@@ -309,6 +318,9 @@ def _parse_text_blocks(text: str) -> list[dict[str, Any]]:
                 abstract = line.split(":", 1)[1].strip() if ":" in line else line
             elif line.startswith("http://") or line.startswith("https://"):
                 url = line
+        published_abstract = re.search(r"\bPublished\b.*?:\s*(.+)", joined, flags=re.DOTALL)
+        if published_abstract:
+            abstract = published_abstract.group(1).strip()
         if not abstract and len(lines) > 1:
             abstract = max(lines[1:], key=len)
         items.append(
@@ -322,6 +334,28 @@ def _parse_text_blocks(text: str) -> list[dict[str, Any]]:
             }
         )
     return items
+
+
+def _split_text_result_blocks(text: str) -> list[str]:
+    matches = list(re.finditer(r"(?m)^\s*\d+[.)]\s+", text))
+    if len(matches) > 1:
+        blocks: list[str] = []
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            block = text[match.start() : end].strip()
+            if block:
+                blocks.append(block)
+        return blocks
+    return [block.strip() for block in re.split(r"\n\s*\n", text) if block.strip()]
+
+
+def _extract_text_result_title(line: str) -> str:
+    header = re.sub(r"^\d+[.)]\s*", "", line).strip()
+    header = re.sub(r"^\[ID=[^\]]+\]\s*", "", header).strip()
+    bold = re.search(r"\*\*(.+?)\*\*", header)
+    if bold:
+        return bold.group(1).strip()
+    return header.split(". Published", 1)[0].strip()
 
 
 def _normalize_search_item(item: dict[str, Any], *, provenance: str) -> PaperDetail | None:

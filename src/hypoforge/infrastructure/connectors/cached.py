@@ -213,15 +213,31 @@ class CachedAlphaXivConnector:
 
     def search_agentic_paper_retrieval(
         self,
-        query: str,
+        keywords: list[str],
+        question: str,
+        difficulty: int,
         year_from: int,
         year_to: int,
         limit: int,
     ) -> list[PaperDetail]:
         return self._cached_papers(
             "alphaxiv_agentic_paper_retrieval",
-            {"query": query, "year_from": year_from, "year_to": year_to, "limit": limit},
-            lambda: self._connector.search_agentic_paper_retrieval(query, year_from, year_to, limit),
+            {
+                "keywords": keywords,
+                "question": question,
+                "difficulty": difficulty,
+                "year_from": year_from,
+                "year_to": year_to,
+                "limit": limit,
+            },
+            lambda: self._connector.search_agentic_paper_retrieval(
+                keywords,
+                question,
+                difficulty,
+                year_from,
+                year_to,
+                limit,
+            ),
         )
 
     def get_paper_content(self, url: str, full_text: bool = False) -> str:
